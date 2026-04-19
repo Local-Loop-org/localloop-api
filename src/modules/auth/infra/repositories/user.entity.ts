@@ -1,4 +1,10 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  Index,
+} from 'typeorm';
 import { Provider, DmPermission } from '@localloop/shared-types';
 
 @Entity('users')
@@ -23,13 +29,22 @@ export class UserEntity {
   @Index()
   geohash!: string | null;
 
-  @Column({ name: 'dm_permission', type: 'enum', enum: DmPermission, default: DmPermission.MEMBERS })
+  @Column({
+    name: 'dm_permission',
+    type: 'enum',
+    enum: DmPermission,
+    default: DmPermission.MEMBERS,
+  })
   dmPermission!: DmPermission;
 
   @Column({ type: 'boolean', name: 'is_active', default: true })
   isActive!: boolean;
 
-  @Column({ name: 'last_seen_at', type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
+  @Column({
+    name: 'last_seen_at',
+    type: 'timestamptz',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
   lastSeenAt!: Date;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })

@@ -133,7 +133,7 @@ describe('SupabaseService', () => {
         error: null,
       });
 
-      const result = await service.verifyAppleToken('token', 'identity');
+      const result = await service.verifyAppleToken('token');
 
       expect(getUser).toHaveBeenCalledWith('token');
       expect(result.data?.user.user_metadata.provider_id).toBe('apple-sub-1');
@@ -146,7 +146,7 @@ describe('SupabaseService', () => {
         error: { message: 'invalid' },
       });
 
-      const result = await service.verifyAppleToken('bad', 'bad');
+      const result = await service.verifyAppleToken('bad');
 
       expect(result.data).toBeNull();
       expect(result.error).toEqual({ message: 'invalid' });

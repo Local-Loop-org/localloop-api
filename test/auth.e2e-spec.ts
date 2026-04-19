@@ -132,7 +132,7 @@ describe('Auth (e2e)', () => {
 
       const response = await request(app.getHttpServer())
         .post('/auth/apple')
-        .send({ token: 'valid.apple.token', identityToken: 'identity.jwt' })
+        .send({ token: 'valid.apple.token' })
         .expect(200);
 
       expect(response.body).toMatchObject({
@@ -141,7 +141,6 @@ describe('Auth (e2e)', () => {
       });
       expect(supabase.verifyAppleToken).toHaveBeenCalledWith(
         'valid.apple.token',
-        'identity.jwt',
       );
     });
 
@@ -153,14 +152,14 @@ describe('Auth (e2e)', () => {
 
       await request(app.getHttpServer())
         .post('/auth/apple')
-        .send({ token: 'bad', identityToken: 'bad' })
+        .send({ token: 'bad' })
         .expect(401);
     });
 
-    it('returns 400 when identityToken is missing', async () => {
+    it('returns 400 when token is missing', async () => {
       await request(app.getHttpServer())
         .post('/auth/apple')
-        .send({ token: 'has.token' })
+        .send({})
         .expect(400);
     });
   });

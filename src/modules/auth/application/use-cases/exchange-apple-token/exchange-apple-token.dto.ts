@@ -4,8 +4,4 @@ export class ExchangeAppleTokenDto {
   @IsString()
   @IsNotEmpty()
   token!: string;
-
-  @IsString()
-  @IsNotEmpty()
-  identityToken!: string;
 }

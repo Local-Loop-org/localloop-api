@@ -16,7 +16,7 @@ export class ExchangeAppleTokenUseCase {
   ) {}
 
   async execute(dto: ExchangeAppleTokenDto): Promise<AuthResponseDto> {
-    const { data, error } = await this.supabaseService.verifyAppleToken(dto.token, dto.identityToken);
+    const { data, error } = await this.supabaseService.verifyAppleToken(dto.token);
 
     if (error || !data.user) {
       throw new UnauthorizedException('Invalid Apple token');

@@ -10,13 +10,16 @@ export class SupabaseService {
     const url = this.configService.get<string>('SUPABASE_URL');
     const key = this.configService.get<string>('SUPABASE_SERVICE_ROLE_KEY');
 
-    this.client = createClient(url || 'https://mock.supabase.co', key || 'mock-key');
+    this.client = createClient(
+      url || 'https://mock.supabase.co',
+      key || 'mock-key',
+    );
   }
 
   async verifyGoogleToken(token: string) {
     // We use the service role key to verify the user's token directly with Supabase
     const { data, error } = await this.client.auth.getUser(token);
-    
+
     if (error) {
       return { data: null, error };
     }
@@ -27,9 +30,15 @@ export class SupabaseService {
           id: data.user.id,
           email: data.user.email,
           user_metadata: {
-            full_name: data.user.user_metadata?.full_name || data.user.user_metadata?.name,
-            avatar_url: data.user.user_metadata?.avatar_url || data.user.user_metadata?.picture,
-            provider_id: data.user.identities?.find(i => i.provider === 'google')?.id || data.user.id,
+            full_name:
+              data.user.user_metadata?.full_name ||
+              data.user.user_metadata?.name,
+            avatar_url:
+              data.user.user_metadata?.avatar_url ||
+              data.user.user_metadata?.picture,
+            provider_id:
+              data.user.identities?.find((i) => i.provider === 'google')?.id ||
+              data.user.id,
           },
         },
       },
@@ -37,7 +46,7 @@ export class SupabaseService {
     };
   }
 
-  async verifyAppleToken(token: string, identityToken?: string) {
+  async verifyAppleToken(token: string) {
     const { data, error } = await this.client.auth.getUser(token);
 
     if (error) {
@@ -50,9 +59,13 @@ export class SupabaseService {
           id: data.user.id,
           email: data.user.email,
           user_metadata: {
-            full_name: data.user.user_metadata?.full_name || data.user.user_metadata?.name,
+            full_name:
+              data.user.user_metadata?.full_name ||
+              data.user.user_metadata?.name,
             avatar_url: data.user.user_metadata?.avatar_url,
-            provider_id: data.user.identities?.find(i => i.provider === 'apple')?.id || data.user.id,
+            provider_id:
+              data.user.identities?.find((i) => i.provider === 'apple')?.id ||
+              data.user.id,
           },
         },
       },

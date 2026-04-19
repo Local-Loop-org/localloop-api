@@ -80,12 +80,10 @@ describe('ExchangeAppleTokenUseCase', () => {
 
     const result = await useCase.execute({
       token: 'apple.token',
-      identityToken: 'apple.identity',
     });
 
     expect(supabaseService.verifyAppleToken).toHaveBeenCalledWith(
       'apple.token',
-      'apple.identity',
     );
     expect(userRepo.findByProvider).toHaveBeenCalledWith(
       'apple-sub-1',
@@ -105,7 +103,6 @@ describe('ExchangeAppleTokenUseCase', () => {
 
     const result = await useCase.execute({
       token: 'apple.token',
-      identityToken: 'apple.identity',
     });
 
     expect(result.isNewUser).toBe(false);
@@ -123,7 +120,6 @@ describe('ExchangeAppleTokenUseCase', () => {
 
     await useCase.execute({
       token: 'apple.token',
-      identityToken: 'apple.identity',
     });
 
     const savedUser = userRepo.save.mock.calls[0][0];
@@ -137,7 +133,7 @@ describe('ExchangeAppleTokenUseCase', () => {
     } as any);
 
     await expect(
-      useCase.execute({ token: 'bad', identityToken: 'bad' }),
+      useCase.execute({ token: 'bad' }),
     ).rejects.toThrow(new UnauthorizedException('Invalid Apple token'));
     expect(userRepo.save).not.toHaveBeenCalled();
   });
