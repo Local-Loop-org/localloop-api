@@ -2,6 +2,7 @@ import { Module, Controller, Get } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './modules/auth/auth.module';
+import { UserModule } from './modules/user/user.module';
 import { UserEntity } from '@/modules/auth/infra/repositories/user.entity';
 import { InitialSetup1710770000000 } from '@/infra/migrations/1710770000000-InitialSetup';
 
@@ -45,6 +46,7 @@ class HealthController {
       },
     }),
     AuthModule,
+    UserModule,
   ],
   controllers: [HealthController],
   providers: [],
