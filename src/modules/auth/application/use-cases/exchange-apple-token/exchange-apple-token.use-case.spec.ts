@@ -75,7 +75,9 @@ describe('ExchangeAppleTokenUseCase', () => {
   });
 
   it('creates a new user on first Apple login', async () => {
-    supabaseService.verifyAppleToken.mockResolvedValue(buildSupabaseOk() as any);
+    supabaseService.verifyAppleToken.mockResolvedValue(
+      buildSupabaseOk() as any,
+    );
     userRepo.findByProvider.mockResolvedValue(null);
 
     const result = await useCase.execute({
@@ -98,7 +100,9 @@ describe('ExchangeAppleTokenUseCase', () => {
 
   it('updates existing user metadata on subsequent Apple login', async () => {
     const existing = buildExistingUser();
-    supabaseService.verifyAppleToken.mockResolvedValue(buildSupabaseOk() as any);
+    supabaseService.verifyAppleToken.mockResolvedValue(
+      buildSupabaseOk() as any,
+    );
     userRepo.findByProvider.mockResolvedValue(existing);
 
     const result = await useCase.execute({
@@ -132,9 +136,48 @@ describe('ExchangeAppleTokenUseCase', () => {
       error: { message: 'bad token' },
     } as any);
 
-    await expect(
-      useCase.execute({ token: 'bad' }),
-    ).rejects.toThrow(new UnauthorizedException('Invalid Apple token'));
+    await expect(useCase.execute({ token: 'bad' })).rejects.toThrow(
+      new UnauthorizedException('Invalid Apple token'),
+    );
     expect(userRepo.save).not.toHaveBeenCalled();
+  });
+
+  it('throws UnauthorizedException when supabase returns no user', async () => {
+    supabaseService.verifyAppleToken.mockResolvedValue({
+      data: { user: null },
+      error: null,
+    } as any);
+
+    await expect(useCase.execute({ token: 'empty.token' })).rejects.toThrow(
+      UnauthorizedException,
+    );
+    expect(userRepo.findByProvider).not.toHaveBeenCalled();
+    expect(userRepo.save).not.toHaveBeenCalled();
+  });
+
+  it('falls back to supabase id when provider_id is missing from metadata', async () => {
+    supabaseService.verifyAppleToken.mockResolvedValue(
+      buildSupabaseOk({ user_metadata: { provider_id: undefined } }) as any,
+    );
+    userRepo.findByProvider.mockResolvedValue(null);
+
+    await useCase.execute({ token: 'apple.token' });
+
+    expect(userRepo.findByProvider).toHaveBeenCalledWith(
+      'supabase-id-2',
+      Provider.APPLE,
+    );
+  });
+
+  it('defaults displayName to "User" when metadata has no full_name', async () => {
+    supabaseService.verifyAppleToken.mockResolvedValue(
+      buildSupabaseOk({ user_metadata: { full_name: undefined } }) as any,
+    );
+    userRepo.findByProvider.mockResolvedValue(null);
+
+    await useCase.execute({ token: 'apple.token' });
+
+    const savedUser = userRepo.save.mock.calls[0][0];
+    expect(savedUser.displayName).toBe('User');
   });
 });
