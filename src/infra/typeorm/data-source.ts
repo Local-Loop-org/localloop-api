@@ -1,7 +1,11 @@
 import { DataSource } from 'typeorm';
 import { config } from 'dotenv';
 import { UserEntity } from '@/modules/auth/infra/repositories/user.entity';
+import { GroupOrmEntity } from '@/modules/groups/infra/repositories/group.entity';
+import { GroupMemberOrmEntity } from '@/modules/groups/infra/repositories/group-member.entity';
+import { GroupJoinRequestOrmEntity } from '@/modules/groups/infra/repositories/group-join-request.entity';
 import { InitialSetup1710770000000 } from '../migrations/1710770000000-InitialSetup';
+import { CreateGroups1713700000000 } from '../migrations/1713700000000-CreateGroups';
 
 config();
 
@@ -18,6 +22,11 @@ export default new DataSource({
         password: process.env.DB_PASSWORD || 'postgres',
         database: process.env.DB_NAME || 'localloop',
       }),
-  entities: [UserEntity],
-  migrations: [InitialSetup1710770000000],
+  entities: [
+    UserEntity,
+    GroupOrmEntity,
+    GroupMemberOrmEntity,
+    GroupJoinRequestOrmEntity,
+  ],
+  migrations: [InitialSetup1710770000000, CreateGroups1713700000000],
 });
