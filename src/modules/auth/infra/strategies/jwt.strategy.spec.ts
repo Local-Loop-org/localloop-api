@@ -27,7 +27,9 @@ describe('JwtStrategy', () => {
 
   const buildConfig = (secret: string | undefined): ConfigService =>
     ({
-      get: jest.fn((key: string) => (key === 'JWT_SECRET' ? secret : undefined)),
+      get: jest.fn((key: string) =>
+        key === 'JWT_SECRET' ? secret : undefined,
+      ),
     }) as unknown as ConfigService;
 
   beforeEach(() => {

@@ -75,7 +75,9 @@ describe('ExchangeGoogleTokenUseCase', () => {
   });
 
   it('creates a new user when no record exists for the provider id', async () => {
-    supabaseService.verifyGoogleToken.mockResolvedValue(buildSupabaseOk() as any);
+    supabaseService.verifyGoogleToken.mockResolvedValue(
+      buildSupabaseOk() as any,
+    );
     userRepo.findByProvider.mockResolvedValue(null);
 
     const result = await useCase.execute({ token: 'google.token' });
@@ -100,7 +102,9 @@ describe('ExchangeGoogleTokenUseCase', () => {
   it('updates display name, avatar and lastSeen when the user already exists', async () => {
     const existing = buildExistingUser();
     const originalLastSeen = existing.lastSeenAt;
-    supabaseService.verifyGoogleToken.mockResolvedValue(buildSupabaseOk() as any);
+    supabaseService.verifyGoogleToken.mockResolvedValue(
+      buildSupabaseOk() as any,
+    );
     userRepo.findByProvider.mockResolvedValue(existing);
 
     const result = await useCase.execute({ token: 'google.token' });

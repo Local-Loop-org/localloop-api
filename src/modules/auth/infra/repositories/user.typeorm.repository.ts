@@ -25,7 +25,10 @@ export class UserTypeORMRepository implements IUserRepository {
     return entity ? UserMapper.toDomain(entity) : null;
   }
 
-  async findByProvider(providerId: string, provider: Provider): Promise<User | null> {
+  async findByProvider(
+    providerId: string,
+    provider: Provider,
+  ): Promise<User | null> {
     const entity = await this.repo.findOneBy({ providerId, provider });
     return entity ? UserMapper.toDomain(entity) : null;
   }

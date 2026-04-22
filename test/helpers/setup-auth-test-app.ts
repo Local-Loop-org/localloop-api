@@ -26,7 +26,10 @@ const TEST_JWT_SECRET = 'test-secret-e2e';
     ExchangeAppleTokenUseCase,
     RefreshTokenUseCase,
     { provide: USER_REPOSITORY, useClass: InMemoryUserRepository },
-    { provide: SupabaseService, useValue: { verifyGoogleToken: jest.fn(), verifyAppleToken: jest.fn() } },
+    {
+      provide: SupabaseService,
+      useValue: { verifyGoogleToken: jest.fn(), verifyAppleToken: jest.fn() },
+    },
   ],
 })
 class AuthTestModule {}

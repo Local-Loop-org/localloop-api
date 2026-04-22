@@ -6,14 +6,30 @@ export class InitialSetup1710770000000 implements MigrationInterface {
     await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS postgis`);
 
     // 2. Enums
-    await queryRunner.query(`CREATE TYPE provider_enum AS ENUM ('google', 'apple')`);
-    await queryRunner.query(`CREATE TYPE dm_permission_enum AS ENUM ('nobody', 'members', 'everyone')`);
-    await queryRunner.query(`CREATE TYPE anchor_type_enum AS ENUM ('establishment', 'neighborhood', 'condo', 'event', 'city')`);
-    await queryRunner.query(`CREATE TYPE group_privacy_enum AS ENUM ('open', 'approval_required')`);
-    await queryRunner.query(`CREATE TYPE member_role_enum AS ENUM ('owner', 'moderator', 'member')`);
-    await queryRunner.query(`CREATE TYPE member_status_enum AS ENUM ('active', 'pending', 'banned')`);
-    await queryRunner.query(`CREATE TYPE media_type_enum AS ENUM ('image', 'video')`);
-    await queryRunner.query(`CREATE TYPE request_status_enum AS ENUM ('pending', 'approved', 'rejected')`);
+    await queryRunner.query(
+      `CREATE TYPE provider_enum AS ENUM ('google', 'apple')`,
+    );
+    await queryRunner.query(
+      `CREATE TYPE dm_permission_enum AS ENUM ('nobody', 'members', 'everyone')`,
+    );
+    await queryRunner.query(
+      `CREATE TYPE anchor_type_enum AS ENUM ('establishment', 'neighborhood', 'condo', 'event', 'city')`,
+    );
+    await queryRunner.query(
+      `CREATE TYPE group_privacy_enum AS ENUM ('open', 'approval_required')`,
+    );
+    await queryRunner.query(
+      `CREATE TYPE member_role_enum AS ENUM ('owner', 'moderator', 'member')`,
+    );
+    await queryRunner.query(
+      `CREATE TYPE member_status_enum AS ENUM ('active', 'pending', 'banned')`,
+    );
+    await queryRunner.query(
+      `CREATE TYPE media_type_enum AS ENUM ('image', 'video')`,
+    );
+    await queryRunner.query(
+      `CREATE TYPE request_status_enum AS ENUM ('pending', 'approved', 'rejected')`,
+    );
 
     // 3. User Table
     await queryRunner.query(`
@@ -32,7 +48,9 @@ export class InitialSetup1710770000000 implements MigrationInterface {
       )
     `);
 
-    await queryRunner.query(`CREATE INDEX idx_users_geohash ON users (geohash)`);
+    await queryRunner.query(
+      `CREATE INDEX idx_users_geohash ON users (geohash)`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
