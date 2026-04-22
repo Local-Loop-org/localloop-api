@@ -25,6 +25,7 @@ export class CreateGroupUseCase {
       anchorLabel: dto.anchorLabel,
       privacy: dto.privacy,
       ownerId: userId,
+      memberCount: 1,
     });
 
     return {

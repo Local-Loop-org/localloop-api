@@ -17,6 +17,7 @@ export interface CreateGroupData {
   anchorLabel: string;
   privacy: GroupPrivacy;
   ownerId: string;
+  memberCount: number;
 }
 
 export interface JoinRequestWithRequester {
@@ -42,7 +43,11 @@ export interface IGroupRepository {
     groupId: string,
     userId: string,
   ): Promise<GroupJoinRequest | null>;
-  createJoinRequest(groupId: string, userId: string): Promise<GroupJoinRequest>;
+  createJoinRequest(
+    groupId: string,
+    userId: string,
+    status: RequestStatus,
+  ): Promise<GroupJoinRequest>;
   listJoinRequestsByStatus(
     groupId: string,
     status: RequestStatus,

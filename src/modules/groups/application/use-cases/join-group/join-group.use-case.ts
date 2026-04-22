@@ -10,6 +10,7 @@ import {
   GroupPrivacy,
   MemberRole,
   MemberStatus,
+  RequestStatus,
 } from '@localloop/shared-types';
 import {
   GROUP_REPOSITORY,
@@ -74,7 +75,11 @@ export class JoinGroupUseCase {
       userId,
     );
     if (!pending) {
-      await this.groupRepo.createJoinRequest(groupId, userId);
+      await this.groupRepo.createJoinRequest(
+        groupId,
+        userId,
+        RequestStatus.PENDING,
+      );
     }
     return {
       status: HttpStatus.ACCEPTED,
