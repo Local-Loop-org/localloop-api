@@ -42,7 +42,7 @@ export class GroupTypeORMRepository implements IGroupRepository {
         anchorLabel: data.anchorLabel,
         privacy: data.privacy,
         ownerId: data.ownerId,
-        memberCount: 1,
+        memberCount: data.memberCount,
         isActive: true,
       });
       const savedGroup = await manager.save(group);
@@ -110,12 +110,9 @@ export class GroupTypeORMRepository implements IGroupRepository {
   async createJoinRequest(
     groupId: string,
     userId: string,
+    status: RequestStatus,
   ): Promise<GroupJoinRequest> {
-    const entity = this.requestsRepo.create({
-      groupId,
-      userId,
-      status: RequestStatus.PENDING,
-    });
+    const entity = this.requestsRepo.create({ groupId, userId, status });
     const saved = await this.requestsRepo.save(entity);
     return GroupMapper.requestToDomain(saved);
   }
