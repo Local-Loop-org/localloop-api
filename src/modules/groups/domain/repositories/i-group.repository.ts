@@ -25,6 +25,27 @@ export interface JoinRequestWithRequester {
   requesterDisplayName: string;
 }
 
+export interface MemberRow {
+  userId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  role: MemberRole;
+  joinedAt: Date;
+}
+
+export interface PaginatedMembers {
+  rows: MemberRow[];
+  nextCursor: string | null;
+}
+
+export interface ApproveJoinRequestAtomicParams {
+  requestId: string;
+  groupId: string;
+  userId: string;
+  resolverId: string;
+  resolvedAt: Date;
+}
+
 export interface IGroupRepository {
   createGroupWithOwner(data: CreateGroupData): Promise<Group>;
   findById(id: string): Promise<Group | null>;
@@ -38,6 +59,13 @@ export interface IGroupRepository {
     status: MemberStatus,
   ): Promise<GroupMember>;
   incrementMemberCount(groupId: string): Promise<void>;
+  decrementMemberCount(groupId: string): Promise<void>;
+  removeMember(groupId: string, userId: string): Promise<void>;
+  updateMemberStatus(
+    groupId: string,
+    userId: string,
+    status: MemberStatus,
+  ): Promise<void>;
 
   findPendingJoinRequest(
     groupId: string,
@@ -52,6 +80,42 @@ export interface IGroupRepository {
     groupId: string,
     status: RequestStatus,
   ): Promise<JoinRequestWithRequester[]>;
+  findJoinRequestById(
+    groupId: string,
+    requestId: string,
+  ): Promise<GroupJoinRequest | null>;
+  updateJoinRequestStatus(
+    requestId: string,
+    status: RequestStatus,
+    resolvedAt: Date,
+    resolvedBy: string,
+  ): Promise<void>;
+
+  /**
+   * Atomically leave a group: hard-delete the member row and decrement memberCount.
+   */
+  leaveGroupAtomic(groupId: string, userId: string): Promise<void>;
+
+  /**
+   * Atomically approve a pending join request: mark request approved, upsert an
+   * ACTIVE member row, and increment memberCount iff a new member row was inserted
+   * (or an existing non-BANNED row was reactivated from a non-ACTIVE state).
+   */
+  approveJoinRequestAtomic(
+    params: ApproveJoinRequestAtomicParams,
+  ): Promise<void>;
+
+  /**
+   * Atomically ban a member: set status = BANNED and decrement memberCount iff
+   * the previous status was ACTIVE.
+   */
+  banMemberAtomic(groupId: string, userId: string): Promise<void>;
+
+  listMembersPaginated(
+    groupId: string,
+    limit: number,
+    cursor?: string,
+  ): Promise<PaginatedMembers>;
 }
 
 export const GROUP_REPOSITORY = Symbol('GROUP_REPOSITORY');

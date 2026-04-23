@@ -2,9 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository } from 'typeorm';
 import {
+  ApproveJoinRequestAtomicParams,
   CreateGroupData,
   IGroupRepository,
   JoinRequestWithRequester,
+  PaginatedMembers,
 } from '../../domain/repositories/i-group.repository';
 import { Group } from '../../domain/entities/group.entity';
 import { GroupMember } from '../../domain/entities/group-member.entity';
@@ -95,6 +97,22 @@ export class GroupTypeORMRepository implements IGroupRepository {
     await this.groupsRepo.increment({ id: groupId }, 'memberCount', 1);
   }
 
+  async decrementMemberCount(groupId: string): Promise<void> {
+    await this.groupsRepo.decrement({ id: groupId }, 'memberCount', 1);
+  }
+
+  async removeMember(groupId: string, userId: string): Promise<void> {
+    await this.membersRepo.delete({ groupId, userId });
+  }
+
+  async updateMemberStatus(
+    groupId: string,
+    userId: string,
+    status: MemberStatus,
+  ): Promise<void> {
+    await this.membersRepo.update({ groupId, userId }, { status });
+  }
+
   async findPendingJoinRequest(
     groupId: string,
     userId: string,
@@ -160,5 +178,160 @@ export class GroupTypeORMRepository implements IGroupRepository {
       ),
       requesterDisplayName: row.u_display_name,
     }));
+  }
+
+  async findJoinRequestById(
+    groupId: string,
+    requestId: string,
+  ): Promise<GroupJoinRequest | null> {
+    const entity = await this.requestsRepo.findOneBy({
+      id: requestId,
+      groupId,
+    });
+    return entity ? GroupMapper.requestToDomain(entity) : null;
+  }
+
+  async updateJoinRequestStatus(
+    requestId: string,
+    status: RequestStatus,
+    resolvedAt: Date,
+    resolvedBy: string,
+  ): Promise<void> {
+    await this.requestsRepo.update(
+      { id: requestId },
+      { status, resolvedAt, resolvedBy },
+    );
+  }
+
+  async leaveGroupAtomic(groupId: string, userId: string): Promise<void> {
+    await this.dataSource.transaction(async (manager) => {
+      await manager.delete(GroupMemberOrmEntity, { groupId, userId });
+      await manager.decrement(
+        GroupOrmEntity,
+        { id: groupId },
+        'memberCount',
+        1,
+      );
+    });
+  }
+
+  async approveJoinRequestAtomic(
+    params: ApproveJoinRequestAtomicParams,
+  ): Promise<void> {
+    await this.dataSource.transaction(async (manager) => {
+      await manager.update(
+        GroupJoinRequestOrmEntity,
+        { id: params.requestId },
+        {
+          status: RequestStatus.APPROVED,
+          resolvedAt: params.resolvedAt,
+          resolvedBy: params.resolverId,
+        },
+      );
+
+      const existing = await manager.findOneBy(GroupMemberOrmEntity, {
+        groupId: params.groupId,
+        userId: params.userId,
+      });
+
+      if (!existing) {
+        const member = manager.create(GroupMemberOrmEntity, {
+          groupId: params.groupId,
+          userId: params.userId,
+          role: MemberRole.MEMBER,
+          status: MemberStatus.ACTIVE,
+        });
+        await manager.save(member);
+        await manager.increment(
+          GroupOrmEntity,
+          { id: params.groupId },
+          'memberCount',
+          1,
+        );
+        return;
+      }
+
+      // Already a non-BANNED member (e.g. PENDING or ACTIVE): leave as-is.
+      // The use case guards against calling this for a BANNED member.
+    });
+  }
+
+  async banMemberAtomic(groupId: string, userId: string): Promise<void> {
+    await this.dataSource.transaction(async (manager) => {
+      const existing = await manager.findOneBy(GroupMemberOrmEntity, {
+        groupId,
+        userId,
+      });
+      if (!existing) return;
+      if (existing.status === MemberStatus.BANNED) return;
+
+      const wasActive = existing.status === MemberStatus.ACTIVE;
+      await manager.update(
+        GroupMemberOrmEntity,
+        { groupId, userId },
+        { status: MemberStatus.BANNED },
+      );
+      if (wasActive) {
+        await manager.decrement(
+          GroupOrmEntity,
+          { id: groupId },
+          'memberCount',
+          1,
+        );
+      }
+    });
+  }
+
+  async listMembersPaginated(
+    groupId: string,
+    limit: number,
+    cursor?: string,
+  ): Promise<PaginatedMembers> {
+    const qb = this.membersRepo
+      .createQueryBuilder('m')
+      .innerJoin(UserEntity, 'u', 'u.id = m.user_id')
+      .where('m.group_id = :groupId', { groupId })
+      .andWhere('m.status = :status', { status: MemberStatus.ACTIVE });
+
+    if (cursor) {
+      qb.andWhere('m.joined_at > :cursor', { cursor });
+    }
+
+    qb.orderBy('m.joined_at', 'ASC')
+      .addOrderBy('m.id', 'ASC')
+      .limit(limit + 1)
+      .select([
+        'm.id AS m_id',
+        'm.user_id AS m_user_id',
+        'm.role AS m_role',
+        'm.joined_at AS m_joined_at',
+        'u.display_name AS u_display_name',
+        'u.avatar_url AS u_avatar_url',
+      ]);
+
+    const raw = await qb.getRawMany<{
+      m_id: string;
+      m_user_id: string;
+      m_role: MemberRole;
+      m_joined_at: Date;
+      u_display_name: string;
+      u_avatar_url: string | null;
+    }>();
+
+    const hasMore = raw.length > limit;
+    const page = hasMore ? raw.slice(0, limit) : raw;
+    const last = page.length > 0 ? page[page.length - 1] : null;
+    const nextCursor = hasMore && last ? last.m_joined_at.toISOString() : null;
+
+    return {
+      rows: page.map((row) => ({
+        userId: row.m_user_id,
+        displayName: row.u_display_name,
+        avatarUrl: row.u_avatar_url,
+        role: row.m_role,
+        joinedAt: row.m_joined_at,
+      })),
+      nextCursor,
+    };
   }
 }
