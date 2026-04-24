@@ -47,6 +47,6 @@ import { SupabaseService } from '@/shared/supabase/supabase.service';
       useClass: UserTypeORMRepository,
     },
   ],
-  exports: [USER_REPOSITORY],
+  exports: [USER_REPOSITORY, JwtModule],
 })
 export class AuthModule {}

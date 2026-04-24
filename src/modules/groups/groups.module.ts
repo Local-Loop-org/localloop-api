@@ -45,5 +45,6 @@ import { GroupsController } from './presentation/groups.controller';
       useClass: GroupTypeORMRepository,
     },
   ],
+  exports: [GROUP_REPOSITORY],
 })
 export class GroupsModule {}

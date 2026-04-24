@@ -4,8 +4,10 @@ import { UserEntity } from '@/modules/auth/infra/repositories/user.entity';
 import { GroupOrmEntity } from '@/modules/groups/infra/repositories/group.entity';
 import { GroupMemberOrmEntity } from '@/modules/groups/infra/repositories/group-member.entity';
 import { GroupJoinRequestOrmEntity } from '@/modules/groups/infra/repositories/group-join-request.entity';
+import { MessageOrmEntity } from '@/modules/messages/infra/repositories/message.entity';
 import { InitialSetup1710770000000 } from '../migrations/1710770000000-InitialSetup';
 import { CreateGroups1713700000000 } from '../migrations/1713700000000-CreateGroups';
+import { CreateMessages1714000000000 } from '../migrations/1714000000000-CreateMessages';
 
 config();
 
@@ -27,6 +29,11 @@ export default new DataSource({
     GroupOrmEntity,
     GroupMemberOrmEntity,
     GroupJoinRequestOrmEntity,
+    MessageOrmEntity,
   ],
-  migrations: [InitialSetup1710770000000, CreateGroups1713700000000],
+  migrations: [
+    InitialSetup1710770000000,
+    CreateGroups1713700000000,
+    CreateMessages1714000000000,
+  ],
 });
