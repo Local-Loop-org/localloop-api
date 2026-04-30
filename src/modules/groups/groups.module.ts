@@ -17,6 +17,7 @@ import { LeaveGroupUseCase } from './application/use-cases/leave-group/leave-gro
 import { ResolveJoinRequestUseCase } from './application/use-cases/resolve-join-request/resolve-join-request.use-case';
 import { BanMemberUseCase } from './application/use-cases/ban-member/ban-member.use-case';
 import { ListGroupMembersUseCase } from './application/use-cases/list-group-members/list-group-members.use-case';
+import { ListMyGroupsUseCase } from './application/use-cases/list-my-groups/list-my-groups.use-case';
 
 import { GroupsController } from './presentation/groups.controller';
 
@@ -40,6 +41,7 @@ import { GroupsController } from './presentation/groups.controller';
     ResolveJoinRequestUseCase,
     BanMemberUseCase,
     ListGroupMembersUseCase,
+    ListMyGroupsUseCase,
     {
       provide: GROUP_REPOSITORY,
       useClass: GroupTypeORMRepository,

@@ -110,6 +110,7 @@ describe('ChatGateway', () => {
       approveJoinRequestAtomic: jest.fn(),
       banMemberAtomic: jest.fn(),
       listMembersPaginated: jest.fn(),
+      listMyGroupsByActivity: jest.fn(),
     };
     sendMessage = {
       execute: jest.fn(),

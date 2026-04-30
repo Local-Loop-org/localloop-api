@@ -26,6 +26,7 @@ import { LeaveGroupUseCase } from '../application/use-cases/leave-group/leave-gr
 import { ResolveJoinRequestUseCase } from '../application/use-cases/resolve-join-request/resolve-join-request.use-case';
 import { BanMemberUseCase } from '../application/use-cases/ban-member/ban-member.use-case';
 import { ListGroupMembersUseCase } from '../application/use-cases/list-group-members/list-group-members.use-case';
+import { ListMyGroupsUseCase } from '../application/use-cases/list-my-groups/list-my-groups.use-case';
 
 import {
   CreateGroupDto,
@@ -45,6 +46,10 @@ import {
   ListGroupMembersQueryDto,
   ListGroupMembersResponseDto,
 } from '../application/use-cases/list-group-members/list-group-members.dto';
+import {
+  ListMyGroupsQueryDto,
+  ListMyGroupsResponseDto,
+} from '../application/use-cases/list-my-groups/list-my-groups.dto';
 import { User } from '@/modules/auth/domain/entities/user.entity';
 
 @Controller('groups')
@@ -60,6 +65,7 @@ export class GroupsController {
     private readonly resolveJoinRequest: ResolveJoinRequestUseCase,
     private readonly banMember: BanMemberUseCase,
     private readonly listMembers: ListGroupMembersUseCase,
+    private readonly listMyGroups: ListMyGroupsUseCase,
   ) {}
 
   @Post()
@@ -76,6 +82,15 @@ export class GroupsController {
     @Query() query: DiscoverNearbyGroupsQueryDto,
   ): Promise<DiscoverNearbyGroupsResponseDto> {
     return this.discoverNearby.execute(query);
+  }
+
+  // Must be registered before @Get(':id') so the literal 'me' is not parsed as a UUID.
+  @Get('me')
+  async myGroups(
+    @Request() req: { user: User },
+    @Query() query: ListMyGroupsQueryDto,
+  ): Promise<ListMyGroupsResponseDto> {
+    return this.listMyGroups.execute(req.user.id, query.limit, query.cursor);
   }
 
   @Get(':id')

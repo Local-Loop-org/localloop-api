@@ -38,6 +38,33 @@ export interface PaginatedMembers {
   nextCursor: string | null;
 }
 
+export interface MyGroupLastMessage {
+  content: string | null;
+  senderName: string;
+  createdAt: Date;
+}
+
+export interface MyGroupRow {
+  id: string;
+  name: string;
+  anchorType: AnchorType;
+  anchorLabel: string;
+  memberCount: number;
+  myRole: MemberRole;
+  lastActivityAt: Date;
+  lastMessage: MyGroupLastMessage | null;
+}
+
+export interface MyGroupsCursor {
+  lastActivityAt: Date;
+  groupId: string;
+}
+
+export interface PaginatedMyGroups {
+  rows: MyGroupRow[];
+  nextCursor: MyGroupsCursor | null;
+}
+
 export interface ApproveJoinRequestAtomicParams {
   requestId: string;
   groupId: string;
@@ -116,6 +143,18 @@ export interface IGroupRepository {
     limit: number,
     cursor?: string,
   ): Promise<PaginatedMembers>;
+
+  /**
+   * List the caller's active group memberships, ordered by latest activity DESC
+   * (most recent non-deleted message timestamp, falling back to joined_at when
+   * the group has no messages yet). Inactive memberships and inactive groups
+   * are excluded.
+   */
+  listMyGroupsByActivity(
+    userId: string,
+    limit: number,
+    cursor?: MyGroupsCursor,
+  ): Promise<PaginatedMyGroups>;
 }
 
 export const GROUP_REPOSITORY = Symbol('GROUP_REPOSITORY');

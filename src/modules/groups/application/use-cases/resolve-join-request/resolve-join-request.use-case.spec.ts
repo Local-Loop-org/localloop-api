@@ -140,5 +140,6 @@ function buildGroupRepoMock(): jest.Mocked<IGroupRepository> {
     approveJoinRequestAtomic: jest.fn(),
     banMemberAtomic: jest.fn(),
     listMembersPaginated: jest.fn(),
+    listMyGroupsByActivity: jest.fn(),
   };
 }

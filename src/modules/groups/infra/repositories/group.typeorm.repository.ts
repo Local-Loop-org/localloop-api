@@ -6,8 +6,11 @@ import {
   CreateGroupData,
   IGroupRepository,
   JoinRequestWithRequester,
+  MyGroupsCursor,
   PaginatedMembers,
+  PaginatedMyGroups,
 } from '../../domain/repositories/i-group.repository';
+import { AnchorType } from '@localloop/shared-types';
 import { Group } from '../../domain/entities/group.entity';
 import { GroupMember } from '../../domain/entities/group-member.entity';
 import { GroupJoinRequest } from '../../domain/entities/group-join-request.entity';
@@ -330,6 +333,101 @@ export class GroupTypeORMRepository implements IGroupRepository {
         avatarUrl: row.u_avatar_url,
         role: row.m_role,
         joinedAt: row.m_joined_at,
+      })),
+      nextCursor,
+    };
+  }
+
+  async listMyGroupsByActivity(
+    userId: string,
+    limit: number,
+    cursor?: MyGroupsCursor,
+  ): Promise<PaginatedMyGroups> {
+    const params: unknown[] = [userId, limit + 1];
+    let cursorClause = '';
+    if (cursor) {
+      params.push(cursor.lastActivityAt.toISOString(), cursor.groupId);
+      cursorClause = `AND (COALESCE(lm.created_at, gm.joined_at), g.id) < ($3::timestamptz, $4::uuid)`;
+    }
+
+    // LATERAL subquery picks the most recent non-deleted message per group in
+    // a single round-trip; the outer LEFT JOIN to users then resolves the
+    // sender's display_name. COALESCE(lm.created_at, gm.joined_at) is the
+    // sort key (last activity, falling back to membership age for groups with
+    // no messages yet).
+    const sql = `
+      SELECT
+        g.id           AS g_id,
+        g.name         AS g_name,
+        g.anchor_type  AS g_anchor_type,
+        g.anchor_label AS g_anchor_label,
+        g.member_count AS g_member_count,
+        gm.role        AS gm_role,
+        gm.joined_at   AS gm_joined_at,
+        lm.content     AS lm_content,
+        lm.created_at  AS lm_created_at,
+        u.display_name AS u_display_name,
+        COALESCE(lm.created_at, gm.joined_at) AS last_activity_at
+      FROM groups g
+      INNER JOIN group_members gm ON gm.group_id = g.id
+      LEFT JOIN LATERAL (
+        SELECT m.content, m.created_at, m.sender_id
+        FROM messages m
+        WHERE m.group_id = g.id AND m.is_deleted = false
+        ORDER BY m.created_at DESC
+        LIMIT 1
+      ) lm ON true
+      LEFT JOIN users u ON u.id = lm.sender_id
+      WHERE gm.user_id = $1
+        AND gm.status = 'active'
+        AND g.is_active = true
+        ${cursorClause}
+      ORDER BY COALESCE(lm.created_at, gm.joined_at) DESC, g.id DESC
+      LIMIT $2
+    `;
+
+    const raw = await this.dataSource.query<
+      Array<{
+        g_id: string;
+        g_name: string;
+        g_anchor_type: AnchorType;
+        g_anchor_label: string;
+        g_member_count: number | string;
+        gm_role: MemberRole;
+        gm_joined_at: Date;
+        lm_content: string | null;
+        lm_created_at: Date | null;
+        u_display_name: string | null;
+        last_activity_at: Date;
+      }>
+    >(sql, params);
+
+    const hasMore = raw.length > limit;
+    const page = hasMore ? raw.slice(0, limit) : raw;
+    const last = page.length > 0 ? page[page.length - 1] : null;
+    const nextCursor =
+      hasMore && last
+        ? { lastActivityAt: last.last_activity_at, groupId: last.g_id }
+        : null;
+
+    return {
+      rows: page.map((row) => ({
+        id: row.g_id,
+        name: row.g_name,
+        anchorType: row.g_anchor_type,
+        anchorLabel: row.g_anchor_label,
+        // pg may return BIGINT/NUMERIC as a string; coerce defensively.
+        memberCount: Number(row.g_member_count),
+        myRole: row.gm_role,
+        lastActivityAt: row.last_activity_at,
+        lastMessage:
+          row.lm_created_at && row.u_display_name !== null
+            ? {
+                content: row.lm_content,
+                senderName: row.u_display_name,
+                createdAt: row.lm_created_at,
+              }
+            : null,
       })),
       nextCursor,
     };
