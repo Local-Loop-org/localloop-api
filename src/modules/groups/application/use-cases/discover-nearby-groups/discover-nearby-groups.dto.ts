@@ -1,7 +1,6 @@
 import { IsNumber, Max, Min } from 'class-validator';
 import { Type } from 'class-transformer';
-import { AnchorType, GroupPrivacy } from '@localloop/shared-types';
-import type { ProximityLabelValue } from '@localloop/geo-utils';
+import type { NearbyGroup } from '@localloop/shared-types';
 
 export class DiscoverNearbyGroupsQueryDto {
   @Type(() => Number)
@@ -17,16 +16,7 @@ export class DiscoverNearbyGroupsQueryDto {
   lng!: number;
 }
 
-export class NearbyGroupDto {
-  id!: string;
-  name!: string;
-  description!: string | null;
-  anchorType!: AnchorType;
-  anchorLabel!: string;
-  proximityLabel!: ProximityLabelValue;
-  privacy!: GroupPrivacy;
-  memberCount!: number;
-}
+export type NearbyGroupDto = NearbyGroup;
 
 export class DiscoverNearbyGroupsResponseDto {
   data!: NearbyGroupDto[];

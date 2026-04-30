@@ -1,8 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
   coordinatesToGeohash,
+  distanceMeters,
   getNeighborCells,
-  getProximityLabel,
 } from '@localloop/geo-utils';
 import {
   GROUP_REPOSITORY,
@@ -33,7 +33,12 @@ export class DiscoverNearbyGroupsUseCase {
         description: g.description,
         anchorType: g.anchorType,
         anchorLabel: g.anchorLabel,
-        proximityLabel: getProximityLabel(userGeohash, g.anchorGeohash),
+        distanceMeters: distanceMeters(
+          query.lat,
+          query.lng,
+          g.anchorLat,
+          g.anchorLng,
+        ),
         privacy: g.privacy,
         memberCount: g.memberCount,
       })),

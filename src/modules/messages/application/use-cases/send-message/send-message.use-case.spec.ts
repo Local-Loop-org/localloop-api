@@ -32,6 +32,8 @@ describe('SendMessageUseCase', () => {
       null,
       AnchorType.NEIGHBORHOOD,
       '6gyf4',
+      -23.55,
+      -46.63,
       'Morumbi',
       GroupPrivacy.OPEN,
       'owner-1',

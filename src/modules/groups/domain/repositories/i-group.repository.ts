@@ -14,6 +14,8 @@ export interface CreateGroupData {
   description: string | null;
   anchorType: AnchorType;
   anchorGeohash: string;
+  anchorLat: number;
+  anchorLng: number;
   anchorLabel: string;
   privacy: GroupPrivacy;
   ownerId: string;

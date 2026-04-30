@@ -13,6 +13,8 @@ export class GroupMapper {
       e.description,
       e.anchorType,
       e.anchorGeohash,
+      e.anchorLat,
+      e.anchorLng,
       e.anchorLabel,
       e.privacy,
       e.ownerId,

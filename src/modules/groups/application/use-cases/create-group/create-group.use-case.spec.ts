@@ -28,6 +28,8 @@ describe('CreateGroupUseCase', () => {
       'Weekly runs in Morumbi',
       AnchorType.NEIGHBORHOOD,
       coordinatesToGeohash(-23.6, -46.7),
+      -23.6,
+      -46.7,
       'Morumbi',
       GroupPrivacy.OPEN,
       'user-1',
@@ -44,7 +46,7 @@ describe('CreateGroupUseCase', () => {
     useCase = new CreateGroupUseCase(groupRepo);
   });
 
-  it('creates a group with the computed geohash and returns owner-shaped response', async () => {
+  it('creates a group with the computed geohash and lat/lng, returning owner-shaped response', async () => {
     const dto = buildDto();
     groupRepo.createGroupWithOwner.mockResolvedValue(buildGroup());
 
@@ -56,6 +58,8 @@ describe('CreateGroupUseCase', () => {
       description: dto.description,
       anchorType: dto.anchorType,
       anchorGeohash: expectedGeohash,
+      anchorLat: dto.lat,
+      anchorLng: dto.lng,
       anchorLabel: dto.anchorLabel,
       privacy: dto.privacy,
       ownerId: 'user-1',

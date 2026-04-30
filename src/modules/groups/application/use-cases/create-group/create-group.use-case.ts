@@ -22,6 +22,8 @@ export class CreateGroupUseCase {
       description: dto.description ?? null,
       anchorType: dto.anchorType,
       anchorGeohash,
+      anchorLat: dto.lat,
+      anchorLng: dto.lng,
       anchorLabel: dto.anchorLabel,
       privacy: dto.privacy,
       ownerId: userId,

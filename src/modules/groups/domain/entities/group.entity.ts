@@ -7,6 +7,8 @@ export class Group {
     public description: string | null,
     public anchorType: AnchorType,
     public anchorGeohash: string,
+    public anchorLat: number,
+    public anchorLng: number,
     public anchorLabel: string,
     public privacy: GroupPrivacy,
     public readonly ownerId: string,

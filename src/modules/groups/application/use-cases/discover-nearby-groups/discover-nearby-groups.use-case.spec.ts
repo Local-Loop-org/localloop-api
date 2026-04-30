@@ -18,6 +18,8 @@ describe('DiscoverNearbyGroupsUseCase', () => {
       'Weekly runs',
       AnchorType.NEIGHBORHOOD,
       coordinatesToGeohash(userLat, userLng),
+      userLat,
+      userLng,
       'Morumbi',
       GroupPrivacy.OPEN,
       'user-1',
@@ -34,7 +36,7 @@ describe('DiscoverNearbyGroupsUseCase', () => {
     useCase = new DiscoverNearbyGroupsUseCase(groupRepo);
   });
 
-  it('maps groups to DTOs with proximityLabel and forwards metadata', async () => {
+  it('maps groups to DTOs with distanceMeters and forwards metadata', async () => {
     const group = buildGroup();
     groupRepo.findNearby.mockResolvedValue([group]);
 
@@ -49,8 +51,9 @@ describe('DiscoverNearbyGroupsUseCase', () => {
     expect(dto.anchorLabel).toBe(group.anchorLabel);
     expect(dto.privacy).toBe(group.privacy);
     expect(dto.memberCount).toBe(group.memberCount);
-    expect(typeof dto.proximityLabel).toBe('string');
-    expect(dto.proximityLabel.length).toBeGreaterThan(0);
+    expect(typeof dto.distanceMeters).toBe('number');
+    // group anchored at user coords → distance is essentially zero
+    expect(dto.distanceMeters).toBeLessThan(1);
   });
 
   it('returns empty data when no groups are found', async () => {
@@ -72,20 +75,22 @@ describe('DiscoverNearbyGroupsUseCase', () => {
     expect(expectedCells).toHaveLength(9);
   });
 
-  it('computes proximityLabel per group against the user geohash', async () => {
+  it('computes distanceMeters per group against the user coords', async () => {
     const near = buildGroup({ id: 'g-near' });
     const far = buildGroup({
       id: 'g-far',
-      anchorGeohash: coordinatesToGeohash(40.7128, -74.006),
+      anchorLat: 40.7128,
+      anchorLng: -74.006,
     });
     groupRepo.findNearby.mockResolvedValue([near, far]);
 
     const result = await useCase.execute({ lat: userLat, lng: userLng });
 
     expect(result.data).toHaveLength(2);
-    expect(result.data[0].proximityLabel).not.toEqual(
-      result.data[1].proximityLabel,
-    );
+    expect(result.data[0].distanceMeters).toBeLessThan(1_000);
+    // São Paulo ↔ NYC is ~7,700km
+    expect(result.data[1].distanceMeters).toBeGreaterThan(7_500_000);
+    expect(result.data[1].distanceMeters).toBeLessThan(8_000_000);
   });
 });
 

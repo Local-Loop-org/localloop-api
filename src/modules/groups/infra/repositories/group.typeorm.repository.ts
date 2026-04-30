@@ -44,6 +44,8 @@ export class GroupTypeORMRepository implements IGroupRepository {
         description: data.description,
         anchorType: data.anchorType,
         anchorGeohash: data.anchorGeohash,
+        anchorLat: data.anchorLat,
+        anchorLng: data.anchorLng,
         anchorLabel: data.anchorLabel,
         privacy: data.privacy,
         ownerId: data.ownerId,

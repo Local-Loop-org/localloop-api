@@ -21,6 +21,8 @@ describe('GetGroupDetailUseCase', () => {
       'Weekly runs',
       AnchorType.NEIGHBORHOOD,
       '6gyf4',
+      -23.55,
+      -46.63,
       'Morumbi',
       GroupPrivacy.APPROVAL_REQUIRED,
       'owner-1',
