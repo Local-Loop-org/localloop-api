@@ -5,15 +5,8 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
 import { GroupsModule } from './modules/groups/groups.module';
 import { MessagesModule } from './modules/messages/messages.module';
-import { UserEntity } from '@/modules/auth/infra/repositories/user.entity';
-import { GroupOrmEntity } from '@/modules/groups/infra/repositories/group.entity';
-import { GroupMemberOrmEntity } from '@/modules/groups/infra/repositories/group-member.entity';
-import { GroupJoinRequestOrmEntity } from '@/modules/groups/infra/repositories/group-join-request.entity';
-import { MessageOrmEntity } from '@/modules/messages/infra/repositories/message.entity';
-import { InitialSetup1710770000000 } from '@/infra/migrations/1710770000000-InitialSetup';
-import { CreateGroups1713700000000 } from '@/infra/migrations/1713700000000-CreateGroups';
-import { CreateMessages1714000000000 } from '@/infra/migrations/1714000000000-CreateMessages';
-import { AddGroupAnchorCoordinates1714500000000 } from '@/infra/migrations/1714500000000-AddGroupAnchorCoordinates';
+import { entities } from '@/infra/typeorm/entities';
+import { migrations } from '@/infra/typeorm/migrations';
 
 @Controller()
 class HealthController {
@@ -45,19 +38,8 @@ class HealthController {
         return {
           type: 'postgres' as const,
           ...baseConfig,
-          entities: [
-            UserEntity,
-            GroupOrmEntity,
-            GroupMemberOrmEntity,
-            GroupJoinRequestOrmEntity,
-            MessageOrmEntity,
-          ],
-          migrations: [
-            InitialSetup1710770000000,
-            CreateGroups1713700000000,
-            CreateMessages1714000000000,
-            AddGroupAnchorCoordinates1714500000000,
-          ],
+          entities,
+          migrations,
           migrationsRun: true,
           synchronize: false,
           logging: configService.get<string>('NODE_ENV') !== 'production',
