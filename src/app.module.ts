@@ -13,6 +13,7 @@ import { MessageOrmEntity } from '@/modules/messages/infra/repositories/message.
 import { InitialSetup1710770000000 } from '@/infra/migrations/1710770000000-InitialSetup';
 import { CreateGroups1713700000000 } from '@/infra/migrations/1713700000000-CreateGroups';
 import { CreateMessages1714000000000 } from '@/infra/migrations/1714000000000-CreateMessages';
+import { AddGroupAnchorCoordinates1714500000000 } from '@/infra/migrations/1714500000000-AddGroupAnchorCoordinates';
 
 @Controller()
 class HealthController {
@@ -55,6 +56,7 @@ class HealthController {
             InitialSetup1710770000000,
             CreateGroups1713700000000,
             CreateMessages1714000000000,
+            AddGroupAnchorCoordinates1714500000000,
           ],
           migrationsRun: true,
           synchronize: false,
