@@ -28,6 +28,7 @@ export class UserMapper {
       dmPermission: domain.dmPermission,
       isActive: domain.isActive,
       lastSeenAt: domain.lastSeenAt,
+      createdAt: domain.createdAt,
     };
   }
 }
