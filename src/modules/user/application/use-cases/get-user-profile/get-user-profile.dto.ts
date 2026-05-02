@@ -7,6 +7,7 @@ export class UserProfileDto {
   avatarUrl!: string | null;
   dmPermission!: DmPermission;
   provider!: Provider;
+  createdAt!: string;
 
   static fromEntity(user: User): UserProfileDto {
     return {
@@ -15,6 +16,7 @@ export class UserProfileDto {
       avatarUrl: user.avatarUrl,
       dmPermission: user.dmPermission,
       provider: user.provider,
+      createdAt: user.createdAt.toISOString(),
     };
   }
 }
