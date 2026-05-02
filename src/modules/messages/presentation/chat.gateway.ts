@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import {
   ConnectedSocket,
   MessageBody,
+  OnGatewayConnection,
   OnGatewayDisconnect,
   OnGatewayInit,
   SubscribeMessage,
@@ -10,7 +11,7 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Namespace, Socket } from 'socket.io';
-import { MemberStatus } from '@localloop/shared-types';
+import { MemberStatus, PresenceUpdate } from '@localloop/shared-types';
 
 import { User } from '@/modules/auth/domain/entities/user.entity';
 import {
@@ -38,10 +39,15 @@ interface AuthedSocket extends Socket {
   data: { user: User };
 }
 
-const groupRoom = (groupId: string) => `group:${groupId}`;
+const GROUP_ROOM_PREFIX = 'group:';
+const groupRoom = (groupId: string) => `${GROUP_ROOM_PREFIX}${groupId}`;
+const groupIdFromRoom = (room: string) =>
+  room.slice(GROUP_ROOM_PREFIX.length);
 
 @WebSocketGateway({ namespace: '/chat', cors: { origin: '*' } })
-export class ChatGateway implements OnGatewayInit, OnGatewayDisconnect {
+export class ChatGateway
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+{
   private readonly logger = new Logger(ChatGateway.name);
 
   @WebSocketServer()
@@ -81,8 +87,29 @@ export class ChatGateway implements OnGatewayInit, OnGatewayDisconnect {
     });
   }
 
+  handleConnection(socket: Socket): void {
+    socket.on('disconnecting', () => {
+      const groupRooms = [...socket.rooms].filter((r) =>
+        r.startsWith(GROUP_ROOM_PREFIX),
+      );
+      if (groupRooms.length === 0) return;
+      setImmediate(() => {
+        for (const room of groupRooms) {
+          void this.emitPresence(groupIdFromRoom(room));
+        }
+      });
+    });
+  }
+
   handleDisconnect(socket: Socket): void {
     this.logger.debug(`Socket ${socket.id} disconnected`);
+  }
+
+  private async emitPresence(groupId: string): Promise<void> {
+    const room = groupRoom(groupId);
+    const sockets = await this.server.in(room).fetchSockets();
+    const payload: PresenceUpdate = { groupId, count: sockets.length };
+    this.server.to(room).emit('presence_update', payload);
   }
 
   @SubscribeMessage('join_group')
@@ -100,6 +127,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayDisconnect {
       return { ok: false };
     }
     await socket.join(groupRoom(payload.groupId));
+    await this.emitPresence(payload.groupId);
     return { ok: true };
   }
 
@@ -109,6 +137,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayDisconnect {
     @MessageBody() payload: JoinGroupPayload,
   ): Promise<void> {
     await socket.leave(groupRoom(payload.groupId));
+    await this.emitPresence(payload.groupId);
   }
 
   @SubscribeMessage('send_message')

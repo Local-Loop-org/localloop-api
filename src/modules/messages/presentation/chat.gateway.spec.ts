@@ -18,14 +18,18 @@ type SocketMock = {
   id: string;
   handshake: { auth: { token?: string }; query: { token?: string } };
   data: { user?: User };
+  rooms: Set<string>;
   disconnect: jest.Mock;
   join: jest.Mock;
   leave: jest.Mock;
   emit: jest.Mock;
+  on: jest.Mock;
+  fire: (event: string, ...args: unknown[]) => void;
 };
 
 type ServerMock = {
   to: jest.Mock;
+  in: jest.Mock;
   use?: jest.Mock;
 };
 
@@ -70,15 +74,38 @@ describe('ChatGateway', () => {
       new Date(),
     );
 
-  const makeSocket = (token?: string): SocketMock => ({
-    id: 'sock-1',
-    handshake: { auth: token ? { token } : {}, query: {} },
-    data: {},
-    disconnect: jest.fn(),
-    join: jest.fn(),
-    leave: jest.fn(),
-    emit: jest.fn(),
-  });
+  const roomMembers: Map<string, Set<SocketMock>> = new Map();
+
+  const makeSocket = (
+    token?: string,
+    id = `sock-${Math.random().toString(36).slice(2, 8)}`,
+  ): SocketMock => {
+    const handlers = new Map<string, (...args: unknown[]) => void>();
+    const socket: SocketMock = {
+      id,
+      handshake: { auth: token ? { token } : {}, query: {} },
+      data: {},
+      rooms: new Set<string>(),
+      disconnect: jest.fn(),
+      join: jest.fn().mockImplementation(async (room: string) => {
+        socket.rooms.add(room);
+        if (!roomMembers.has(room)) roomMembers.set(room, new Set());
+        roomMembers.get(room)!.add(socket);
+      }),
+      leave: jest.fn().mockImplementation(async (room: string) => {
+        socket.rooms.delete(room);
+        roomMembers.get(room)?.delete(socket);
+      }),
+      emit: jest.fn(),
+      on: jest.fn((event: string, fn: (...args: unknown[]) => void) => {
+        handlers.set(event, fn);
+      }),
+      fire: (event: string, ...args: unknown[]) => {
+        handlers.get(event)?.(...args);
+      },
+    };
+    return socket;
+  };
 
   beforeEach(() => {
     jwtService = {
@@ -116,9 +143,14 @@ describe('ChatGateway', () => {
       execute: jest.fn(),
     } as unknown as jest.Mocked<SendMessageUseCase>;
 
+    roomMembers.clear();
     roomEmit = jest.fn();
     server = {
       to: jest.fn(() => ({ emit: roomEmit })),
+      in: jest.fn((room: string) => ({
+        fetchSockets: () =>
+          Promise.resolve(Array.from(roomMembers.get(room) ?? [])),
+      })),
     };
 
     gateway = new ChatGateway(jwtService, userRepo, groupRepo, sendMessage);
@@ -256,6 +288,89 @@ describe('ChatGateway', () => {
         'error',
         expect.objectContaining({ code: 'FORBIDDEN' }),
       );
+    });
+  });
+
+  describe('presence', () => {
+    it('emits presence_update with the new count after a successful join', async () => {
+      const socket = makeSocket();
+      socket.data.user = buildUser();
+      groupRepo.findMember.mockResolvedValue(buildMember(MemberStatus.ACTIVE));
+
+      await gateway.onJoinGroup(socket as never, { groupId: 'group-1' });
+
+      expect(server.to).toHaveBeenCalledWith('group:group-1');
+      expect(roomEmit).toHaveBeenCalledWith('presence_update', {
+        groupId: 'group-1',
+        count: 1,
+      });
+    });
+
+    it('does not emit presence_update when a non-member is rejected', async () => {
+      const socket = makeSocket();
+      socket.data.user = buildUser();
+      groupRepo.findMember.mockResolvedValue(null);
+
+      await gateway.onJoinGroup(socket as never, { groupId: 'group-1' });
+
+      expect(roomEmit).not.toHaveBeenCalledWith(
+        'presence_update',
+        expect.anything(),
+      );
+    });
+
+    it('emits decremented presence_update when a socket explicitly leaves', async () => {
+      const socket = makeSocket();
+      socket.data.user = buildUser();
+      groupRepo.findMember.mockResolvedValue(buildMember(MemberStatus.ACTIVE));
+
+      await gateway.onJoinGroup(socket as never, { groupId: 'group-1' });
+      roomEmit.mockClear();
+
+      await gateway.onLeaveGroup(socket as never, { groupId: 'group-1' });
+
+      expect(roomEmit).toHaveBeenCalledWith('presence_update', {
+        groupId: 'group-1',
+        count: 0,
+      });
+    });
+
+    it('emits decremented presence_update when a socket disconnects from a group room', async () => {
+      const socketA = makeSocket();
+      socketA.data.user = buildUser({ id: 'user-1' });
+      const socketB = makeSocket();
+      socketB.data.user = buildUser({ id: 'user-2' });
+      groupRepo.findMember.mockResolvedValue(buildMember(MemberStatus.ACTIVE));
+
+      gateway.handleConnection(socketA as never);
+      gateway.handleConnection(socketB as never);
+      await gateway.onJoinGroup(socketA as never, { groupId: 'group-1' });
+      await gateway.onJoinGroup(socketB as never, { groupId: 'group-1' });
+      roomEmit.mockClear();
+
+      // Socket.IO fires `disconnecting` while rooms are still populated, then
+      // clears the rooms before the next tick. Simulate that ordering so the
+      // gateway's setImmediate callback observes the post-cleanup state.
+      socketA.fire('disconnecting');
+      socketA.rooms.delete('group:group-1');
+      roomMembers.get('group:group-1')?.delete(socketA);
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(roomEmit).toHaveBeenCalledWith('presence_update', {
+        groupId: 'group-1',
+        count: 1,
+      });
+    });
+
+    it('does not schedule a presence emit when a socket disconnects with no group rooms', async () => {
+      const socket = makeSocket();
+      gateway.handleConnection(socket as never);
+
+      socket.fire('disconnecting');
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(server.in).not.toHaveBeenCalled();
+      expect(roomEmit).not.toHaveBeenCalled();
     });
   });
 });
