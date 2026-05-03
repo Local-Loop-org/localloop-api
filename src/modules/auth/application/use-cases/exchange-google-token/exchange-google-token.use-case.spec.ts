@@ -97,6 +97,10 @@ describe('ExchangeGoogleTokenUseCase', () => {
     expect(result.refreshToken).toBe('refresh.token');
     expect(result.expiresIn).toBe(3600);
     expect(result.user.provider).toBe(Provider.GOOGLE);
+    expect(result.user.dmPermission).toBe(DmPermission.MEMBERS);
+    expect(result.user.createdAt).toMatch(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+    );
   });
 
   it('updates display name, avatar and lastSeen when the user already exists', async () => {
@@ -117,6 +121,8 @@ describe('ExchangeGoogleTokenUseCase', () => {
     expect(savedUser.lastSeenAt.getTime()).toBeGreaterThan(
       originalLastSeen.getTime(),
     );
+    expect(result.user.dmPermission).toBe(DmPermission.MEMBERS);
+    expect(result.user.createdAt).toBe('2026-01-01T00:00:00.000Z');
   });
 
   it('falls back to supabase id when provider_id is missing from metadata', async () => {

@@ -1,18 +1,22 @@
-import { Provider } from '@localloop/shared-types';
+import { DmPermission, Provider, UserSummary } from '@localloop/shared-types';
 import { User } from '@/modules/auth/domain/entities/user.entity';
 
-export class UserSummaryDto {
+export class UserSummaryDto implements UserSummary {
   id!: string;
   displayName!: string;
   avatarUrl!: string | null;
+  dmPermission!: DmPermission;
   provider!: Provider;
+  createdAt!: string;
 
   static fromEntity(user: User): UserSummaryDto {
     return {
       id: user.id,
       displayName: user.displayName,
       avatarUrl: user.avatarUrl,
+      dmPermission: user.dmPermission,
       provider: user.provider,
+      createdAt: user.createdAt.toISOString(),
     };
   }
 }
