@@ -1,7 +1,7 @@
-import { Provider, DmPermission } from '@localloop/shared-types';
+import { Provider, DmPermission, UserSummary } from '@localloop/shared-types';
 import { User } from '@/modules/auth/domain/entities/user.entity';
 
-export class UserProfileDto {
+export class UserProfileDto implements UserSummary {
   id!: string;
   displayName!: string;
   avatarUrl!: string | null;

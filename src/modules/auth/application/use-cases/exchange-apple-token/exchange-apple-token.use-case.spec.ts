@@ -96,6 +96,10 @@ describe('ExchangeAppleTokenUseCase', () => {
     expect(savedUser.displayName).toBe('Bob Smith');
     expect(result.isNewUser).toBe(true);
     expect(result.user.provider).toBe(Provider.APPLE);
+    expect(result.user.dmPermission).toBe(DmPermission.MEMBERS);
+    expect(result.user.createdAt).toMatch(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+    );
   });
 
   it('updates existing user metadata on subsequent Apple login', async () => {
@@ -113,6 +117,8 @@ describe('ExchangeAppleTokenUseCase', () => {
     const savedUser = userRepo.save.mock.calls[0][0];
     expect(savedUser.displayName).toBe('Bob Smith');
     expect(savedUser.avatarUrl).toBe('https://apple-avatar.png');
+    expect(result.user.dmPermission).toBe(DmPermission.MEMBERS);
+    expect(result.user.createdAt).toBe('2026-01-01T00:00:00.000Z');
   });
 
   it('preserves existing avatar when metadata omits avatar_url', async () => {
