@@ -11,7 +11,7 @@ import { GroupMember } from '@/modules/groups/domain/entities/group-member.entit
 import {
   IMessageRepository,
   MessageRow,
-} from '../../../domain/repositories/i-message.repository';
+} from '@/modules/messages/domain/repositories/i-message.repository';
 import { GetMessageHistoryUseCase } from './get-message-history.use-case';
 import { buildGroupRepoMock } from '@/modules/groups/test/group-repo.mock';
 

@@ -1,6 +1,6 @@
-import { Group } from '../../domain/entities/group.entity';
-import { GroupMember } from '../../domain/entities/group-member.entity';
-import { GroupJoinRequest } from '../../domain/entities/group-join-request.entity';
+import { Group } from '@domain/entities/group.entity';
+import { GroupMember } from '@domain/entities/group-member.entity';
+import { GroupJoinRequest } from '@domain/entities/group-join-request.entity';
 import { GroupOrmEntity } from '../repositories/group.entity';
 import { GroupMemberOrmEntity } from '../repositories/group-member.entity';
 import { GroupJoinRequestOrmEntity } from '../repositories/group-join-request.entity';

@@ -5,10 +5,10 @@ import {
   MemberRole,
   MemberStatus,
 } from '@localloop/shared-types';
-import { Group } from '../../../domain/entities/group.entity';
-import { GroupMember } from '../../../domain/entities/group-member.entity';
+import { Group } from '@domain/entities/group.entity';
+import { GroupMember } from '@domain/entities/group-member.entity';
 import { DeleteGroupUseCase } from './delete-group.use-case';
-import { buildGroupRepoMock } from '../../../test/group-repo.mock';
+import { buildGroupRepoMock } from '@/modules/groups/test/group-repo.mock';
 
 describe('DeleteGroupUseCase', () => {
   let useCase: DeleteGroupUseCase;

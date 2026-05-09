@@ -3,7 +3,7 @@ import {
   GROUP_REPOSITORY,
   IGroupRepository,
   MyGroupsCursor,
-} from '../../../domain/repositories/i-group.repository';
+} from '@domain/repositories/i-group.repository';
 import { ListMyGroupsResponseDto, MyGroupDto } from './list-my-groups.dto';
 
 const DEFAULT_LIMIT = 20;

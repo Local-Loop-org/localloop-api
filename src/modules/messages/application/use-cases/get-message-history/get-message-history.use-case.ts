@@ -13,7 +13,7 @@ import {
 import {
   IMessageRepository,
   MESSAGE_REPOSITORY,
-} from '../../../domain/repositories/i-message.repository';
+} from '@/modules/messages/domain/repositories/i-message.repository';
 import { GetMessageHistoryResponseDto } from './get-message-history.dto';
 
 const DEFAULT_LIMIT = 50;

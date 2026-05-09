@@ -1,9 +1,9 @@
 import { coordinatesToGeohash } from '@localloop/geo-utils';
 import { AnchorType, GroupPrivacy } from '@localloop/shared-types';
-import { Group } from '../../../domain/entities/group.entity';
+import { Group } from '@domain/entities/group.entity';
 import { CreateGroupUseCase } from './create-group.use-case';
 import { CreateGroupDto } from './create-group.dto';
-import { buildGroupRepoMock } from '../../../test/group-repo.mock';
+import { buildGroupRepoMock } from '@/modules/groups/test/group-repo.mock';
 
 describe('CreateGroupUseCase', () => {
   let useCase: CreateGroupUseCase;

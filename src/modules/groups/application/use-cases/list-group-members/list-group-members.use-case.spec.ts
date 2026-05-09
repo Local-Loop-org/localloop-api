@@ -1,18 +1,15 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import {
   AnchorType,
   GroupPrivacy,
   MemberRole,
   MemberStatus,
 } from '@localloop/shared-types';
-import { Group } from '../../../domain/entities/group.entity';
-import { GroupMember } from '../../../domain/entities/group-member.entity';
-import {
-  IGroupRepository,
-  MemberRow,
-} from '../../../domain/repositories/i-group.repository';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { GroupMember } from '@domain/entities/group-member.entity';
+import { Group } from '@domain/entities/group.entity';
+import { MemberRow } from '@domain/repositories/i-group.repository';
+import { buildGroupRepoMock } from '@/modules/groups/test/group-repo.mock';
 import { ListGroupMembersUseCase } from './list-group-members.use-case';
-import { buildGroupRepoMock } from '../../../test/group-repo.mock';
 
 describe('ListGroupMembersUseCase', () => {
   let useCase: ListGroupMembersUseCase;

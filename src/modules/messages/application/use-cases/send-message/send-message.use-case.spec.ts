@@ -12,11 +12,11 @@ import {
 
 import { Group } from '@/modules/groups/domain/entities/group.entity';
 import { GroupMember } from '@/modules/groups/domain/entities/group-member.entity';
-import { Message } from '../../../domain/entities/message.entity';
+import { Message } from '@/modules/messages/domain/entities/message.entity';
 import {
   IMessageRepository,
   MessageRow,
-} from '../../../domain/repositories/i-message.repository';
+} from '@/modules/messages/domain/repositories/i-message.repository';
 import { SendMessageUseCase } from './send-message.use-case';
 import { buildGroupRepoMock } from '@/modules/groups/test/group-repo.mock';
 

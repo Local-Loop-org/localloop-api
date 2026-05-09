@@ -1,13 +1,12 @@
-import { BadRequestException } from '@nestjs/common';
 import { AnchorType, MemberRole } from '@localloop/shared-types';
+import { BadRequestException } from '@nestjs/common';
 import {
-  IGroupRepository,
   MyGroupRow,
   MyGroupsCursor,
   PaginatedMyGroups,
-} from '../../../domain/repositories/i-group.repository';
+} from '@domain/repositories/i-group.repository';
+import { buildGroupRepoMock } from '@/modules/groups/test/group-repo.mock';
 import { ListMyGroupsUseCase } from './list-my-groups.use-case';
-import { buildGroupRepoMock } from '../../../test/group-repo.mock';
 
 describe('ListMyGroupsUseCase', () => {
   let useCase: ListMyGroupsUseCase;

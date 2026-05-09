@@ -11,11 +11,11 @@ import {
   MemberStatus,
   RequestStatus,
 } from '@localloop/shared-types';
-import { Group } from '../../../domain/entities/group.entity';
-import { GroupMember } from '../../../domain/entities/group-member.entity';
-import { GroupJoinRequest } from '../../../domain/entities/group-join-request.entity';
+import { Group } from '@domain/entities/group.entity';
+import { GroupMember } from '@domain/entities/group-member.entity';
+import { GroupJoinRequest } from '@domain/entities/group-join-request.entity';
 import { JoinGroupUseCase } from './join-group.use-case';
-import { buildGroupRepoMock } from '../../../test/group-repo.mock';
+import { buildGroupRepoMock } from '@/modules/groups/test/group-repo.mock';
 
 describe('JoinGroupUseCase', () => {
   let useCase: JoinGroupUseCase;

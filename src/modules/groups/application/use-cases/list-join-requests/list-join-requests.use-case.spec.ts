@@ -1,4 +1,3 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import {
   AnchorType,
   GroupPrivacy,
@@ -6,15 +5,13 @@ import {
   MemberStatus,
   RequestStatus,
 } from '@localloop/shared-types';
-import { Group } from '../../../domain/entities/group.entity';
-import { GroupMember } from '../../../domain/entities/group-member.entity';
-import { GroupJoinRequest } from '../../../domain/entities/group-join-request.entity';
-import {
-  IGroupRepository,
-  JoinRequestWithRequester,
-} from '../../../domain/repositories/i-group.repository';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { GroupJoinRequest } from '@domain/entities/group-join-request.entity';
+import { GroupMember } from '@domain/entities/group-member.entity';
+import { Group } from '@domain/entities/group.entity';
+import { JoinRequestWithRequester } from '@domain/repositories/i-group.repository';
+import { buildGroupRepoMock } from '@/modules/groups/test/group-repo.mock';
 import { ListJoinRequestsUseCase } from './list-join-requests.use-case';
-import { buildGroupRepoMock } from '../../../test/group-repo.mock';
 
 describe('ListJoinRequestsUseCase', () => {
   let useCase: ListJoinRequestsUseCase;

@@ -1,8 +1,8 @@
 import { coordinatesToGeohash, getNeighborCells } from '@localloop/geo-utils';
 import { AnchorType, GroupPrivacy } from '@localloop/shared-types';
-import { Group } from '../../../domain/entities/group.entity';
+import { Group } from '@domain/entities/group.entity';
 import { DiscoverNearbyGroupsUseCase } from './discover-nearby-groups.use-case';
-import { buildGroupRepoMock } from '../../../test/group-repo.mock';
+import { buildGroupRepoMock } from '@/modules/groups/test/group-repo.mock';
 
 describe('DiscoverNearbyGroupsUseCase', () => {
   let useCase: DiscoverNearbyGroupsUseCase;

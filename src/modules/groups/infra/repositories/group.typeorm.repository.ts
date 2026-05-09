@@ -9,11 +9,11 @@ import {
   MyGroupsCursor,
   PaginatedMembers,
   PaginatedMyGroups,
-} from '../../domain/repositories/i-group.repository';
+} from '@domain/repositories/i-group.repository';
 import { AnchorType } from '@localloop/shared-types';
-import { Group } from '../../domain/entities/group.entity';
-import { GroupMember } from '../../domain/entities/group-member.entity';
-import { GroupJoinRequest } from '../../domain/entities/group-join-request.entity';
+import { Group } from '@domain/entities/group.entity';
+import { GroupMember } from '@domain/entities/group-member.entity';
+import { GroupJoinRequest } from '@domain/entities/group-join-request.entity';
 import { GroupOrmEntity } from './group.entity';
 import { GroupMemberOrmEntity } from './group-member.entity';
 import { GroupJoinRequestOrmEntity } from './group-join-request.entity';

@@ -1,8 +1,8 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { MemberRole, MemberStatus } from '@localloop/shared-types';
-import { GroupMember } from '../../../domain/entities/group-member.entity';
+import { GroupMember } from '@domain/entities/group-member.entity';
 import { BanMemberUseCase } from './ban-member.use-case';
-import { buildGroupRepoMock } from '../../../test/group-repo.mock';
+import { buildGroupRepoMock } from '@/modules/groups/test/group-repo.mock';
 
 describe('BanMemberUseCase', () => {
   let useCase: BanMemberUseCase;

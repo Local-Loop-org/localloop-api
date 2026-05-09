@@ -4,7 +4,7 @@ import type { NearbyGroup } from '@localloop/shared-types';
 import {
   RADIUS_KM_MAX,
   RADIUS_KM_MIN,
-} from '../../../domain/anchor-radius-defaults';
+} from '@domain/anchor-radius-defaults';
 
 export class DiscoverNearbyGroupsQueryDto {
   @Type(() => Number)

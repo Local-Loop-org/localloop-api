@@ -3,8 +3,8 @@ import { coordinatesToGeohash } from '@localloop/geo-utils';
 import {
   GROUP_REPOSITORY,
   IGroupRepository,
-} from '../../../domain/repositories/i-group.repository';
-import { DEFAULT_RADIUS_KM_BY_ANCHOR } from '../../../domain/anchor-radius-defaults';
+} from '@domain/repositories/i-group.repository';
+import { DEFAULT_RADIUS_KM_BY_ANCHOR } from '@domain/anchor-radius-defaults';
 import { CreateGroupDto, CreateGroupResponseDto } from './create-group.dto';
 
 @Injectable()

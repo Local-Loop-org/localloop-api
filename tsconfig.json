@@ -27,7 +27,8 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@domain/*": ["src/modules/groups/domain/*"]
     }
   }
 }
