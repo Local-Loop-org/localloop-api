@@ -1,21 +1,18 @@
-import { Inject, Injectable } from '@nestjs/common';
-import {
-  coordinatesToGeohash,
-  distanceMeters,
-  getNeighborCells,
-} from '@localloop/geo-utils';
 import {
   GROUP_REPOSITORY,
   IGroupRepository,
 } from '@domain/repositories/i-group.repository';
 import {
+  coordinatesToGeohash,
+  distanceMeters,
+  getNeighborCells,
+} from '@localloop/geo-utils';
+import { Inject, Injectable } from '@nestjs/common';
+import {
   DiscoverNearbyGroupsQueryDto,
   DiscoverNearbyGroupsResponseDto,
 } from './discover-nearby-groups.dto';
-import {
-  DEFAULT_DISCOVERY_RADIUS_KM,
-  precisionForRadiusKm,
-} from './precision';
+import { DEFAULT_DISCOVERY_RADIUS_KM, precisionForRadiusKm } from './precision';
 
 @Injectable()
 export class DiscoverNearbyGroupsUseCase {
