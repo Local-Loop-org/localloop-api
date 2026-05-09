@@ -11,6 +11,7 @@ export class Group {
     public anchorLng: number,
     public anchorLabel: string,
     public privacy: GroupPrivacy,
+    public radiusKm: number,
     public readonly ownerId: string,
     public memberCount: number,
     public isActive: boolean,

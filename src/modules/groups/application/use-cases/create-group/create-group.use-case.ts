@@ -4,6 +4,7 @@ import {
   GROUP_REPOSITORY,
   IGroupRepository,
 } from '../../../domain/repositories/i-group.repository';
+import { DEFAULT_RADIUS_KM_BY_ANCHOR } from '../../../domain/anchor-radius-defaults';
 import { CreateGroupDto, CreateGroupResponseDto } from './create-group.dto';
 
 @Injectable()
@@ -17,6 +18,7 @@ export class CreateGroupUseCase {
     dto: CreateGroupDto,
   ): Promise<CreateGroupResponseDto> {
     const anchorGeohash = coordinatesToGeohash(dto.lat, dto.lng);
+    const radiusKm = dto.radiusKm ?? DEFAULT_RADIUS_KM_BY_ANCHOR[dto.anchorType];
     const group = await this.groupRepo.createGroupWithOwner({
       name: dto.name,
       description: dto.description ?? null,
@@ -26,6 +28,7 @@ export class CreateGroupUseCase {
       anchorLng: dto.lng,
       anchorLabel: dto.anchorLabel,
       privacy: dto.privacy,
+      radiusKm,
       ownerId: userId,
       memberCount: 1,
     });
@@ -36,6 +39,7 @@ export class CreateGroupUseCase {
       anchorType: group.anchorType,
       anchorLabel: group.anchorLabel,
       privacy: group.privacy,
+      radiusKm: group.radiusKm,
       memberCount: group.memberCount,
       myRole: 'owner',
     };

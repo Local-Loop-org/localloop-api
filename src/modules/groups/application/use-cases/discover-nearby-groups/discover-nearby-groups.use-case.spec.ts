@@ -22,6 +22,7 @@ describe('DiscoverNearbyGroupsUseCase', () => {
       userLng,
       'Morumbi',
       GroupPrivacy.OPEN,
+      50,
       'user-1',
       5,
       true,
@@ -36,8 +37,8 @@ describe('DiscoverNearbyGroupsUseCase', () => {
     useCase = new DiscoverNearbyGroupsUseCase(groupRepo);
   });
 
-  it('maps groups to DTOs with distanceMeters and forwards metadata', async () => {
-    const group = buildGroup();
+  it('maps groups to DTOs with distanceMeters, radiusKm and forwards metadata', async () => {
+    const group = buildGroup({ radiusKm: 5 });
     groupRepo.findNearby.mockResolvedValue([group]);
 
     const result = await useCase.execute({ lat: userLat, lng: userLng });
@@ -51,8 +52,8 @@ describe('DiscoverNearbyGroupsUseCase', () => {
     expect(dto.anchorLabel).toBe(group.anchorLabel);
     expect(dto.privacy).toBe(group.privacy);
     expect(dto.memberCount).toBe(group.memberCount);
+    expect(dto.radiusKm).toBe(5);
     expect(typeof dto.distanceMeters).toBe('number');
-    // group anchored at user coords → distance is essentially zero
     expect(dto.distanceMeters).toBeLessThan(1);
   });
 
@@ -64,32 +65,93 @@ describe('DiscoverNearbyGroupsUseCase', () => {
     expect(result).toEqual({ data: [] });
   });
 
-  it('passes user cell plus 8 neighbor cells to findNearby', async () => {
+  it('uses precision 6 cells for a small (<=2km) radius', async () => {
     groupRepo.findNearby.mockResolvedValue([]);
 
-    await useCase.execute({ lat: userLat, lng: userLng });
+    await useCase.execute({ lat: userLat, lng: userLng, radiusKm: 1 });
 
-    const userGeohash = coordinatesToGeohash(userLat, userLng);
-    const expectedCells = [userGeohash, ...getNeighborCells(userGeohash)];
+    const expectedUserCell = coordinatesToGeohash(userLat, userLng, 6);
+    const expectedCells = [
+      expectedUserCell,
+      ...getNeighborCells(expectedUserCell),
+    ];
     expect(groupRepo.findNearby).toHaveBeenCalledWith(expectedCells);
-    expect(expectedCells).toHaveLength(9);
+    expect(expectedCells[0]).toHaveLength(6);
   });
 
-  it('computes distanceMeters per group against the user coords', async () => {
-    const near = buildGroup({ id: 'g-near' });
-    const far = buildGroup({
-      id: 'g-far',
-      anchorLat: 40.7128,
-      anchorLng: -74.006,
+  it('steps down to precision 5 for a moderate (<=10km) radius', async () => {
+    groupRepo.findNearby.mockResolvedValue([]);
+
+    await useCase.execute({ lat: userLat, lng: userLng, radiusKm: 8 });
+
+    const cells = groupRepo.findNearby.mock.calls[0][0];
+    expect(cells[0]).toHaveLength(5);
+    expect(cells).toHaveLength(9);
+  });
+
+  it('steps down to precision 4 for a large (>10km) radius and the default 25km', async () => {
+    groupRepo.findNearby.mockResolvedValue([]);
+
+    await useCase.execute({ lat: userLat, lng: userLng, radiusKm: 30 });
+    expect(groupRepo.findNearby.mock.calls[0][0][0]).toHaveLength(4);
+
+    await useCase.execute({ lat: userLat, lng: userLng });
+    expect(groupRepo.findNearby.mock.calls[1][0][0]).toHaveLength(4);
+  });
+
+  it('rejects a group whose visibility radius excludes the caller, even when the user radius is wide', async () => {
+    // Group anchor ~1km north of user, but group only visible within 100m.
+    const group = buildGroup({
+      anchorLat: userLat + 0.009,
+      anchorLng: userLng,
+      radiusKm: 0.1,
     });
-    groupRepo.findNearby.mockResolvedValue([near, far]);
+    groupRepo.findNearby.mockResolvedValue([group]);
 
-    const result = await useCase.execute({ lat: userLat, lng: userLng });
+    const result = await useCase.execute({
+      lat: userLat,
+      lng: userLng,
+      radiusKm: 25,
+    });
 
-    expect(result.data).toHaveLength(2);
-    expect(result.data[0].distanceMeters).toBeLessThan(1_000);
-    // São Paulo ↔ NYC is ~7,700km
-    expect(result.data[1].distanceMeters).toBeGreaterThan(7_500_000);
-    expect(result.data[1].distanceMeters).toBeLessThan(8_000_000);
+    expect(result.data).toEqual([]);
+  });
+
+  it('rejects a group beyond the user radius, even when the group radius is wide', async () => {
+    // Group anchor ~5km away, group visibility 50km, but user only wants 1km.
+    const group = buildGroup({
+      anchorLat: userLat + 0.045,
+      anchorLng: userLng,
+      radiusKm: 50,
+    });
+    groupRepo.findNearby.mockResolvedValue([group]);
+
+    const result = await useCase.execute({
+      lat: userLat,
+      lng: userLng,
+      radiusKm: 1,
+    });
+
+    expect(result.data).toEqual([]);
+  });
+
+  it('keeps a group when the caller is within MIN(userRadius, group.radiusKm)', async () => {
+    // ~0.5km away; both radii allow it.
+    const group = buildGroup({
+      anchorLat: userLat + 0.0045,
+      anchorLng: userLng,
+      radiusKm: 2,
+    });
+    groupRepo.findNearby.mockResolvedValue([group]);
+
+    const result = await useCase.execute({
+      lat: userLat,
+      lng: userLng,
+      radiusKm: 5,
+    });
+
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0].distanceMeters).toBeGreaterThan(400);
+    expect(result.data[0].distanceMeters).toBeLessThan(600);
   });
 });

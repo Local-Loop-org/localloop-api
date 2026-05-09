@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, Repository } from 'typeorm';
+import { Brackets, DataSource, Repository } from 'typeorm';
 import {
   ApproveJoinRequestAtomicParams,
   CreateGroupData,
@@ -48,6 +48,7 @@ export class GroupTypeORMRepository implements IGroupRepository {
         anchorLng: data.anchorLng,
         anchorLabel: data.anchorLabel,
         privacy: data.privacy,
+        radiusKm: data.radiusKm,
         ownerId: data.ownerId,
         memberCount: data.memberCount,
         isActive: true,
@@ -71,11 +72,21 @@ export class GroupTypeORMRepository implements IGroupRepository {
     return entity ? GroupMapper.toDomain(entity) : null;
   }
 
-  async findNearby(geohashes: string[]): Promise<Group[]> {
-    if (geohashes.length === 0) return [];
-    const entities = await this.groupsRepo.find({
-      where: { anchorGeohash: In(geohashes), isActive: true },
-    });
+  async findNearby(geohashPrefixes: string[]): Promise<Group[]> {
+    if (geohashPrefixes.length === 0) return [];
+    const entities = await this.groupsRepo
+      .createQueryBuilder('g')
+      .where('g.is_active = TRUE')
+      .andWhere(
+        new Brackets((b) => {
+          geohashPrefixes.forEach((cell, i) => {
+            b.orWhere(`g.anchor_geohash LIKE :p${i}`, {
+              [`p${i}`]: `${cell}%`,
+            });
+          });
+        }),
+      )
+      .getMany();
     return entities.map((e) => GroupMapper.toDomain(e));
   }
 

@@ -35,6 +35,7 @@ describe('JoinGroupUseCase', () => {
       -46.63,
       'Morumbi',
       privacy,
+      5,
       'owner-1',
       10,
       true,

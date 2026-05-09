@@ -14,6 +14,7 @@ import { InitialSetup1710770000000 } from '@/infra/migrations/1710770000000-Init
 import { CreateGroups1713700000000 } from '@/infra/migrations/1713700000000-CreateGroups';
 import { CreateMessages1714000000000 } from '@/infra/migrations/1714000000000-CreateMessages';
 import { AddGroupAnchorCoordinates1714500000000 } from '@/infra/migrations/1714500000000-AddGroupAnchorCoordinates';
+import { AddGroupRadius1715000000000 } from '@/infra/migrations/1715000000000-AddGroupRadius';
 
 @Controller()
 class HealthController {
@@ -57,6 +58,7 @@ class HealthController {
             CreateGroups1713700000000,
             CreateMessages1714000000000,
             AddGroupAnchorCoordinates1714500000000,
+            AddGroupRadius1715000000000,
           ],
           migrationsRun: true,
           synchronize: false,

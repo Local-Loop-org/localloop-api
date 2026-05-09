@@ -25,6 +25,7 @@ describe('GetGroupDetailUseCase', () => {
       -46.63,
       'Morumbi',
       GroupPrivacy.APPROVAL_REQUIRED,
+      5,
       'owner-1',
       12,
       true,

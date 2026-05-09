@@ -32,6 +32,7 @@ describe('CreateGroupUseCase', () => {
       -46.7,
       'Morumbi',
       GroupPrivacy.OPEN,
+      2,
       'user-1',
       1,
       true,
@@ -62,6 +63,7 @@ describe('CreateGroupUseCase', () => {
       anchorLng: dto.lng,
       anchorLabel: dto.anchorLabel,
       privacy: dto.privacy,
+      radiusKm: 2,
       ownerId: 'user-1',
       memberCount: 1,
     });
@@ -71,9 +73,41 @@ describe('CreateGroupUseCase', () => {
       anchorType: AnchorType.NEIGHBORHOOD,
       anchorLabel: 'Morumbi',
       privacy: GroupPrivacy.OPEN,
+      radiusKm: 2,
       memberCount: 1,
       myRole: 'owner',
     });
+  });
+
+  it('defaults radiusKm from the anchor type when not provided', async () => {
+    groupRepo.createGroupWithOwner.mockImplementation(async (data) =>
+      buildGroup({ radiusKm: data.radiusKm }),
+    );
+
+    await useCase.execute('user-1', buildDto({ anchorType: AnchorType.CONDO }));
+    await useCase.execute('user-1', buildDto({ anchorType: AnchorType.CITY }));
+    await useCase.execute(
+      'user-1',
+      buildDto({ anchorType: AnchorType.EVENT }),
+    );
+
+    const calls = groupRepo.createGroupWithOwner.mock.calls;
+    expect(calls[0][0].radiusKm).toBe(0.1);
+    expect(calls[1][0].radiusKm).toBe(50);
+    expect(calls[2][0].radiusKm).toBe(0.5);
+  });
+
+  it('persists the explicit radiusKm when provided, regardless of anchor type', async () => {
+    groupRepo.createGroupWithOwner.mockImplementation(async (data) =>
+      buildGroup({ radiusKm: data.radiusKm }),
+    );
+
+    await useCase.execute(
+      'user-1',
+      buildDto({ anchorType: AnchorType.CITY, radiusKm: 3 }),
+    );
+
+    expect(groupRepo.createGroupWithOwner.mock.calls[0][0].radiusKm).toBe(3);
   });
 
   it('produces distinct geohashes for distant coordinates', async () => {

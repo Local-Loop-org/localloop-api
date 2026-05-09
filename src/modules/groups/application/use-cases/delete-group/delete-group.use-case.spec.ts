@@ -25,6 +25,7 @@ describe('DeleteGroupUseCase', () => {
       -46.63,
       'Morumbi',
       GroupPrivacy.OPEN,
+      5,
       'owner-1',
       3,
       true,

@@ -17,6 +17,7 @@ export class GroupMapper {
       e.anchorLng,
       e.anchorLabel,
       e.privacy,
+      e.radiusKm,
       e.ownerId,
       e.memberCount,
       e.isActive,
