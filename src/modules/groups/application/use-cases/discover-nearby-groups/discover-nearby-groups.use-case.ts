@@ -22,40 +22,43 @@ export class DiscoverNearbyGroupsUseCase {
 
   async execute(
     query: DiscoverNearbyGroupsQueryDto,
+    userId: string,
   ): Promise<DiscoverNearbyGroupsResponseDto> {
     const userRadiusKm = query.radiusKm ?? DEFAULT_DISCOVERY_RADIUS_KM;
     const precision = precisionForRadiusKm(userRadiusKm);
     const userCell = coordinatesToGeohash(query.lat, query.lng, precision);
     const cells = [userCell, ...getNeighborCells(userCell)];
 
-    const groups = await this.groupRepo.findNearby(cells);
+    const rows = await this.groupRepo.findNearby(userId, cells);
 
-    const visible = groups
-      .map((g) => ({
-        group: g,
+    const visible = rows
+      .map((r) => ({
+        row: r,
         distance: distanceMeters(
           query.lat,
           query.lng,
-          g.anchorLat,
-          g.anchorLng,
+          r.group.anchorLat,
+          r.group.anchorLng,
         ),
       }))
-      .filter(({ group, distance }) => {
-        const effectiveKm = Math.min(userRadiusKm, group.radiusKm);
+      .filter(({ row, distance }) => {
+        const effectiveKm = Math.min(userRadiusKm, row.group.radiusKm);
         return distance <= effectiveKm * 1000;
       });
 
     return {
-      data: visible.map(({ group, distance }) => ({
-        id: group.id,
-        name: group.name,
-        description: group.description,
-        anchorType: group.anchorType,
-        anchorLabel: group.anchorLabel,
+      data: visible.map(({ row, distance }) => ({
+        id: row.group.id,
+        name: row.group.name,
+        description: row.group.description,
+        anchorType: row.group.anchorType,
+        anchorLabel: row.group.anchorLabel,
         distanceMeters: distance,
-        privacy: group.privacy,
-        memberCount: group.memberCount,
-        radiusKm: group.radiusKm,
+        privacy: row.group.privacy,
+        memberCount: row.group.memberCount,
+        radiusKm: row.group.radiusKm,
+        myRole: row.myRole,
+        memberStatus: row.memberStatus,
       })),
     };
   }
