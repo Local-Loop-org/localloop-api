@@ -8,7 +8,7 @@ import {
 } from '@localloop/shared-types';
 
 import { GroupMember } from '@/modules/groups/domain/entities/group-member.entity';
-import { IGroupRepository } from '@/modules/groups/domain/repositories/i-group.repository';
+import { buildGroupRepoMock } from '@/modules/groups/test/group-repo.mock';
 import { User } from '@/modules/auth/domain/entities/user.entity';
 import { IUserRepository } from '@/modules/auth/domain/repositories/i-user.repository';
 import { SendMessageUseCase } from '../application/use-cases/send-message/send-message.use-case';
@@ -42,7 +42,7 @@ describe('ChatGateway', () => {
   let gateway: ChatGateway;
   let jwtService: jest.Mocked<JwtService>;
   let userRepo: jest.Mocked<IUserRepository>;
-  let groupRepo: jest.Mocked<IGroupRepository>;
+  let groupRepo: ReturnType<typeof buildGroupRepoMock>;
   let sendMessage: jest.Mocked<SendMessageUseCase>;
   let server: ServerMock;
   let roomEmit: jest.Mock;
@@ -118,27 +118,7 @@ describe('ChatGateway', () => {
       updateLastSeen: jest.fn(),
       updateGeohash: jest.fn(),
     };
-    groupRepo = {
-      createGroupWithOwner: jest.fn(),
-      findById: jest.fn(),
-      findNearby: jest.fn(),
-      findMember: jest.fn(),
-      addMember: jest.fn(),
-      incrementMemberCount: jest.fn(),
-      decrementMemberCount: jest.fn(),
-      removeMember: jest.fn(),
-      updateMemberStatus: jest.fn(),
-      findPendingJoinRequest: jest.fn(),
-      createJoinRequest: jest.fn(),
-      listJoinRequestsByStatus: jest.fn(),
-      findJoinRequestById: jest.fn(),
-      updateJoinRequestStatus: jest.fn(),
-      leaveGroupAtomic: jest.fn(),
-      approveJoinRequestAtomic: jest.fn(),
-      banMemberAtomic: jest.fn(),
-      listMembersPaginated: jest.fn(),
-      listMyGroupsByActivity: jest.fn(),
-    };
+    groupRepo = buildGroupRepoMock();
     sendMessage = {
       execute: jest.fn(),
     } as unknown as jest.Mocked<SendMessageUseCase>;

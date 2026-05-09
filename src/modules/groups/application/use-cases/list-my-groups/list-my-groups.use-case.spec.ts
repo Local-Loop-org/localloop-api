@@ -7,10 +7,11 @@ import {
   PaginatedMyGroups,
 } from '../../../domain/repositories/i-group.repository';
 import { ListMyGroupsUseCase } from './list-my-groups.use-case';
+import { buildGroupRepoMock } from '../../../test/group-repo.mock';
 
 describe('ListMyGroupsUseCase', () => {
   let useCase: ListMyGroupsUseCase;
-  let groupRepo: jest.Mocked<IGroupRepository>;
+  let groupRepo: ReturnType<typeof buildGroupRepoMock>;
 
   const buildRow = (overrides: Partial<MyGroupRow> = {}): MyGroupRow => ({
     id: overrides.id ?? 'group-1',
@@ -200,27 +201,3 @@ describe('ListMyGroupsUseCase', () => {
     expect(groupRepo.listMyGroupsByActivity).not.toHaveBeenCalled();
   });
 });
-
-function buildGroupRepoMock(): jest.Mocked<IGroupRepository> {
-  return {
-    createGroupWithOwner: jest.fn(),
-    findById: jest.fn(),
-    findNearby: jest.fn(),
-    findMember: jest.fn(),
-    addMember: jest.fn(),
-    incrementMemberCount: jest.fn(),
-    decrementMemberCount: jest.fn(),
-    removeMember: jest.fn(),
-    updateMemberStatus: jest.fn(),
-    findPendingJoinRequest: jest.fn(),
-    createJoinRequest: jest.fn(),
-    listJoinRequestsByStatus: jest.fn(),
-    findJoinRequestById: jest.fn(),
-    updateJoinRequestStatus: jest.fn(),
-    leaveGroupAtomic: jest.fn(),
-    approveJoinRequestAtomic: jest.fn(),
-    banMemberAtomic: jest.fn(),
-    listMembersPaginated: jest.fn(),
-    listMyGroupsByActivity: jest.fn(),
-  };
-}

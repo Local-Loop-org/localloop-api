@@ -12,18 +12,18 @@ import {
 
 import { Group } from '@/modules/groups/domain/entities/group.entity';
 import { GroupMember } from '@/modules/groups/domain/entities/group-member.entity';
-import { IGroupRepository } from '@/modules/groups/domain/repositories/i-group.repository';
 import { Message } from '../../../domain/entities/message.entity';
 import {
   IMessageRepository,
   MessageRow,
 } from '../../../domain/repositories/i-message.repository';
 import { SendMessageUseCase } from './send-message.use-case';
+import { buildGroupRepoMock } from '@/modules/groups/test/group-repo.mock';
 
 describe('SendMessageUseCase', () => {
   let useCase: SendMessageUseCase;
   let messageRepo: jest.Mocked<IMessageRepository>;
-  let groupRepo: jest.Mocked<IGroupRepository>;
+  let groupRepo: ReturnType<typeof buildGroupRepoMock>;
 
   const buildGroup = (): Group =>
     new Group(
@@ -163,26 +163,3 @@ function buildMessageRepoMock(): jest.Mocked<IMessageRepository> {
   };
 }
 
-function buildGroupRepoMock(): jest.Mocked<IGroupRepository> {
-  return {
-    createGroupWithOwner: jest.fn(),
-    findById: jest.fn(),
-    findNearby: jest.fn(),
-    findMember: jest.fn(),
-    addMember: jest.fn(),
-    incrementMemberCount: jest.fn(),
-    decrementMemberCount: jest.fn(),
-    removeMember: jest.fn(),
-    updateMemberStatus: jest.fn(),
-    findPendingJoinRequest: jest.fn(),
-    createJoinRequest: jest.fn(),
-    listJoinRequestsByStatus: jest.fn(),
-    findJoinRequestById: jest.fn(),
-    updateJoinRequestStatus: jest.fn(),
-    leaveGroupAtomic: jest.fn(),
-    approveJoinRequestAtomic: jest.fn(),
-    banMemberAtomic: jest.fn(),
-    listMembersPaginated: jest.fn(),
-    listMyGroupsByActivity: jest.fn(),
-  };
-}

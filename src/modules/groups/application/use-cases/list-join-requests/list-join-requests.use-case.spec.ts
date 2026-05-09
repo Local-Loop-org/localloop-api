@@ -14,10 +14,11 @@ import {
   JoinRequestWithRequester,
 } from '../../../domain/repositories/i-group.repository';
 import { ListJoinRequestsUseCase } from './list-join-requests.use-case';
+import { buildGroupRepoMock } from '../../../test/group-repo.mock';
 
 describe('ListJoinRequestsUseCase', () => {
   let useCase: ListJoinRequestsUseCase;
-  let groupRepo: jest.Mocked<IGroupRepository>;
+  let groupRepo: ReturnType<typeof buildGroupRepoMock>;
 
   const buildGroup = (): Group =>
     new Group(
@@ -150,27 +151,3 @@ describe('ListJoinRequestsUseCase', () => {
     expect(result.data.map((r) => r.id)).toEqual(['req-1', 'req-2']);
   });
 });
-
-function buildGroupRepoMock(): jest.Mocked<IGroupRepository> {
-  return {
-    createGroupWithOwner: jest.fn(),
-    findById: jest.fn(),
-    findNearby: jest.fn(),
-    findMember: jest.fn(),
-    addMember: jest.fn(),
-    incrementMemberCount: jest.fn(),
-    decrementMemberCount: jest.fn(),
-    removeMember: jest.fn(),
-    updateMemberStatus: jest.fn(),
-    findPendingJoinRequest: jest.fn(),
-    createJoinRequest: jest.fn(),
-    listJoinRequestsByStatus: jest.fn(),
-    findJoinRequestById: jest.fn(),
-    updateJoinRequestStatus: jest.fn(),
-    leaveGroupAtomic: jest.fn(),
-    approveJoinRequestAtomic: jest.fn(),
-    banMemberAtomic: jest.fn(),
-    listMembersPaginated: jest.fn(),
-    listMyGroupsByActivity: jest.fn(),
-  };
-}

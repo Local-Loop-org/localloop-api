@@ -12,10 +12,11 @@ import {
   MemberRow,
 } from '../../../domain/repositories/i-group.repository';
 import { ListGroupMembersUseCase } from './list-group-members.use-case';
+import { buildGroupRepoMock } from '../../../test/group-repo.mock';
 
 describe('ListGroupMembersUseCase', () => {
   let useCase: ListGroupMembersUseCase;
-  let groupRepo: jest.Mocked<IGroupRepository>;
+  let groupRepo: ReturnType<typeof buildGroupRepoMock>;
 
   const buildGroup = (): Group =>
     new Group(
@@ -147,27 +148,3 @@ describe('ListGroupMembersUseCase', () => {
     expect(result.next_cursor).toBe('cursor-abc');
   });
 });
-
-function buildGroupRepoMock(): jest.Mocked<IGroupRepository> {
-  return {
-    createGroupWithOwner: jest.fn(),
-    findById: jest.fn(),
-    findNearby: jest.fn(),
-    findMember: jest.fn(),
-    addMember: jest.fn(),
-    incrementMemberCount: jest.fn(),
-    decrementMemberCount: jest.fn(),
-    removeMember: jest.fn(),
-    updateMemberStatus: jest.fn(),
-    findPendingJoinRequest: jest.fn(),
-    createJoinRequest: jest.fn(),
-    listJoinRequestsByStatus: jest.fn(),
-    findJoinRequestById: jest.fn(),
-    updateJoinRequestStatus: jest.fn(),
-    leaveGroupAtomic: jest.fn(),
-    approveJoinRequestAtomic: jest.fn(),
-    banMemberAtomic: jest.fn(),
-    listMembersPaginated: jest.fn(),
-    listMyGroupsByActivity: jest.fn(),
-  };
-}

@@ -287,6 +287,20 @@ export class GroupTypeORMRepository implements IGroupRepository {
     });
   }
 
+  async deleteGroupAtomic(groupId: string): Promise<void> {
+    await this.dataSource.transaction(async (manager) => {
+      await manager.query('DELETE FROM messages WHERE group_id = $1', [
+        groupId,
+      ]);
+      await manager.query(
+        'DELETE FROM group_join_requests WHERE group_id = $1',
+        [groupId],
+      );
+      await manager.delete(GroupMemberOrmEntity, { groupId });
+      await manager.delete(GroupOrmEntity, { id: groupId });
+    });
+  }
+
   async listMembersPaginated(
     groupId: string,
     limit: number,

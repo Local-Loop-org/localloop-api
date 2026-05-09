@@ -6,12 +6,12 @@ import {
 } from '@localloop/shared-types';
 import { GroupMember } from '../../../domain/entities/group-member.entity';
 import { GroupJoinRequest } from '../../../domain/entities/group-join-request.entity';
-import { IGroupRepository } from '../../../domain/repositories/i-group.repository';
 import { ResolveJoinRequestUseCase } from './resolve-join-request.use-case';
+import { buildGroupRepoMock } from '../../../test/group-repo.mock';
 
 describe('ResolveJoinRequestUseCase', () => {
   let useCase: ResolveJoinRequestUseCase;
-  let groupRepo: jest.Mocked<IGroupRepository>;
+  let groupRepo: ReturnType<typeof buildGroupRepoMock>;
 
   const buildMember = (role: MemberRole): GroupMember =>
     new GroupMember(
@@ -119,27 +119,3 @@ describe('ResolveJoinRequestUseCase', () => {
     expect(result).toEqual({ status: 'rejected' });
   });
 });
-
-function buildGroupRepoMock(): jest.Mocked<IGroupRepository> {
-  return {
-    createGroupWithOwner: jest.fn(),
-    findById: jest.fn(),
-    findNearby: jest.fn(),
-    findMember: jest.fn(),
-    addMember: jest.fn(),
-    incrementMemberCount: jest.fn(),
-    decrementMemberCount: jest.fn(),
-    removeMember: jest.fn(),
-    updateMemberStatus: jest.fn(),
-    findPendingJoinRequest: jest.fn(),
-    createJoinRequest: jest.fn(),
-    listJoinRequestsByStatus: jest.fn(),
-    findJoinRequestById: jest.fn(),
-    updateJoinRequestStatus: jest.fn(),
-    leaveGroupAtomic: jest.fn(),
-    approveJoinRequestAtomic: jest.fn(),
-    banMemberAtomic: jest.fn(),
-    listMembersPaginated: jest.fn(),
-    listMyGroupsByActivity: jest.fn(),
-  };
-}

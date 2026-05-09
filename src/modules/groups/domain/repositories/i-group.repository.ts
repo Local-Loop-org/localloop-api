@@ -140,6 +140,12 @@ export interface IGroupRepository {
    */
   banMemberAtomic(groupId: string, userId: string): Promise<void>;
 
+  /**
+   * Atomically delete a group and all its related rows
+   * (messages → join_requests → members → group).
+   */
+  deleteGroupAtomic(groupId: string): Promise<void>;
+
   listMembersPaginated(
     groupId: string,
     limit: number,

@@ -1,13 +1,13 @@
 import { coordinatesToGeohash } from '@localloop/geo-utils';
 import { AnchorType, GroupPrivacy } from '@localloop/shared-types';
 import { Group } from '../../../domain/entities/group.entity';
-import { IGroupRepository } from '../../../domain/repositories/i-group.repository';
 import { CreateGroupUseCase } from './create-group.use-case';
 import { CreateGroupDto } from './create-group.dto';
+import { buildGroupRepoMock } from '../../../test/group-repo.mock';
 
 describe('CreateGroupUseCase', () => {
   let useCase: CreateGroupUseCase;
-  let groupRepo: jest.Mocked<IGroupRepository>;
+  let groupRepo: ReturnType<typeof buildGroupRepoMock>;
 
   const buildDto = (overrides: Partial<CreateGroupDto> = {}): CreateGroupDto =>
     ({
@@ -104,27 +104,3 @@ describe('CreateGroupUseCase', () => {
     );
   });
 });
-
-function buildGroupRepoMock(): jest.Mocked<IGroupRepository> {
-  return {
-    createGroupWithOwner: jest.fn(),
-    findById: jest.fn(),
-    findNearby: jest.fn(),
-    findMember: jest.fn(),
-    addMember: jest.fn(),
-    incrementMemberCount: jest.fn(),
-    decrementMemberCount: jest.fn(),
-    removeMember: jest.fn(),
-    updateMemberStatus: jest.fn(),
-    findPendingJoinRequest: jest.fn(),
-    createJoinRequest: jest.fn(),
-    listJoinRequestsByStatus: jest.fn(),
-    findJoinRequestById: jest.fn(),
-    updateJoinRequestStatus: jest.fn(),
-    leaveGroupAtomic: jest.fn(),
-    approveJoinRequestAtomic: jest.fn(),
-    banMemberAtomic: jest.fn(),
-    listMembersPaginated: jest.fn(),
-    listMyGroupsByActivity: jest.fn(),
-  };
-}

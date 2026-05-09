@@ -18,6 +18,7 @@ import { ResolveJoinRequestUseCase } from './application/use-cases/resolve-join-
 import { BanMemberUseCase } from './application/use-cases/ban-member/ban-member.use-case';
 import { ListGroupMembersUseCase } from './application/use-cases/list-group-members/list-group-members.use-case';
 import { ListMyGroupsUseCase } from './application/use-cases/list-my-groups/list-my-groups.use-case';
+import { DeleteGroupUseCase } from './application/use-cases/delete-group/delete-group.use-case';
 
 import { GroupsController } from './presentation/groups.controller';
 
@@ -42,6 +43,7 @@ import { GroupsController } from './presentation/groups.controller';
     BanMemberUseCase,
     ListGroupMembersUseCase,
     ListMyGroupsUseCase,
+    DeleteGroupUseCase,
     {
       provide: GROUP_REPOSITORY,
       useClass: GroupTypeORMRepository,

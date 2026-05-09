@@ -1,12 +1,12 @@
 import { coordinatesToGeohash, getNeighborCells } from '@localloop/geo-utils';
 import { AnchorType, GroupPrivacy } from '@localloop/shared-types';
 import { Group } from '../../../domain/entities/group.entity';
-import { IGroupRepository } from '../../../domain/repositories/i-group.repository';
 import { DiscoverNearbyGroupsUseCase } from './discover-nearby-groups.use-case';
+import { buildGroupRepoMock } from '../../../test/group-repo.mock';
 
 describe('DiscoverNearbyGroupsUseCase', () => {
   let useCase: DiscoverNearbyGroupsUseCase;
-  let groupRepo: jest.Mocked<IGroupRepository>;
+  let groupRepo: ReturnType<typeof buildGroupRepoMock>;
 
   const userLat = -23.55;
   const userLng = -46.63;
@@ -93,27 +93,3 @@ describe('DiscoverNearbyGroupsUseCase', () => {
     expect(result.data[1].distanceMeters).toBeLessThan(8_000_000);
   });
 });
-
-function buildGroupRepoMock(): jest.Mocked<IGroupRepository> {
-  return {
-    createGroupWithOwner: jest.fn(),
-    findById: jest.fn(),
-    findNearby: jest.fn(),
-    findMember: jest.fn(),
-    addMember: jest.fn(),
-    incrementMemberCount: jest.fn(),
-    decrementMemberCount: jest.fn(),
-    removeMember: jest.fn(),
-    updateMemberStatus: jest.fn(),
-    findPendingJoinRequest: jest.fn(),
-    createJoinRequest: jest.fn(),
-    listJoinRequestsByStatus: jest.fn(),
-    findJoinRequestById: jest.fn(),
-    updateJoinRequestStatus: jest.fn(),
-    leaveGroupAtomic: jest.fn(),
-    approveJoinRequestAtomic: jest.fn(),
-    banMemberAtomic: jest.fn(),
-    listMembersPaginated: jest.fn(),
-    listMyGroupsByActivity: jest.fn(),
-  };
-}
