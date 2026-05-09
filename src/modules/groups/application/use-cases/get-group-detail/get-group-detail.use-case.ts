@@ -3,7 +3,7 @@ import { MemberStatus } from '@localloop/shared-types';
 import {
   GROUP_REPOSITORY,
   IGroupRepository,
-} from '../../../domain/repositories/i-group.repository';
+} from '@domain/repositories/i-group.repository';
 import { GroupDetailDto } from './get-group-detail.dto';
 
 @Injectable()

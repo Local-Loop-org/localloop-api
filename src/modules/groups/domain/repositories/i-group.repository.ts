@@ -18,6 +18,7 @@ export interface CreateGroupData {
   anchorLng: number;
   anchorLabel: string;
   privacy: GroupPrivacy;
+  radiusKm: number;
   ownerId: string;
   memberCount: number;
 }
@@ -78,7 +79,13 @@ export interface ApproveJoinRequestAtomicParams {
 export interface IGroupRepository {
   createGroupWithOwner(data: CreateGroupData): Promise<Group>;
   findById(id: string): Promise<Group | null>;
-  findNearby(geohashes: string[]): Promise<Group[]>;
+  /**
+   * Find active groups whose `anchor_geohash` starts with any of the given
+   * prefixes. Stored geohashes are precision 6, so a precision-6 prefix
+   * matches that exact cell while precision-5/4 prefixes match all
+   * hierarchical descendants. Distance filtering is applied by callers.
+   */
+  findNearby(geohashPrefixes: string[]): Promise<Group[]>;
 
   findMember(groupId: string, userId: string): Promise<GroupMember | null>;
   addMember(
@@ -139,6 +146,12 @@ export interface IGroupRepository {
    * the previous status was ACTIVE.
    */
   banMemberAtomic(groupId: string, userId: string): Promise<void>;
+
+  /**
+   * Atomically delete a group and all its related rows
+   * (messages → join_requests → members → group).
+   */
+  deleteGroupAtomic(groupId: string): Promise<void>;
 
   listMembersPaginated(
     groupId: string,

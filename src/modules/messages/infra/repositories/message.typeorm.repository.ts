@@ -3,13 +3,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MediaType } from '@localloop/shared-types';
 
-import { Message } from '../../domain/entities/message.entity';
+import { Message } from '@/modules/messages/domain/entities/message.entity';
 import {
   CreateMessageData,
   IMessageRepository,
   MessageRow,
   PaginatedMessages,
-} from '../../domain/repositories/i-message.repository';
+} from '@/modules/messages/domain/repositories/i-message.repository';
 import { UserEntity } from '@/modules/auth/infra/repositories/user.entity';
 import { MessageMapper } from '../mappers/message.mapper';
 import { MessageOrmEntity } from './message.entity';

@@ -1,12 +1,12 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { MemberRole, MemberStatus } from '@localloop/shared-types';
-import { GroupMember } from '../../../domain/entities/group-member.entity';
-import { IGroupRepository } from '../../../domain/repositories/i-group.repository';
+import { GroupMember } from '@domain/entities/group-member.entity';
 import { BanMemberUseCase } from './ban-member.use-case';
+import { buildGroupRepoMock } from '@/modules/groups/test/group-repo.mock';
 
 describe('BanMemberUseCase', () => {
   let useCase: BanMemberUseCase;
-  let groupRepo: jest.Mocked<IGroupRepository>;
+  let groupRepo: ReturnType<typeof buildGroupRepoMock>;
 
   const buildMember = (
     userId: string,
@@ -117,27 +117,3 @@ describe('BanMemberUseCase', () => {
     );
   });
 });
-
-function buildGroupRepoMock(): jest.Mocked<IGroupRepository> {
-  return {
-    createGroupWithOwner: jest.fn(),
-    findById: jest.fn(),
-    findNearby: jest.fn(),
-    findMember: jest.fn(),
-    addMember: jest.fn(),
-    incrementMemberCount: jest.fn(),
-    decrementMemberCount: jest.fn(),
-    removeMember: jest.fn(),
-    updateMemberStatus: jest.fn(),
-    findPendingJoinRequest: jest.fn(),
-    createJoinRequest: jest.fn(),
-    listJoinRequestsByStatus: jest.fn(),
-    findJoinRequestById: jest.fn(),
-    updateJoinRequestStatus: jest.fn(),
-    leaveGroupAtomic: jest.fn(),
-    approveJoinRequestAtomic: jest.fn(),
-    banMemberAtomic: jest.fn(),
-    listMembersPaginated: jest.fn(),
-    listMyGroupsByActivity: jest.fn(),
-  };
-}

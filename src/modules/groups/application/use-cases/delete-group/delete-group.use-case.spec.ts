@@ -7,14 +7,14 @@ import {
 } from '@localloop/shared-types';
 import { Group } from '@domain/entities/group.entity';
 import { GroupMember } from '@domain/entities/group-member.entity';
-import { LeaveGroupUseCase } from './leave-group.use-case';
+import { DeleteGroupUseCase } from './delete-group.use-case';
 import { buildGroupRepoMock } from '@/modules/groups/test/group-repo.mock';
 
-describe('LeaveGroupUseCase', () => {
-  let useCase: LeaveGroupUseCase;
+describe('DeleteGroupUseCase', () => {
+  let useCase: DeleteGroupUseCase;
   let groupRepo: ReturnType<typeof buildGroupRepoMock>;
 
-  const buildGroup = (memberCount = 10): Group =>
+  const buildGroup = (): Group =>
     new Group(
       'group-1',
       'Morumbi Runners',
@@ -27,7 +27,7 @@ describe('LeaveGroupUseCase', () => {
       GroupPrivacy.OPEN,
       5,
       'owner-1',
-      memberCount,
+      3,
       true,
       new Date('2026-04-23T00:00:00Z'),
     );
@@ -44,7 +44,7 @@ describe('LeaveGroupUseCase', () => {
 
   beforeEach(() => {
     groupRepo = buildGroupRepoMock();
-    useCase = new LeaveGroupUseCase(groupRepo);
+    useCase = new DeleteGroupUseCase(groupRepo);
   });
 
   it('throws NotFoundException when the group does not exist', async () => {
@@ -54,49 +54,36 @@ describe('LeaveGroupUseCase', () => {
       NotFoundException,
     );
     expect(groupRepo.findMember).not.toHaveBeenCalled();
-    expect(groupRepo.leaveGroupAtomic).not.toHaveBeenCalled();
+    expect(groupRepo.deleteGroupAtomic).not.toHaveBeenCalled();
   });
 
-  it('throws NotFoundException when caller is not a member', async () => {
+  it('throws ForbiddenException when caller is not a member', async () => {
     groupRepo.findById.mockResolvedValue(buildGroup());
     groupRepo.findMember.mockResolvedValue(null);
 
     await expect(useCase.execute('user-1', 'group-1')).rejects.toThrow(
-      NotFoundException,
+      ForbiddenException,
     );
-    expect(groupRepo.leaveGroupAtomic).not.toHaveBeenCalled();
+    expect(groupRepo.deleteGroupAtomic).not.toHaveBeenCalled();
   });
 
-  it('throws ForbiddenException when caller is the OWNER', async () => {
+  it('throws ForbiddenException when caller is a MEMBER (not owner)', async () => {
     groupRepo.findById.mockResolvedValue(buildGroup());
-    groupRepo.findMember.mockResolvedValue(buildMember(MemberRole.OWNER));
+    groupRepo.findMember.mockResolvedValue(buildMember(MemberRole.MEMBER));
 
     await expect(useCase.execute('user-1', 'group-1')).rejects.toThrow(
       ForbiddenException,
     );
-    expect(groupRepo.leaveGroupAtomic).not.toHaveBeenCalled();
+    expect(groupRepo.deleteGroupAtomic).not.toHaveBeenCalled();
   });
 
-  it('deletes the group when memberCount is 1 (owner is sole member)', async () => {
-    groupRepo.findById.mockResolvedValue(buildGroup(1));
+  it('calls deleteGroupAtomic when caller is the OWNER', async () => {
+    groupRepo.findById.mockResolvedValue(buildGroup());
     groupRepo.findMember.mockResolvedValue(buildMember(MemberRole.OWNER));
     groupRepo.deleteGroupAtomic.mockResolvedValue(undefined);
 
     await useCase.execute('user-1', 'group-1');
 
     expect(groupRepo.deleteGroupAtomic).toHaveBeenCalledWith('group-1');
-    expect(groupRepo.leaveGroupAtomic).not.toHaveBeenCalled();
-  });
-
-  it('calls leaveGroupAtomic for a regular MEMBER', async () => {
-    groupRepo.findById.mockResolvedValue(buildGroup());
-    groupRepo.findMember.mockResolvedValue(buildMember(MemberRole.MEMBER));
-
-    await useCase.execute('user-1', 'group-1');
-
-    expect(groupRepo.leaveGroupAtomic).toHaveBeenCalledWith(
-      'group-1',
-      'user-1',
-    );
   });
 });

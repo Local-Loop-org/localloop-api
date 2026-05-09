@@ -8,7 +8,12 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { AnchorType, GroupPrivacy } from '@localloop/shared-types';
+import {
+  RADIUS_KM_MAX,
+  RADIUS_KM_MIN,
+} from '@domain/anchor-radius-defaults';
 
 export class CreateGroupDto {
   @IsString()
@@ -41,6 +46,13 @@ export class CreateGroupDto {
 
   @IsEnum(GroupPrivacy)
   privacy!: GroupPrivacy;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(RADIUS_KM_MIN)
+  @Max(RADIUS_KM_MAX)
+  radiusKm?: number;
 }
 
 export class CreateGroupResponseDto {
@@ -49,6 +61,7 @@ export class CreateGroupResponseDto {
   anchorType!: AnchorType;
   anchorLabel!: string;
   privacy!: GroupPrivacy;
+  radiusKm!: number;
   memberCount!: number;
   myRole!: 'owner';
 }

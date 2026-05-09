@@ -11,7 +11,7 @@ import {
 } from '@domain/repositories/i-group.repository';
 
 @Injectable()
-export class LeaveGroupUseCase {
+export class DeleteGroupUseCase {
   constructor(
     @Inject(GROUP_REPOSITORY) private readonly groupRepo: IGroupRepository,
   ) {}
@@ -26,25 +26,13 @@ export class LeaveGroupUseCase {
     }
 
     const member = await this.groupRepo.findMember(groupId, userId);
-    if (!member) {
-      throw new NotFoundException({
-        error: 'NOT_A_MEMBER',
-        message: 'You are not a member of this group',
-      });
-    }
-
-    if (group.memberCount === 1) {
-      await this.groupRepo.deleteGroupAtomic(groupId);
-      return;
-    }
-
-    if (member.role === MemberRole.OWNER) {
+    if (!member || member.role !== MemberRole.OWNER) {
       throw new ForbiddenException({
-        error: 'OWNER_CANNOT_LEAVE',
-        message: 'Owner must transfer ownership before leaving',
+        error: 'NOT_THE_OWNER',
+        message: 'Only the group owner can delete the group',
       });
     }
 
-    await this.groupRepo.leaveGroupAtomic(groupId, userId);
+    await this.groupRepo.deleteGroupAtomic(groupId);
   }
 }

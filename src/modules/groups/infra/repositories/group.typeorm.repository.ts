@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, Repository } from 'typeorm';
+import { Brackets, DataSource, Repository } from 'typeorm';
 import {
   ApproveJoinRequestAtomicParams,
   CreateGroupData,
@@ -9,11 +9,11 @@ import {
   MyGroupsCursor,
   PaginatedMembers,
   PaginatedMyGroups,
-} from '../../domain/repositories/i-group.repository';
+} from '@domain/repositories/i-group.repository';
 import { AnchorType } from '@localloop/shared-types';
-import { Group } from '../../domain/entities/group.entity';
-import { GroupMember } from '../../domain/entities/group-member.entity';
-import { GroupJoinRequest } from '../../domain/entities/group-join-request.entity';
+import { Group } from '@domain/entities/group.entity';
+import { GroupMember } from '@domain/entities/group-member.entity';
+import { GroupJoinRequest } from '@domain/entities/group-join-request.entity';
 import { GroupOrmEntity } from './group.entity';
 import { GroupMemberOrmEntity } from './group-member.entity';
 import { GroupJoinRequestOrmEntity } from './group-join-request.entity';
@@ -48,6 +48,7 @@ export class GroupTypeORMRepository implements IGroupRepository {
         anchorLng: data.anchorLng,
         anchorLabel: data.anchorLabel,
         privacy: data.privacy,
+        radiusKm: data.radiusKm,
         ownerId: data.ownerId,
         memberCount: data.memberCount,
         isActive: true,
@@ -71,11 +72,21 @@ export class GroupTypeORMRepository implements IGroupRepository {
     return entity ? GroupMapper.toDomain(entity) : null;
   }
 
-  async findNearby(geohashes: string[]): Promise<Group[]> {
-    if (geohashes.length === 0) return [];
-    const entities = await this.groupsRepo.find({
-      where: { anchorGeohash: In(geohashes), isActive: true },
-    });
+  async findNearby(geohashPrefixes: string[]): Promise<Group[]> {
+    if (geohashPrefixes.length === 0) return [];
+    const entities = await this.groupsRepo
+      .createQueryBuilder('g')
+      .where('g.is_active = TRUE')
+      .andWhere(
+        new Brackets((b) => {
+          geohashPrefixes.forEach((cell, i) => {
+            b.orWhere(`g.anchor_geohash LIKE :p${i}`, {
+              [`p${i}`]: `${cell}%`,
+            });
+          });
+        }),
+      )
+      .getMany();
     return entities.map((e) => GroupMapper.toDomain(e));
   }
 
@@ -284,6 +295,20 @@ export class GroupTypeORMRepository implements IGroupRepository {
           1,
         );
       }
+    });
+  }
+
+  async deleteGroupAtomic(groupId: string): Promise<void> {
+    await this.dataSource.transaction(async (manager) => {
+      await manager.query('DELETE FROM messages WHERE group_id = $1', [
+        groupId,
+      ]);
+      await manager.query(
+        'DELETE FROM group_join_requests WHERE group_id = $1',
+        [groupId],
+      );
+      await manager.delete(GroupMemberOrmEntity, { groupId });
+      await manager.delete(GroupOrmEntity, { id: groupId });
     });
   }
 

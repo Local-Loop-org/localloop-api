@@ -8,7 +8,7 @@ import { MemberStatus } from '@localloop/shared-types';
 import {
   GROUP_REPOSITORY,
   IGroupRepository,
-} from '../../../domain/repositories/i-group.repository';
+} from '@domain/repositories/i-group.repository';
 import { ListGroupMembersResponseDto } from './list-group-members.dto';
 
 const DEFAULT_LIMIT = 50;

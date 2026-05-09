@@ -12,7 +12,7 @@ import {
 import {
   GROUP_REPOSITORY,
   IGroupRepository,
-} from '../../../domain/repositories/i-group.repository';
+} from '@domain/repositories/i-group.repository';
 import {
   JoinRequestAction,
   ResolveJoinRequestResponseDto,

@@ -1,13 +1,13 @@
 import { coordinatesToGeohash } from '@localloop/geo-utils';
 import { AnchorType, GroupPrivacy } from '@localloop/shared-types';
-import { Group } from '../../../domain/entities/group.entity';
-import { IGroupRepository } from '../../../domain/repositories/i-group.repository';
+import { Group } from '@domain/entities/group.entity';
 import { CreateGroupUseCase } from './create-group.use-case';
 import { CreateGroupDto } from './create-group.dto';
+import { buildGroupRepoMock } from '@/modules/groups/test/group-repo.mock';
 
 describe('CreateGroupUseCase', () => {
   let useCase: CreateGroupUseCase;
-  let groupRepo: jest.Mocked<IGroupRepository>;
+  let groupRepo: ReturnType<typeof buildGroupRepoMock>;
 
   const buildDto = (overrides: Partial<CreateGroupDto> = {}): CreateGroupDto =>
     ({
@@ -32,6 +32,7 @@ describe('CreateGroupUseCase', () => {
       -46.7,
       'Morumbi',
       GroupPrivacy.OPEN,
+      2,
       'user-1',
       1,
       true,
@@ -62,6 +63,7 @@ describe('CreateGroupUseCase', () => {
       anchorLng: dto.lng,
       anchorLabel: dto.anchorLabel,
       privacy: dto.privacy,
+      radiusKm: 2,
       ownerId: 'user-1',
       memberCount: 1,
     });
@@ -71,9 +73,41 @@ describe('CreateGroupUseCase', () => {
       anchorType: AnchorType.NEIGHBORHOOD,
       anchorLabel: 'Morumbi',
       privacy: GroupPrivacy.OPEN,
+      radiusKm: 2,
       memberCount: 1,
       myRole: 'owner',
     });
+  });
+
+  it('defaults radiusKm from the anchor type when not provided', async () => {
+    groupRepo.createGroupWithOwner.mockImplementation(async (data) =>
+      buildGroup({ radiusKm: data.radiusKm }),
+    );
+
+    await useCase.execute('user-1', buildDto({ anchorType: AnchorType.CONDO }));
+    await useCase.execute('user-1', buildDto({ anchorType: AnchorType.CITY }));
+    await useCase.execute(
+      'user-1',
+      buildDto({ anchorType: AnchorType.EVENT }),
+    );
+
+    const calls = groupRepo.createGroupWithOwner.mock.calls;
+    expect(calls[0][0].radiusKm).toBe(0.1);
+    expect(calls[1][0].radiusKm).toBe(50);
+    expect(calls[2][0].radiusKm).toBe(0.5);
+  });
+
+  it('persists the explicit radiusKm when provided, regardless of anchor type', async () => {
+    groupRepo.createGroupWithOwner.mockImplementation(async (data) =>
+      buildGroup({ radiusKm: data.radiusKm }),
+    );
+
+    await useCase.execute(
+      'user-1',
+      buildDto({ anchorType: AnchorType.CITY, radiusKm: 3 }),
+    );
+
+    expect(groupRepo.createGroupWithOwner.mock.calls[0][0].radiusKm).toBe(3);
   });
 
   it('produces distinct geohashes for distant coordinates', async () => {
@@ -104,27 +138,3 @@ describe('CreateGroupUseCase', () => {
     );
   });
 });
-
-function buildGroupRepoMock(): jest.Mocked<IGroupRepository> {
-  return {
-    createGroupWithOwner: jest.fn(),
-    findById: jest.fn(),
-    findNearby: jest.fn(),
-    findMember: jest.fn(),
-    addMember: jest.fn(),
-    incrementMemberCount: jest.fn(),
-    decrementMemberCount: jest.fn(),
-    removeMember: jest.fn(),
-    updateMemberStatus: jest.fn(),
-    findPendingJoinRequest: jest.fn(),
-    createJoinRequest: jest.fn(),
-    listJoinRequestsByStatus: jest.fn(),
-    findJoinRequestById: jest.fn(),
-    updateJoinRequestStatus: jest.fn(),
-    leaveGroupAtomic: jest.fn(),
-    approveJoinRequestAtomic: jest.fn(),
-    banMemberAtomic: jest.fn(),
-    listMembersPaginated: jest.fn(),
-    listMyGroupsByActivity: jest.fn(),
-  };
-}

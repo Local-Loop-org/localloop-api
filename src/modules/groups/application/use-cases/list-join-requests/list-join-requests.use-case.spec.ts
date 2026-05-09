@@ -1,4 +1,3 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import {
   AnchorType,
   GroupPrivacy,
@@ -6,18 +5,17 @@ import {
   MemberStatus,
   RequestStatus,
 } from '@localloop/shared-types';
-import { Group } from '../../../domain/entities/group.entity';
-import { GroupMember } from '../../../domain/entities/group-member.entity';
-import { GroupJoinRequest } from '../../../domain/entities/group-join-request.entity';
-import {
-  IGroupRepository,
-  JoinRequestWithRequester,
-} from '../../../domain/repositories/i-group.repository';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { GroupJoinRequest } from '@domain/entities/group-join-request.entity';
+import { GroupMember } from '@domain/entities/group-member.entity';
+import { Group } from '@domain/entities/group.entity';
+import { JoinRequestWithRequester } from '@domain/repositories/i-group.repository';
+import { buildGroupRepoMock } from '@/modules/groups/test/group-repo.mock';
 import { ListJoinRequestsUseCase } from './list-join-requests.use-case';
 
 describe('ListJoinRequestsUseCase', () => {
   let useCase: ListJoinRequestsUseCase;
-  let groupRepo: jest.Mocked<IGroupRepository>;
+  let groupRepo: ReturnType<typeof buildGroupRepoMock>;
 
   const buildGroup = (): Group =>
     new Group(
@@ -30,6 +28,7 @@ describe('ListJoinRequestsUseCase', () => {
       -46.63,
       'Morumbi',
       GroupPrivacy.APPROVAL_REQUIRED,
+      5,
       'owner-1',
       10,
       true,
@@ -150,27 +149,3 @@ describe('ListJoinRequestsUseCase', () => {
     expect(result.data.map((r) => r.id)).toEqual(['req-1', 'req-2']);
   });
 });
-
-function buildGroupRepoMock(): jest.Mocked<IGroupRepository> {
-  return {
-    createGroupWithOwner: jest.fn(),
-    findById: jest.fn(),
-    findNearby: jest.fn(),
-    findMember: jest.fn(),
-    addMember: jest.fn(),
-    incrementMemberCount: jest.fn(),
-    decrementMemberCount: jest.fn(),
-    removeMember: jest.fn(),
-    updateMemberStatus: jest.fn(),
-    findPendingJoinRequest: jest.fn(),
-    createJoinRequest: jest.fn(),
-    listJoinRequestsByStatus: jest.fn(),
-    findJoinRequestById: jest.fn(),
-    updateJoinRequestStatus: jest.fn(),
-    leaveGroupAtomic: jest.fn(),
-    approveJoinRequestAtomic: jest.fn(),
-    banMemberAtomic: jest.fn(),
-    listMembersPaginated: jest.fn(),
-    listMyGroupsByActivity: jest.fn(),
-  };
-}

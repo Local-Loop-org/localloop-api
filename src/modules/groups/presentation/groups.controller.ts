@@ -27,6 +27,7 @@ import { ResolveJoinRequestUseCase } from '../application/use-cases/resolve-join
 import { BanMemberUseCase } from '../application/use-cases/ban-member/ban-member.use-case';
 import { ListGroupMembersUseCase } from '../application/use-cases/list-group-members/list-group-members.use-case';
 import { ListMyGroupsUseCase } from '../application/use-cases/list-my-groups/list-my-groups.use-case';
+import { DeleteGroupUseCase } from '../application/use-cases/delete-group/delete-group.use-case';
 
 import {
   CreateGroupDto,
@@ -66,6 +67,7 @@ export class GroupsController {
     private readonly banMember: BanMemberUseCase,
     private readonly listMembers: ListGroupMembersUseCase,
     private readonly listMyGroups: ListMyGroupsUseCase,
+    private readonly deleteGroup: DeleteGroupUseCase,
   ) {}
 
   @Post()
@@ -152,6 +154,15 @@ export class GroupsController {
     @Param('userId', new ParseUUIDPipe()) userId: string,
   ): Promise<void> {
     await this.banMember.execute(req.user.id, id, userId);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async delete(
+    @Request() req: { user: User },
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ): Promise<void> {
+    await this.deleteGroup.execute(req.user.id, id);
   }
 
   @Get(':id/members')

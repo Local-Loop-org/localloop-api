@@ -14,7 +14,7 @@ import {
 import {
   IMessageRepository,
   MESSAGE_REPOSITORY,
-} from '../../../domain/repositories/i-message.repository';
+} from '@/modules/messages/domain/repositories/i-message.repository';
 import { SendMessageDto, SendMessageResponseDto } from './send-message.dto';
 
 @Injectable()

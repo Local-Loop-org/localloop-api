@@ -59,6 +59,16 @@ export class GroupOrmEntity {
   })
   privacy!: GroupPrivacy;
 
+  @Column({
+    name: 'radius_km',
+    type: 'numeric',
+    precision: 5,
+    scale: 2,
+    default: 5,
+    transformer: numericTransformer,
+  })
+  radiusKm!: number;
+
   @Column({ name: 'owner_id', type: 'uuid' })
   @Index()
   ownerId!: string;

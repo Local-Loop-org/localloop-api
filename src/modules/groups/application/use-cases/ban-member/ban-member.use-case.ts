@@ -8,7 +8,7 @@ import { MemberRole, MemberStatus } from '@localloop/shared-types';
 import {
   GROUP_REPOSITORY,
   IGroupRepository,
-} from '../../../domain/repositories/i-group.repository';
+} from '@domain/repositories/i-group.repository';
 
 @Injectable()
 export class BanMemberUseCase {

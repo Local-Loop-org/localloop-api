@@ -11,15 +11,15 @@ import {
   MemberStatus,
   RequestStatus,
 } from '@localloop/shared-types';
-import { Group } from '../../../domain/entities/group.entity';
-import { GroupMember } from '../../../domain/entities/group-member.entity';
-import { GroupJoinRequest } from '../../../domain/entities/group-join-request.entity';
-import { IGroupRepository } from '../../../domain/repositories/i-group.repository';
+import { Group } from '@domain/entities/group.entity';
+import { GroupMember } from '@domain/entities/group-member.entity';
+import { GroupJoinRequest } from '@domain/entities/group-join-request.entity';
 import { JoinGroupUseCase } from './join-group.use-case';
+import { buildGroupRepoMock } from '@/modules/groups/test/group-repo.mock';
 
 describe('JoinGroupUseCase', () => {
   let useCase: JoinGroupUseCase;
-  let groupRepo: jest.Mocked<IGroupRepository>;
+  let groupRepo: ReturnType<typeof buildGroupRepoMock>;
 
   const buildGroup = (
     privacy: GroupPrivacy,
@@ -35,6 +35,7 @@ describe('JoinGroupUseCase', () => {
       -46.63,
       'Morumbi',
       privacy,
+      5,
       'owner-1',
       10,
       true,
@@ -177,27 +178,3 @@ describe('JoinGroupUseCase', () => {
     expect(result.body).toEqual({ status: 'pending' });
   });
 });
-
-function buildGroupRepoMock(): jest.Mocked<IGroupRepository> {
-  return {
-    createGroupWithOwner: jest.fn(),
-    findById: jest.fn(),
-    findNearby: jest.fn(),
-    findMember: jest.fn(),
-    addMember: jest.fn(),
-    incrementMemberCount: jest.fn(),
-    decrementMemberCount: jest.fn(),
-    removeMember: jest.fn(),
-    updateMemberStatus: jest.fn(),
-    findPendingJoinRequest: jest.fn(),
-    createJoinRequest: jest.fn(),
-    listJoinRequestsByStatus: jest.fn(),
-    findJoinRequestById: jest.fn(),
-    updateJoinRequestStatus: jest.fn(),
-    leaveGroupAtomic: jest.fn(),
-    approveJoinRequestAtomic: jest.fn(),
-    banMemberAtomic: jest.fn(),
-    listMembersPaginated: jest.fn(),
-    listMyGroupsByActivity: jest.fn(),
-  };
-}

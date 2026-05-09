@@ -1,4 +1,4 @@
-import { Message } from '../../domain/entities/message.entity';
+import { Message } from '@/modules/messages/domain/entities/message.entity';
 import { MessageOrmEntity } from '../repositories/message.entity';
 
 export class MessageMapper {
