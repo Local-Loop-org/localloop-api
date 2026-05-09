@@ -10,10 +10,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { AnchorType, GroupPrivacy } from '@localloop/shared-types';
-import {
-  RADIUS_KM_MAX,
-  RADIUS_KM_MIN,
-} from '@domain/anchor-radius-defaults';
+import { RADIUS_KM_MAX, RADIUS_KM_MIN } from '@domain/anchor-radius-defaults';
 
 export class CreateGroupDto {
   @IsString()

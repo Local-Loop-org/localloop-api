@@ -41,8 +41,7 @@ interface AuthedSocket extends Socket {
 
 const GROUP_ROOM_PREFIX = 'group:';
 const groupRoom = (groupId: string) => `${GROUP_ROOM_PREFIX}${groupId}`;
-const groupIdFromRoom = (room: string) =>
-  room.slice(GROUP_ROOM_PREFIX.length);
+const groupIdFromRoom = (room: string) => room.slice(GROUP_ROOM_PREFIX.length);
 
 @WebSocketGateway({ namespace: '/chat', cors: { origin: '*' } })
 export class ChatGateway

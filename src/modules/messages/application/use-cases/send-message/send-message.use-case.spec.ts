@@ -163,4 +163,3 @@ function buildMessageRepoMock(): jest.Mocked<IMessageRepository> {
     listByGroup: jest.fn(),
   };
 }
-

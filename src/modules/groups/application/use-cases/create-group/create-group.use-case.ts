@@ -18,7 +18,8 @@ export class CreateGroupUseCase {
     dto: CreateGroupDto,
   ): Promise<CreateGroupResponseDto> {
     const anchorGeohash = coordinatesToGeohash(dto.lat, dto.lng);
-    const radiusKm = dto.radiusKm ?? DEFAULT_RADIUS_KM_BY_ANCHOR[dto.anchorType];
+    const radiusKm =
+      dto.radiusKm ?? DEFAULT_RADIUS_KM_BY_ANCHOR[dto.anchorType];
     const group = await this.groupRepo.createGroupWithOwner({
       name: dto.name,
       description: dto.description ?? null,
