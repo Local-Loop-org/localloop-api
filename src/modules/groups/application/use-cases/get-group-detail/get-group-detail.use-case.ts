@@ -34,6 +34,7 @@ export class GetGroupDetailUseCase {
       privacy: group.privacy,
       memberCount: group.memberCount,
       myRole,
+      createdAt: group.createdAt.toISOString(),
     };
   }
 }
