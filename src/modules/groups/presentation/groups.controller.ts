@@ -81,9 +81,10 @@ export class GroupsController {
 
   @Get('nearby')
   async nearby(
+    @Request() req: { user: User },
     @Query() query: DiscoverNearbyGroupsQueryDto,
   ): Promise<DiscoverNearbyGroupsResponseDto> {
-    return this.discoverNearby.execute(query);
+    return this.discoverNearby.execute(query, req.user.id);
   }
 
   // Must be registered before @Get(':id') so the literal 'me' is not parsed as a UUID.

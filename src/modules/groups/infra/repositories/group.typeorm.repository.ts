@@ -7,6 +7,7 @@ import {
   IGroupRepository,
   JoinRequestWithRequester,
   MyGroupsCursor,
+  NearbyGroupRow,
   PaginatedMembers,
   PaginatedMyGroups,
 } from '@domain/repositories/i-group.repository';
@@ -72,11 +73,25 @@ export class GroupTypeORMRepository implements IGroupRepository {
     return entity ? GroupMapper.toDomain(entity) : null;
   }
 
-  async findNearby(geohashPrefixes: string[]): Promise<Group[]> {
+  async findNearby(
+    userId: string,
+    geohashPrefixes: string[],
+  ): Promise<NearbyGroupRow[]> {
     if (geohashPrefixes.length === 0) return [];
-    const entities = await this.groupsRepo
+    const result = await this.groupsRepo
       .createQueryBuilder('g')
+      .leftJoin(
+        GroupMemberOrmEntity,
+        'gm',
+        'gm.group_id = g.id AND gm.user_id = :userId',
+        { userId },
+      )
+      .addSelect('gm.role', 'gm_role')
+      .addSelect('gm.status', 'gm_status')
       .where('g.is_active = TRUE')
+      .andWhere('(gm.status IS NULL OR gm.status != :banned)', {
+        banned: MemberStatus.BANNED,
+      })
       .andWhere(
         new Brackets((b) => {
           geohashPrefixes.forEach((cell, i) => {
@@ -86,8 +101,21 @@ export class GroupTypeORMRepository implements IGroupRepository {
           });
         }),
       )
-      .getMany();
-    return entities.map((e) => GroupMapper.toDomain(e));
+      .getRawAndEntities();
+
+    return result.entities.map((entity, i) => {
+      const raw = result.raw[i] as {
+        gm_role: MemberRole | null;
+        gm_status: MemberStatus | null;
+      };
+      const status = raw.gm_status ?? null;
+      const role = raw.gm_role ?? null;
+      return {
+        group: GroupMapper.toDomain(entity),
+        memberStatus: status,
+        myRole: status === MemberStatus.ACTIVE ? role : null,
+      };
+    });
   }
 
   async findMember(

@@ -86,10 +86,7 @@ describe('CreateGroupUseCase', () => {
 
     await useCase.execute('user-1', buildDto({ anchorType: AnchorType.CONDO }));
     await useCase.execute('user-1', buildDto({ anchorType: AnchorType.CITY }));
-    await useCase.execute(
-      'user-1',
-      buildDto({ anchorType: AnchorType.EVENT }),
-    );
+    await useCase.execute('user-1', buildDto({ anchorType: AnchorType.EVENT }));
 
     const calls = groupRepo.createGroupWithOwner.mock.calls;
     expect(calls[0][0].radiusKm).toBe(0.1);

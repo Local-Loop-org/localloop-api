@@ -76,16 +76,26 @@ export interface ApproveJoinRequestAtomicParams {
   resolvedAt: Date;
 }
 
+export interface NearbyGroupRow {
+  group: Group;
+  /** null unless the caller is an ACTIVE member */
+  myRole: MemberRole | null;
+  /** null when the caller has no row in group_members */
+  memberStatus: MemberStatus | null;
+}
+
 export interface IGroupRepository {
   createGroupWithOwner(data: CreateGroupData): Promise<Group>;
   findById(id: string): Promise<Group | null>;
   /**
    * Find active groups whose `anchor_geohash` starts with any of the given
-   * prefixes. Stored geohashes are precision 6, so a precision-6 prefix
-   * matches that exact cell while precision-5/4 prefixes match all
-   * hierarchical descendants. Distance filtering is applied by callers.
+   * prefixes, enriched with the caller's membership status.
+   * Banned-from groups are excluded entirely.
    */
-  findNearby(geohashPrefixes: string[]): Promise<Group[]>;
+  findNearby(
+    userId: string,
+    geohashPrefixes: string[],
+  ): Promise<NearbyGroupRow[]>;
 
   findMember(groupId: string, userId: string): Promise<GroupMember | null>;
   addMember(
