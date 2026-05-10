@@ -9,4 +9,5 @@ export class GroupDetailDto {
   privacy!: GroupPrivacy;
   memberCount!: number;
   myRole!: MemberRole | null;
+  createdAt!: string;
 }
