@@ -4,6 +4,7 @@ export function buildGroupRepoMock(): jest.Mocked<IGroupRepository> {
   return {
     createGroupWithOwner: jest.fn(),
     findById: jest.fn(),
+    updateGroup: jest.fn(),
     findNearby: jest.fn(),
     findMember: jest.fn(),
     addMember: jest.fn(),
