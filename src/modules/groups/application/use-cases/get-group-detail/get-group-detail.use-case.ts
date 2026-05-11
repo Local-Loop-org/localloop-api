@@ -32,6 +32,7 @@ export class GetGroupDetailUseCase {
       anchorType: group.anchorType,
       anchorLabel: group.anchorLabel,
       privacy: group.privacy,
+      radiusKm: group.radiusKm,
       memberCount: group.memberCount,
       myRole,
       createdAt: group.createdAt.toISOString(),

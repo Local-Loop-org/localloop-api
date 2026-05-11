@@ -28,6 +28,7 @@ import { BanMemberUseCase } from '../application/use-cases/ban-member/ban-member
 import { ListGroupMembersUseCase } from '../application/use-cases/list-group-members/list-group-members.use-case';
 import { ListMyGroupsUseCase } from '../application/use-cases/list-my-groups/list-my-groups.use-case';
 import { DeleteGroupUseCase } from '../application/use-cases/delete-group/delete-group.use-case';
+import { UpdateGroupUseCase } from '../application/use-cases/update-group/update-group.use-case';
 
 import {
   CreateGroupDto,
@@ -38,6 +39,7 @@ import {
   DiscoverNearbyGroupsResponseDto,
 } from '../application/use-cases/discover-nearby-groups/discover-nearby-groups.dto';
 import { GroupDetailDto } from '../application/use-cases/get-group-detail/get-group-detail.dto';
+import { UpdateGroupDto } from '../application/use-cases/update-group/update-group.dto';
 import { ListJoinRequestsResponseDto } from '../application/use-cases/list-join-requests/list-join-requests.dto';
 import {
   ResolveJoinRequestDto,
@@ -68,6 +70,7 @@ export class GroupsController {
     private readonly listMembers: ListGroupMembersUseCase,
     private readonly listMyGroups: ListMyGroupsUseCase,
     private readonly deleteGroup: DeleteGroupUseCase,
+    private readonly updateGroup: UpdateGroupUseCase,
   ) {}
 
   @Post()
@@ -102,6 +105,16 @@ export class GroupsController {
     @Param('id', new ParseUUIDPipe()) id: string,
   ): Promise<GroupDetailDto> {
     return this.getGroupDetail.execute(req.user.id, id);
+  }
+
+  @Patch(':id')
+  @HttpCode(HttpStatus.OK)
+  async update(
+    @Request() req: { user: User },
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: UpdateGroupDto,
+  ): Promise<GroupDetailDto> {
+    return this.updateGroup.execute(req.user.id, id, dto);
   }
 
   @Post(':id/join')

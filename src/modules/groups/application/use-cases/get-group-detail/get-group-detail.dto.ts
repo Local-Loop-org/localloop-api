@@ -7,6 +7,7 @@ export class GroupDetailDto {
   anchorType!: AnchorType;
   anchorLabel!: string;
   privacy!: GroupPrivacy;
+  radiusKm!: number;
   memberCount!: number;
   myRole!: MemberRole | null;
   createdAt!: string;

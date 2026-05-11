@@ -23,6 +23,14 @@ export interface CreateGroupData {
   memberCount: number;
 }
 
+export interface UpdateGroupData {
+  name?: string;
+  description?: string | null;
+  anchorLabel?: string;
+  privacy?: GroupPrivacy;
+  radiusKm?: number;
+}
+
 export interface JoinRequestWithRequester {
   request: GroupJoinRequest;
   requesterDisplayName: string;
@@ -87,6 +95,7 @@ export interface NearbyGroupRow {
 export interface IGroupRepository {
   createGroupWithOwner(data: CreateGroupData): Promise<Group>;
   findById(id: string): Promise<Group | null>;
+  updateGroup(id: string, data: UpdateGroupData): Promise<Group>;
   /**
    * Find active groups whose `anchor_geohash` starts with any of the given
    * prefixes, enriched with the caller's membership status.

@@ -10,6 +10,7 @@ import {
   NearbyGroupRow,
   PaginatedMembers,
   PaginatedMyGroups,
+  UpdateGroupData,
 } from '@domain/repositories/i-group.repository';
 import { AnchorType } from '@localloop/shared-types';
 import { Group } from '@domain/entities/group.entity';
@@ -71,6 +72,12 @@ export class GroupTypeORMRepository implements IGroupRepository {
   async findById(id: string): Promise<Group | null> {
     const entity = await this.groupsRepo.findOneBy({ id });
     return entity ? GroupMapper.toDomain(entity) : null;
+  }
+
+  async updateGroup(id: string, data: UpdateGroupData): Promise<Group> {
+    await this.groupsRepo.update({ id }, data);
+    const entity = await this.groupsRepo.findOneBy({ id });
+    return GroupMapper.toDomain(entity!);
   }
 
   async findNearby(
