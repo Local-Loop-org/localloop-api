@@ -11,7 +11,11 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Namespace, Socket } from 'socket.io';
-import { MemberStatus, PresenceUpdate } from '@localloop/shared-types';
+import {
+  GroupPrivacy,
+  MemberStatus,
+  PresenceUpdate,
+} from '@localloop/shared-types';
 
 import { User } from '@/modules/auth/domain/entities/user.entity';
 import {
@@ -28,6 +32,10 @@ interface JoinGroupPayload {
   groupId: string;
 }
 
+interface WatchPresencePayload {
+  groupIds: string[];
+}
+
 interface SendMessagePayload {
   groupId: string;
   content: string | null;
@@ -40,7 +48,10 @@ interface AuthedSocket extends Socket {
 }
 
 const GROUP_ROOM_PREFIX = 'group:';
+const PRESENCE_ROOM_PREFIX = 'presence:';
+const MAX_WATCHED_GROUPS = 50;
 const groupRoom = (groupId: string) => `${GROUP_ROOM_PREFIX}${groupId}`;
+const presenceRoom = (groupId: string) => `${PRESENCE_ROOM_PREFIX}${groupId}`;
 const groupIdFromRoom = (room: string) => room.slice(GROUP_ROOM_PREFIX.length);
 
 @WebSocketGateway({ namespace: '/chat', cors: { origin: '*' } })
@@ -109,6 +120,29 @@ export class ChatGateway
     const sockets = await this.server.in(room).fetchSockets();
     const payload: PresenceUpdate = { groupId, count: sockets.length };
     this.server.to(room).emit('presence_update', payload);
+    this.server.to(presenceRoom(groupId)).emit('presence_update', payload);
+  }
+
+  private normalizeGroupIds(
+    payload: WatchPresencePayload | undefined,
+  ): string[] {
+    if (!payload || !Array.isArray(payload.groupIds)) return [];
+    return [...new Set(payload.groupIds)]
+      .filter((id) => typeof id === 'string' && id.length > 0)
+      .slice(0, MAX_WATCHED_GROUPS);
+  }
+
+  private async canWatchPresence(
+    groupId: string,
+    userId: string,
+  ): Promise<boolean> {
+    const group = await this.groupRepo.findById(groupId);
+    if (!group || !group.isActive) return false;
+    const member = await this.groupRepo.findMember(groupId, userId);
+    if (member?.status === MemberStatus.BANNED) return false;
+    if (group.privacy === GroupPrivacy.OPEN) return true;
+
+    return member?.status === MemberStatus.ACTIVE;
   }
 
   @SubscribeMessage('join_group')
@@ -128,6 +162,33 @@ export class ChatGateway
     await socket.join(groupRoom(payload.groupId));
     await this.emitPresence(payload.groupId);
     return { ok: true };
+  }
+
+  @SubscribeMessage('watch_presence')
+  async onWatchPresence(
+    @ConnectedSocket() socket: AuthedSocket,
+    @MessageBody() payload: WatchPresencePayload | undefined,
+  ): Promise<{ ok: boolean }> {
+    const userId = socket.data.user.id;
+    const groupIds = this.normalizeGroupIds(payload);
+    for (const groupId of groupIds) {
+      const allowed = await this.canWatchPresence(groupId, userId);
+      if (!allowed) continue;
+      await socket.join(presenceRoom(groupId));
+      await this.emitPresence(groupId);
+    }
+    return { ok: true };
+  }
+
+  @SubscribeMessage('unwatch_presence')
+  async onUnwatchPresence(
+    @ConnectedSocket() socket: AuthedSocket,
+    @MessageBody() payload: WatchPresencePayload | undefined,
+  ): Promise<void> {
+    const groupIds = this.normalizeGroupIds(payload);
+    await Promise.all(
+      groupIds.map((groupId) => socket.leave(presenceRoom(groupId))),
+    );
   }
 
   @SubscribeMessage('leave_group')

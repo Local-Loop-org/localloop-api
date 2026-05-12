@@ -1,12 +1,15 @@
 import { ForbiddenException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import {
+  AnchorType,
   DmPermission,
+  GroupPrivacy,
   MemberRole,
   MemberStatus,
   Provider,
 } from '@localloop/shared-types';
 
+import { Group } from '@/modules/groups/domain/entities/group.entity';
 import { GroupMember } from '@/modules/groups/domain/entities/group-member.entity';
 import { buildGroupRepoMock } from '@/modules/groups/test/group-repo.mock';
 import { User } from '@/modules/auth/domain/entities/user.entity';
@@ -72,6 +75,27 @@ describe('ChatGateway', () => {
       MemberRole.MEMBER,
       status,
       new Date(),
+    );
+
+  const buildGroup = (overrides: Partial<Group> = {}): Group =>
+    Object.assign(
+      new Group(
+        'group-1',
+        'Morumbi Runners',
+        null,
+        AnchorType.NEIGHBORHOOD,
+        '6gyf4b',
+        -23.55,
+        -46.63,
+        'Morumbi',
+        GroupPrivacy.OPEN,
+        25,
+        'owner-1',
+        12,
+        true,
+        new Date(),
+      ),
+      overrides,
     );
 
   const roomMembers: Map<string, Set<SocketMock>> = new Map();
@@ -351,6 +375,113 @@ describe('ChatGateway', () => {
 
       expect(server.in).not.toHaveBeenCalled();
       expect(roomEmit).not.toHaveBeenCalled();
+    });
+
+    it('lets an open-group non-member watch presence without joining the counted room', async () => {
+      const socket = makeSocket();
+      socket.data.user = buildUser();
+      groupRepo.findById.mockResolvedValue(buildGroup());
+
+      const ack = await gateway.onWatchPresence(socket as never, {
+        groupIds: ['group-1'],
+      });
+
+      expect(ack).toEqual({ ok: true });
+      expect(socket.join).toHaveBeenCalledWith('presence:group-1');
+      expect(socket.join).not.toHaveBeenCalledWith('group:group-1');
+      expect(roomEmit).toHaveBeenCalledWith('presence_update', {
+        groupId: 'group-1',
+        count: 0,
+      });
+    });
+
+    it('suppresses an open group when the watcher is banned', async () => {
+      const socket = makeSocket();
+      socket.data.user = buildUser();
+      groupRepo.findById.mockResolvedValue(buildGroup());
+      groupRepo.findMember.mockResolvedValue(buildMember(MemberStatus.BANNED));
+
+      await gateway.onWatchPresence(socket as never, {
+        groupIds: ['group-1'],
+      });
+
+      expect(socket.join).not.toHaveBeenCalled();
+      expect(roomEmit).not.toHaveBeenCalledWith(
+        'presence_update',
+        expect.anything(),
+      );
+    });
+
+    it('suppresses a closed group for a non-member watcher', async () => {
+      const socket = makeSocket();
+      socket.data.user = buildUser();
+      groupRepo.findById.mockResolvedValue(
+        buildGroup({ privacy: GroupPrivacy.APPROVAL_REQUIRED }),
+      );
+      groupRepo.findMember.mockResolvedValue(null);
+
+      const ack = await gateway.onWatchPresence(socket as never, {
+        groupIds: ['group-1'],
+      });
+
+      expect(ack).toEqual({ ok: true });
+      expect(socket.join).not.toHaveBeenCalled();
+      expect(roomEmit).not.toHaveBeenCalledWith(
+        'presence_update',
+        expect.anything(),
+      );
+    });
+
+    it('lets an active member watch a closed group', async () => {
+      const socket = makeSocket();
+      socket.data.user = buildUser();
+      groupRepo.findById.mockResolvedValue(
+        buildGroup({ privacy: GroupPrivacy.APPROVAL_REQUIRED }),
+      );
+      groupRepo.findMember.mockResolvedValue(buildMember(MemberStatus.ACTIVE));
+
+      await gateway.onWatchPresence(socket as never, { groupIds: ['group-1'] });
+
+      expect(socket.join).toHaveBeenCalledWith('presence:group-1');
+      expect(roomEmit).toHaveBeenCalledWith('presence_update', {
+        groupId: 'group-1',
+        count: 0,
+      });
+    });
+
+    it('does not let watcher sockets inflate the chat presence count', async () => {
+      const watcher = makeSocket();
+      watcher.data.user = buildUser();
+      const chatter = makeSocket();
+      chatter.data.user = buildUser({ id: 'user-2' });
+      groupRepo.findById.mockResolvedValue(buildGroup());
+      groupRepo.findMember.mockResolvedValue(buildMember(MemberStatus.ACTIVE));
+
+      await gateway.onWatchPresence(watcher as never, {
+        groupIds: ['group-1'],
+      });
+      roomEmit.mockClear();
+
+      await gateway.onJoinGroup(chatter as never, { groupId: 'group-1' });
+
+      expect(watcher.rooms.has('presence:group-1')).toBe(true);
+      expect(watcher.rooms.has('group:group-1')).toBe(false);
+      expect(roomEmit).toHaveBeenCalledWith('presence_update', {
+        groupId: 'group-1',
+        count: 1,
+      });
+    });
+
+    it('leaves presence observer rooms on unwatch_presence', async () => {
+      const socket = makeSocket();
+      socket.data.user = buildUser();
+
+      await gateway.onUnwatchPresence(socket as never, {
+        groupIds: ['group-1', 'group-2'],
+      });
+
+      expect(socket.leave).toHaveBeenCalledWith('presence:group-1');
+      expect(socket.leave).toHaveBeenCalledWith('presence:group-2');
     });
   });
 });
