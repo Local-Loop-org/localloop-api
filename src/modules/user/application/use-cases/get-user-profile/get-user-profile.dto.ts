@@ -1,4 +1,9 @@
-import { Provider, DmPermission, UserSummary } from '@localloop/shared-types';
+import {
+  DmPermission,
+  Provider,
+  PushPermissionStatus,
+  UserSummary,
+} from '@localloop/shared-types';
 import { User } from '@/modules/auth/domain/entities/user.entity';
 
 export class UserProfileDto implements UserSummary {
@@ -6,6 +11,7 @@ export class UserProfileDto implements UserSummary {
   displayName!: string;
   avatarUrl!: string | null;
   dmPermission!: DmPermission;
+  pushPermissionStatus!: PushPermissionStatus | null;
   provider!: Provider;
   createdAt!: string;
 
@@ -15,6 +21,7 @@ export class UserProfileDto implements UserSummary {
       displayName: user.displayName,
       avatarUrl: user.avatarUrl,
       dmPermission: user.dmPermission,
+      pushPermissionStatus: user.pushPermissionStatus,
       provider: user.provider,
       createdAt: user.createdAt.toISOString(),
     };

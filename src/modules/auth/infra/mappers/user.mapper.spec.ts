@@ -1,4 +1,8 @@
-import { DmPermission, Provider } from '@localloop/shared-types';
+import {
+  DmPermission,
+  Provider,
+  PushPermissionStatus,
+} from '@localloop/shared-types';
 import { User } from '@/modules/auth/domain/entities/user.entity';
 import { UserEntity } from '../repositories/user.entity';
 import { UserMapper } from './user.mapper';
@@ -16,6 +20,7 @@ describe('UserMapper', () => {
       true,
       new Date('2026-02-01T00:00:00.000Z'),
       new Date('2026-01-01T00:00:00.000Z'),
+      PushPermissionStatus.GRANTED,
     );
 
   it('toPersistence carries every domain field, including createdAt', () => {
@@ -32,6 +37,7 @@ describe('UserMapper', () => {
       isActive: true,
       lastSeenAt: new Date('2026-02-01T00:00:00.000Z'),
       createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      pushPermissionStatus: PushPermissionStatus.GRANTED,
     });
   });
 

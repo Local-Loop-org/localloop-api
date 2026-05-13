@@ -5,7 +5,11 @@ import {
   CreateDateColumn,
   Index,
 } from 'typeorm';
-import { Provider, DmPermission } from '@localloop/shared-types';
+import {
+  DmPermission,
+  Provider,
+  PushPermissionStatus,
+} from '@localloop/shared-types';
 
 @Entity('users')
 @Index(['providerId', 'provider'], { unique: true })
@@ -39,6 +43,14 @@ export class UserEntity {
 
   @Column({ type: 'boolean', name: 'is_active', default: true })
   isActive!: boolean;
+
+  @Column({
+    name: 'push_permission_status',
+    type: 'enum',
+    enum: PushPermissionStatus,
+    nullable: true,
+  })
+  pushPermissionStatus!: PushPermissionStatus | null;
 
   @Column({
     name: 'last_seen_at',
