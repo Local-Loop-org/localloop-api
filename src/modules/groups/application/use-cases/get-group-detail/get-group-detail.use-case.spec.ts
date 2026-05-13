@@ -69,6 +69,8 @@ describe('GetGroupDetailUseCase', () => {
 
     expect(result.myRole).toBe(MemberRole.OWNER);
     expect(result.id).toBe('group-1');
+    expect(result.anchorLat).toBe(-23.55);
+    expect(result.anchorLng).toBe(-46.63);
     expect(result.memberCount).toBe(12);
   });
 

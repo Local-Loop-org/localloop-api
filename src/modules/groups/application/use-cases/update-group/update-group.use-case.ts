@@ -58,6 +58,8 @@ export class UpdateGroupUseCase {
       name: updated.name,
       description: updated.description,
       anchorType: updated.anchorType,
+      anchorLat: updated.anchorLat,
+      anchorLng: updated.anchorLng,
       anchorLabel: updated.anchorLabel,
       privacy: updated.privacy,
       radiusKm: updated.radiusKm,
