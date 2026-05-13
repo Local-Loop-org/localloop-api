@@ -26,6 +26,8 @@ import {
   GROUP_REPOSITORY,
   IGroupRepository,
 } from '@/modules/groups/domain/repositories/i-group.repository';
+import { SendGroupMessagePushNotificationsUseCase } from '@/modules/notifications/application/use-cases/send-group-message-push-notifications/send-group-message-push-notifications.use-case';
+import { SendMessageResponseDto } from '../application/use-cases/send-message/send-message.dto';
 import { SendMessageUseCase } from '../application/use-cases/send-message/send-message.use-case';
 
 interface JoinGroupPayload {
@@ -68,6 +70,7 @@ export class ChatGateway
     @Inject(USER_REPOSITORY) private readonly userRepo: IUserRepository,
     @Inject(GROUP_REPOSITORY) private readonly groupRepo: IGroupRepository,
     private readonly sendMessage: SendMessageUseCase,
+    private readonly sendGroupMessagePush: SendGroupMessagePushNotificationsUseCase,
   ) {}
 
   afterInit(server: Namespace): void {
@@ -212,6 +215,11 @@ export class ChatGateway
         { content: payload.content ?? null },
       );
       this.server.to(groupRoom(payload.groupId)).emit('new_message', result);
+      void this.notifyGroupMessage(result).catch(() => {
+        this.logger.warn(
+          `Push notification fan-out failed for message ${result.id}`,
+        );
+      });
     } catch (err) {
       const e = err as {
         response?: { error?: string; message?: string };
@@ -222,6 +230,26 @@ export class ChatGateway
         message: e.response?.message ?? e.message ?? 'Failed to send message',
       });
     }
+  }
+
+  private async notifyGroupMessage(
+    message: SendMessageResponseDto,
+  ): Promise<void> {
+    const sockets = await this.server
+      .in(groupRoom(message.groupId))
+      .fetchSockets();
+    const activeUserIds = sockets
+      .map((socket) => (socket.data as { user?: User } | undefined)?.user?.id)
+      .filter((id): id is string => typeof id === 'string' && id.length > 0);
+
+    await this.sendGroupMessagePush.execute({
+      groupId: message.groupId,
+      messageId: message.id,
+      senderId: message.senderId,
+      senderName: message.senderName,
+      content: message.content,
+      excludedUserIds: activeUserIds,
+    });
   }
 
   private extractToken(socket: Socket): string | null {

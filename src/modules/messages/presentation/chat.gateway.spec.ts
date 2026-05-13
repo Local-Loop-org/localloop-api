@@ -14,6 +14,7 @@ import { GroupMember } from '@/modules/groups/domain/entities/group-member.entit
 import { buildGroupRepoMock } from '@/modules/groups/test/group-repo.mock';
 import { User } from '@/modules/auth/domain/entities/user.entity';
 import { IUserRepository } from '@/modules/auth/domain/repositories/i-user.repository';
+import { SendGroupMessagePushNotificationsUseCase } from '@/modules/notifications/application/use-cases/send-group-message-push-notifications/send-group-message-push-notifications.use-case';
 import { SendMessageUseCase } from '../application/use-cases/send-message/send-message.use-case';
 import { ChatGateway } from './chat.gateway';
 
@@ -47,6 +48,7 @@ describe('ChatGateway', () => {
   let userRepo: jest.Mocked<IUserRepository>;
   let groupRepo: ReturnType<typeof buildGroupRepoMock>;
   let sendMessage: jest.Mocked<SendMessageUseCase>;
+  let sendGroupMessagePush: jest.Mocked<SendGroupMessagePushNotificationsUseCase>;
   let server: ServerMock;
   let roomEmit: jest.Mock;
 
@@ -146,6 +148,9 @@ describe('ChatGateway', () => {
     sendMessage = {
       execute: jest.fn(),
     } as unknown as jest.Mocked<SendMessageUseCase>;
+    sendGroupMessagePush = {
+      execute: jest.fn(),
+    } as unknown as jest.Mocked<SendGroupMessagePushNotificationsUseCase>;
 
     roomMembers.clear();
     roomEmit = jest.fn();
@@ -157,7 +162,13 @@ describe('ChatGateway', () => {
       })),
     };
 
-    gateway = new ChatGateway(jwtService, userRepo, groupRepo, sendMessage);
+    gateway = new ChatGateway(
+      jwtService,
+      userRepo,
+      groupRepo,
+      sendMessage,
+      sendGroupMessagePush,
+    );
     (gateway as unknown as { server: ServerMock }).server = server;
   });
 
@@ -270,6 +281,75 @@ describe('ChatGateway', () => {
       expect(roomEmit).toHaveBeenCalledWith('new_message', broadcast);
     });
 
+    it('notifies offline group members after a successful send', async () => {
+      const socket = makeSocket();
+      socket.data.user = buildUser({ id: 'user-1' });
+      const onlinePeer = makeSocket();
+      onlinePeer.data.user = buildUser({ id: 'user-2' });
+      await onlinePeer.join('group:group-1');
+      const broadcast = {
+        id: 'msg-1',
+        groupId: 'group-1',
+        senderId: 'user-1',
+        senderName: 'Alice',
+        senderAvatar: null,
+        content: 'hi',
+        mediaUrl: null,
+        mediaType: null,
+        createdAt: new Date().toISOString(),
+      };
+      sendMessage.execute.mockResolvedValue(broadcast);
+
+      await gateway.onSendMessage(socket as never, {
+        groupId: 'group-1',
+        content: 'hi',
+        storageKey: null,
+        mediaType: null,
+      });
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(sendGroupMessagePush.execute).toHaveBeenCalledWith({
+        groupId: 'group-1',
+        messageId: 'msg-1',
+        senderId: 'user-1',
+        senderName: 'Alice',
+        content: 'hi',
+        excludedUserIds: ['user-2'],
+      });
+    });
+
+    it('does not fail message delivery when push fan-out rejects', async () => {
+      const socket = makeSocket();
+      socket.data.user = buildUser();
+      const broadcast = {
+        id: 'msg-1',
+        groupId: 'group-1',
+        senderId: 'user-1',
+        senderName: 'Alice',
+        senderAvatar: null,
+        content: 'hi',
+        mediaUrl: null,
+        mediaType: null,
+        createdAt: new Date().toISOString(),
+      };
+      sendMessage.execute.mockResolvedValue(broadcast);
+      sendGroupMessagePush.execute.mockRejectedValue(new Error('Expo down'));
+
+      await gateway.onSendMessage(socket as never, {
+        groupId: 'group-1',
+        content: 'hi',
+        storageKey: null,
+        mediaType: null,
+      });
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(roomEmit).toHaveBeenCalledWith('new_message', broadcast);
+      expect(socket.emit).not.toHaveBeenCalledWith(
+        'error',
+        expect.anything(),
+      );
+    });
+
     it('emits error event when the use case throws', async () => {
       const socket = makeSocket();
       socket.data.user = buildUser();
@@ -292,6 +372,7 @@ describe('ChatGateway', () => {
         'error',
         expect.objectContaining({ code: 'FORBIDDEN' }),
       );
+      expect(sendGroupMessagePush.execute).not.toHaveBeenCalled();
     });
   });
 

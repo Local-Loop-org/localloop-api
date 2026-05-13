@@ -49,8 +49,10 @@ describe('RegisterCurrentPushDeviceUseCase', () => {
     };
     pushDeviceRepo = {
       upsertCurrentDevice: jest.fn(),
+      listEnabledGroupMemberDevices: jest.fn(),
       disableCurrentDevice: jest.fn(),
       disableAllForUser: jest.fn(),
+      disableByProviderToken: jest.fn(),
     };
     pushProvider = {
       provider: PushProvider.EXPO,

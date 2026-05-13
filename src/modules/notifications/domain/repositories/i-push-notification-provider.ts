@@ -10,6 +10,7 @@ export interface PushSendResult {
   token: string;
   ok: boolean;
   error?: string;
+  errorCode?: string;
 }
 
 export interface IPushNotificationProvider {

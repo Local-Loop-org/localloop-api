@@ -6,8 +6,10 @@ describe('DisableCurrentPushDeviceUseCase', () => {
   it('disables only the current installation for the user', async () => {
     const pushDeviceRepo: jest.Mocked<IPushDeviceRepository> = {
       upsertCurrentDevice: jest.fn(),
+      listEnabledGroupMemberDevices: jest.fn(),
       disableCurrentDevice: jest.fn(),
       disableAllForUser: jest.fn(),
+      disableByProviderToken: jest.fn(),
     };
     const useCase = new DisableCurrentPushDeviceUseCase(pushDeviceRepo);
 

@@ -39,8 +39,10 @@ describe('UpdatePushPermissionUseCase', () => {
     };
     pushDeviceRepo = {
       upsertCurrentDevice: jest.fn(),
+      listEnabledGroupMemberDevices: jest.fn(),
       disableCurrentDevice: jest.fn(),
       disableAllForUser: jest.fn(),
+      disableByProviderToken: jest.fn(),
     };
     useCase = new UpdatePushPermissionUseCase(userRepo, pushDeviceRepo);
   });
