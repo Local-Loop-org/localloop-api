@@ -39,6 +39,8 @@ export class ExpoPushNotificationProvider implements IPushNotificationProvider {
           token: normalizedToken ?? '',
           ok: ticket.status === 'ok',
           error: ticket.status === 'error' ? ticket.message : undefined,
+          errorCode:
+            ticket.status === 'error' ? ticket.details?.error : undefined,
         });
       });
     }
