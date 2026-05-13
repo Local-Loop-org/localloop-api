@@ -105,6 +105,7 @@ describe('UpdateUserProfileUseCase', () => {
       displayName: 'Dora',
       avatarUrl: 'https://avatar.png',
       dmPermission: DmPermission.MEMBERS,
+      pushPermissionStatus: null,
       provider: Provider.GOOGLE,
       createdAt: '2026-01-01T00:00:00.000Z',
     });

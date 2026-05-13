@@ -5,6 +5,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
 import { GroupsModule } from './modules/groups/groups.module';
 import { MessagesModule } from './modules/messages/messages.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { typeormEntities } from '@/infra/typeorm/entities';
 import { typeormMigrations } from '@/infra/typeorm/migrations';
 
@@ -51,6 +52,7 @@ class HealthController {
     UserModule,
     GroupsModule,
     MessagesModule,
+    NotificationsModule,
   ],
   controllers: [HealthController],
   providers: [],

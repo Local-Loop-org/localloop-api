@@ -1,4 +1,8 @@
-import { Provider, DmPermission } from '@localloop/shared-types';
+import {
+  DmPermission,
+  Provider,
+  PushPermissionStatus,
+} from '@localloop/shared-types';
 
 export class User {
   constructor(
@@ -12,6 +16,7 @@ export class User {
     public isActive: boolean,
     public lastSeenAt: Date,
     public createdAt: Date,
+    public pushPermissionStatus: PushPermissionStatus | null = null,
   ) {}
 
   static create(props: {
@@ -32,6 +37,7 @@ export class User {
       true,
       new Date(),
       new Date(),
+      null,
     );
   }
 }

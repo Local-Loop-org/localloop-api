@@ -14,6 +14,7 @@ export class UserMapper {
       entity.isActive,
       entity.lastSeenAt,
       entity.createdAt,
+      entity.pushPermissionStatus,
     );
   }
 
@@ -29,6 +30,7 @@ export class UserMapper {
       isActive: domain.isActive,
       lastSeenAt: domain.lastSeenAt,
       createdAt: domain.createdAt,
+      pushPermissionStatus: domain.pushPermissionStatus,
     };
   }
 }

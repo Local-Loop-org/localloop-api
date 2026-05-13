@@ -3,6 +3,7 @@ import { CreateGroups1713700000000 } from '../migrations/1713700000000-CreateGro
 import { CreateMessages1714000000000 } from '../migrations/1714000000000-CreateMessages';
 import { AddGroupAnchorCoordinates1714500000000 } from '../migrations/1714500000000-AddGroupAnchorCoordinates';
 import { AddGroupRadius1715000000000 } from '../migrations/1715000000000-AddGroupRadius';
+import { AddPushNotifications1716000000000 } from '../migrations/1716000000000-AddPushNotifications';
 
 export const typeormMigrations = [
   InitialSetup1710770000000,
@@ -10,4 +11,5 @@ export const typeormMigrations = [
   CreateMessages1714000000000,
   AddGroupAnchorCoordinates1714500000000,
   AddGroupRadius1715000000000,
+  AddPushNotifications1716000000000,
 ];
