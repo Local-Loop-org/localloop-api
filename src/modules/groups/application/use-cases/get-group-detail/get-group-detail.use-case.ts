@@ -30,6 +30,8 @@ export class GetGroupDetailUseCase {
       name: group.name,
       description: group.description,
       anchorType: group.anchorType,
+      anchorLat: group.anchorLat,
+      anchorLng: group.anchorLng,
       anchorLabel: group.anchorLabel,
       privacy: group.privacy,
       radiusKm: group.radiusKm,
