@@ -8,5 +8,6 @@ export class GroupMember {
     public role: MemberRole,
     public status: MemberStatus,
     public readonly joinedAt: Date,
+    public lastReadAt: Date | null = null,
   ) {}
 }

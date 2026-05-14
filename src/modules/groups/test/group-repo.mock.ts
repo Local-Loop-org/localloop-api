@@ -23,5 +23,7 @@ export function buildGroupRepoMock(): jest.Mocked<IGroupRepository> {
     deleteGroupAtomic: jest.fn(),
     listMembersPaginated: jest.fn(),
     listMyGroupsByActivity: jest.fn(),
+    getMyGroupSummary: jest.fn(),
+    markGroupRead: jest.fn(),
   };
 }

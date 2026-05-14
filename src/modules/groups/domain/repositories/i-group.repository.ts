@@ -64,6 +64,16 @@ export interface MyGroupRow {
   myRole: MemberRole;
   lastActivityAt: Date;
   lastMessage: MyGroupLastMessage | null;
+  lastReadAt: Date | null;
+  unreadCount: number;
+}
+
+export interface MyGroupSummary {
+  groupId: string;
+  lastActivityAt: Date;
+  lastMessage: MyGroupLastMessage | null;
+  lastReadAt: Date | null;
+  unreadCount: number;
 }
 
 export interface MyGroupsCursor {
@@ -189,6 +199,24 @@ export interface IGroupRepository {
     limit: number,
     cursor?: MyGroupsCursor,
   ): Promise<PaginatedMyGroups>;
+
+  /**
+   * Return a user-specific summary for one active membership.
+   */
+  getMyGroupSummary(
+    userId: string,
+    groupId: string,
+  ): Promise<MyGroupSummary | null>;
+
+  /**
+   * Persist the caller's read watermark for one active membership.
+   * Returns false when the caller is not an active member.
+   */
+  markGroupRead(
+    userId: string,
+    groupId: string,
+    readAt: Date,
+  ): Promise<boolean>;
 }
 
 export const GROUP_REPOSITORY = Symbol('GROUP_REPOSITORY');

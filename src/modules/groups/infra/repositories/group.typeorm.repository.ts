@@ -7,6 +7,7 @@ import {
   IGroupRepository,
   JoinRequestWithRequester,
   MyGroupsCursor,
+  MyGroupSummary,
   NearbyGroupRow,
   PaginatedMembers,
   PaginatedMyGroups,
@@ -62,6 +63,7 @@ export class GroupTypeORMRepository implements IGroupRepository {
         userId: data.ownerId,
         role: MemberRole.OWNER,
         status: MemberStatus.ACTIVE,
+        lastReadAt: new Date(),
       });
       await manager.save(member);
 
@@ -139,7 +141,13 @@ export class GroupTypeORMRepository implements IGroupRepository {
     role: MemberRole,
     status: MemberStatus,
   ): Promise<GroupMember> {
-    const entity = this.membersRepo.create({ groupId, userId, role, status });
+    const entity = this.membersRepo.create({
+      groupId,
+      userId,
+      role,
+      status,
+      lastReadAt: status === MemberStatus.ACTIVE ? new Date() : null,
+    });
     const saved = await this.membersRepo.save(entity);
     return GroupMapper.memberToDomain(saved);
   }
@@ -291,6 +299,7 @@ export class GroupTypeORMRepository implements IGroupRepository {
           userId: params.userId,
           role: MemberRole.MEMBER,
           status: MemberStatus.ACTIVE,
+          lastReadAt: new Date(),
         });
         await manager.save(member);
         await manager.increment(
@@ -426,9 +435,11 @@ export class GroupTypeORMRepository implements IGroupRepository {
         g.member_count AS g_member_count,
         gm.role        AS gm_role,
         gm.joined_at   AS gm_joined_at,
+        gm.last_read_at AS gm_last_read_at,
         lm.content     AS lm_content,
         lm.created_at  AS lm_created_at,
         u.display_name AS u_display_name,
+        uc.unread_count AS unread_count,
         COALESCE(lm.created_at, gm.joined_at) AS last_activity_at
       FROM groups g
       INNER JOIN group_members gm ON gm.group_id = g.id
@@ -440,6 +451,14 @@ export class GroupTypeORMRepository implements IGroupRepository {
         LIMIT 1
       ) lm ON true
       LEFT JOIN users u ON u.id = lm.sender_id
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*)::int AS unread_count
+        FROM messages m
+        WHERE m.group_id = g.id
+          AND m.is_deleted = false
+          AND m.sender_id <> $1::uuid
+          AND m.created_at > COALESCE(gm.last_read_at, gm.joined_at)
+      ) uc ON true
       WHERE gm.user_id = $1
         AND gm.status = 'active'
         AND g.is_active = true
@@ -457,9 +476,11 @@ export class GroupTypeORMRepository implements IGroupRepository {
         g_member_count: number | string;
         gm_role: MemberRole;
         gm_joined_at: Date;
+        gm_last_read_at: Date | null;
         lm_content: string | null;
         lm_created_at: Date | null;
         u_display_name: string | null;
+        unread_count: number | string;
         last_activity_at: Date;
       }>
     >(sql, params);
@@ -482,6 +503,8 @@ export class GroupTypeORMRepository implements IGroupRepository {
         memberCount: Number(row.g_member_count),
         myRole: row.gm_role,
         lastActivityAt: row.last_activity_at,
+        lastReadAt: row.gm_last_read_at,
+        unreadCount: Number(row.unread_count),
         lastMessage:
           row.lm_created_at && row.u_display_name !== null
             ? {
@@ -493,5 +516,105 @@ export class GroupTypeORMRepository implements IGroupRepository {
       })),
       nextCursor,
     };
+  }
+
+  async getMyGroupSummary(
+    userId: string,
+    groupId: string,
+  ): Promise<MyGroupSummary | null> {
+    const sql = `
+      SELECT
+        g.id AS group_id,
+        gm.joined_at AS gm_joined_at,
+        gm.last_read_at AS gm_last_read_at,
+        lm.content AS lm_content,
+        lm.created_at AS lm_created_at,
+        u.display_name AS u_display_name,
+        uc.unread_count AS unread_count,
+        COALESCE(lm.created_at, gm.joined_at) AS last_activity_at
+      FROM groups g
+      INNER JOIN group_members gm ON gm.group_id = g.id
+      LEFT JOIN LATERAL (
+        SELECT m.content, m.created_at, m.sender_id
+        FROM messages m
+        WHERE m.group_id = g.id AND m.is_deleted = false
+        ORDER BY m.created_at DESC
+        LIMIT 1
+      ) lm ON true
+      LEFT JOIN users u ON u.id = lm.sender_id
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*)::int AS unread_count
+        FROM messages m
+        WHERE m.group_id = g.id
+          AND m.is_deleted = false
+          AND m.sender_id <> $1::uuid
+          AND m.created_at > COALESCE(gm.last_read_at, gm.joined_at)
+      ) uc ON true
+      WHERE gm.user_id = $1
+        AND gm.group_id = $2
+        AND gm.status = 'active'
+        AND g.is_active = true
+      LIMIT 1
+    `;
+
+    const rows = await this.dataSource.query<
+      Array<{
+        group_id: string;
+        gm_joined_at: Date;
+        gm_last_read_at: Date | null;
+        lm_content: string | null;
+        lm_created_at: Date | null;
+        u_display_name: string | null;
+        unread_count: number | string;
+        last_activity_at: Date;
+      }>
+    >(sql, [userId, groupId]);
+
+    const row = rows[0];
+    if (!row) return null;
+
+    return {
+      groupId: row.group_id,
+      lastActivityAt: row.last_activity_at,
+      lastReadAt: row.gm_last_read_at,
+      unreadCount: Number(row.unread_count),
+      lastMessage:
+        row.lm_created_at && row.u_display_name !== null
+          ? {
+              content: row.lm_content,
+              senderName: row.u_display_name,
+              createdAt: row.lm_created_at,
+            }
+          : null,
+    };
+  }
+
+  async markGroupRead(
+    userId: string,
+    groupId: string,
+    readAt: Date,
+  ): Promise<boolean> {
+    const rows = await this.dataSource.query<Array<{ id: string }>>(
+      `
+        UPDATE group_members gm
+        SET last_read_at = GREATEST(
+          COALESCE(last_read_at, '-infinity'::timestamptz),
+          $3::timestamptz
+        )
+        WHERE gm.user_id = $1
+          AND gm.group_id = $2
+          AND gm.status = 'active'
+          AND EXISTS (
+            SELECT 1
+            FROM groups g
+            WHERE g.id = gm.group_id
+              AND g.is_active = true
+          )
+        RETURNING id
+      `,
+      [userId, groupId, readAt.toISOString()],
+    );
+
+    return rows.length > 0;
   }
 }
