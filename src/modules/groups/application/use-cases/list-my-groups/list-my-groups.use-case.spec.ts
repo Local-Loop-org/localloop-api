@@ -21,6 +21,11 @@ describe('ListMyGroupsUseCase', () => {
     myRole: overrides.myRole ?? MemberRole.MEMBER,
     lastActivityAt:
       overrides.lastActivityAt ?? new Date('2026-04-28T10:00:00Z'),
+    lastReadAt:
+      'lastReadAt' in overrides
+        ? (overrides.lastReadAt ?? null)
+        : new Date('2026-04-28T09:55:00Z'),
+    unreadCount: overrides.unreadCount ?? 0,
     lastMessage:
       'lastMessage' in overrides
         ? (overrides.lastMessage ?? null)
@@ -83,6 +88,8 @@ describe('ListMyGroupsUseCase', () => {
         memberCount: withMessages.memberCount,
         myRole: withMessages.myRole,
         lastActivityAt: '2026-04-28T10:00:00.000Z',
+        lastReadAt: '2026-04-28T09:55:00.000Z',
+        unreadCount: 0,
         lastMessage: {
           content: 'Quem topa?',
           senderName: 'Ana',
@@ -97,6 +104,8 @@ describe('ListMyGroupsUseCase', () => {
         memberCount: noMessages.memberCount,
         myRole: noMessages.myRole,
         lastActivityAt: '2026-04-20T08:00:00.000Z',
+        lastReadAt: '2026-04-28T09:55:00.000Z',
+        unreadCount: 0,
         lastMessage: null,
       },
     ]);

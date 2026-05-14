@@ -30,4 +30,7 @@ export class GroupMemberOrmEntity {
 
   @CreateDateColumn({ name: 'joined_at', type: 'timestamptz' })
   joinedAt!: Date;
+
+  @Column({ name: 'last_read_at', type: 'timestamptz', nullable: true })
+  lastReadAt!: Date | null;
 }

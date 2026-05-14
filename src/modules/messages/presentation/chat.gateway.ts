@@ -25,6 +25,7 @@ import {
 import {
   GROUP_REPOSITORY,
   IGroupRepository,
+  MyGroupSummary,
 } from '@/modules/groups/domain/repositories/i-group.repository';
 import { SendGroupMessagePushNotificationsUseCase } from '@/modules/notifications/application/use-cases/send-group-message-push-notifications/send-group-message-push-notifications.use-case';
 import { SendMessageResponseDto } from '../application/use-cases/send-message/send-message.dto';
@@ -38,11 +39,31 @@ interface WatchPresencePayload {
   groupIds: string[];
 }
 
+interface WatchGroupSummariesPayload {
+  groupIds: string[];
+}
+
+interface MarkGroupReadPayload {
+  groupId: string;
+}
+
 interface SendMessagePayload {
   groupId: string;
   content: string | null;
   storageKey: string | null;
   mediaType: 'image' | 'video' | null;
+}
+
+interface GroupSummaryUpdatePayload {
+  groupId: string;
+  lastActivityAt: string;
+  lastMessage: {
+    content: string | null;
+    senderName: string;
+    createdAt: string;
+  } | null;
+  lastReadAt: string | null;
+  unreadCount: number;
 }
 
 interface AuthedSocket extends Socket {
@@ -51,9 +72,12 @@ interface AuthedSocket extends Socket {
 
 const GROUP_ROOM_PREFIX = 'group:';
 const PRESENCE_ROOM_PREFIX = 'presence:';
+const GROUP_SUMMARY_ROOM_PREFIX = 'group_summary:';
 const MAX_WATCHED_GROUPS = 50;
 const groupRoom = (groupId: string) => `${GROUP_ROOM_PREFIX}${groupId}`;
 const presenceRoom = (groupId: string) => `${PRESENCE_ROOM_PREFIX}${groupId}`;
+const groupSummaryRoom = (groupId: string) =>
+  `${GROUP_SUMMARY_ROOM_PREFIX}${groupId}`;
 const groupIdFromRoom = (room: string) => room.slice(GROUP_ROOM_PREFIX.length);
 
 @WebSocketGateway({ namespace: '/chat', cors: { origin: '*' } })
@@ -127,7 +151,7 @@ export class ChatGateway
   }
 
   private normalizeGroupIds(
-    payload: WatchPresencePayload | undefined,
+    payload: { groupIds?: unknown } | undefined,
   ): string[] {
     if (!payload || !Array.isArray(payload.groupIds)) return [];
     return [...new Set(payload.groupIds)]
@@ -146,6 +170,71 @@ export class ChatGateway
     if (group.privacy === GroupPrivacy.OPEN) return true;
 
     return member?.status === MemberStatus.ACTIVE;
+  }
+
+  private async canWatchGroupSummary(
+    groupId: string,
+    userId: string,
+  ): Promise<boolean> {
+    const member = await this.groupRepo.findMember(groupId, userId);
+    return member?.status === MemberStatus.ACTIVE;
+  }
+
+  private toGroupSummaryUpdate(
+    summary: MyGroupSummary,
+  ): GroupSummaryUpdatePayload {
+    return {
+      groupId: summary.groupId,
+      lastActivityAt: summary.lastActivityAt.toISOString(),
+      lastReadAt: summary.lastReadAt ? summary.lastReadAt.toISOString() : null,
+      unreadCount: summary.unreadCount,
+      lastMessage: summary.lastMessage
+        ? {
+            content: summary.lastMessage.content,
+            senderName: summary.lastMessage.senderName,
+            createdAt: summary.lastMessage.createdAt.toISOString(),
+          }
+        : null,
+    };
+  }
+
+  private async emitGroupSummaryToSocket(
+    socket: AuthedSocket,
+    groupId: string,
+  ): Promise<void> {
+    const summary = await this.groupRepo.getMyGroupSummary(
+      socket.data.user.id,
+      groupId,
+    );
+    if (!summary) return;
+    socket.emit('group_summary_update', this.toGroupSummaryUpdate(summary));
+  }
+
+  private async emitGroupSummary(groupId: string): Promise<void> {
+    const sockets = await this.server
+      .in(groupSummaryRoom(groupId))
+      .fetchSockets();
+    const payloads = new Map<string, GroupSummaryUpdatePayload | null>();
+
+    for (const socket of sockets) {
+      const summarySocket = socket as unknown as {
+        data?: { user?: User };
+        emit: (event: string, payload: GroupSummaryUpdatePayload) => void;
+      };
+      const userId = summarySocket.data?.user?.id;
+      if (!userId) continue;
+
+      if (!payloads.has(userId)) {
+        const summary = await this.groupRepo.getMyGroupSummary(userId, groupId);
+        payloads.set(
+          userId,
+          summary ? this.toGroupSummaryUpdate(summary) : null,
+        );
+      }
+
+      const payload = payloads.get(userId);
+      if (payload) summarySocket.emit('group_summary_update', payload);
+    }
   }
 
   @SubscribeMessage('join_group')
@@ -194,6 +283,59 @@ export class ChatGateway
     );
   }
 
+  @SubscribeMessage('watch_group_summaries')
+  async onWatchGroupSummaries(
+    @ConnectedSocket() socket: AuthedSocket,
+    @MessageBody() payload: WatchGroupSummariesPayload | undefined,
+  ): Promise<{ ok: boolean }> {
+    const userId = socket.data.user.id;
+    const groupIds = this.normalizeGroupIds(payload);
+    for (const groupId of groupIds) {
+      const allowed = await this.canWatchGroupSummary(groupId, userId);
+      if (!allowed) continue;
+      await socket.join(groupSummaryRoom(groupId));
+      await this.emitGroupSummaryToSocket(socket, groupId);
+    }
+    return { ok: true };
+  }
+
+  @SubscribeMessage('unwatch_group_summaries')
+  async onUnwatchGroupSummaries(
+    @ConnectedSocket() socket: AuthedSocket,
+    @MessageBody() payload: WatchGroupSummariesPayload | undefined,
+  ): Promise<void> {
+    const groupIds = this.normalizeGroupIds(payload);
+    await Promise.all(
+      groupIds.map((groupId) => socket.leave(groupSummaryRoom(groupId))),
+    );
+  }
+
+  @SubscribeMessage('mark_group_read')
+  async onMarkGroupRead(
+    @ConnectedSocket() socket: AuthedSocket,
+    @MessageBody() payload: MarkGroupReadPayload,
+  ): Promise<{ ok: boolean }> {
+    if (!payload || typeof payload.groupId !== 'string') {
+      return { ok: false };
+    }
+
+    const updated = await this.groupRepo.markGroupRead(
+      socket.data.user.id,
+      payload.groupId,
+      new Date(),
+    );
+    if (!updated) {
+      socket.emit('error', {
+        code: 'FORBIDDEN',
+        message: 'Not an active member of this group',
+      });
+      return { ok: false };
+    }
+
+    await this.emitGroupSummaryToSocket(socket, payload.groupId);
+    return { ok: true };
+  }
+
   @SubscribeMessage('leave_group')
   async onLeaveGroup(
     @ConnectedSocket() socket: AuthedSocket,
@@ -215,6 +357,11 @@ export class ChatGateway
         { content: payload.content ?? null },
       );
       this.server.to(groupRoom(payload.groupId)).emit('new_message', result);
+      void this.emitGroupSummary(result.groupId).catch(() => {
+        this.logger.warn(
+          `Group summary fan-out failed for message ${result.id}`,
+        );
+      });
       void this.notifyGroupMessage(result).catch(() => {
         this.logger.warn(
           `Push notification fan-out failed for message ${result.id}`,

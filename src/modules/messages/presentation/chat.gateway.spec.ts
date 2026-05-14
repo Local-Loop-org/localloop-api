@@ -100,6 +100,18 @@ describe('ChatGateway', () => {
       overrides,
     );
 
+  const buildSummary = () => ({
+    groupId: 'group-1',
+    lastActivityAt: new Date('2026-05-14T10:00:00Z'),
+    lastReadAt: new Date('2026-05-14T09:00:00Z'),
+    unreadCount: 2,
+    lastMessage: {
+      content: 'hi',
+      senderName: 'Alice',
+      createdAt: new Date('2026-05-14T10:00:00Z'),
+    },
+  });
+
   const roomMembers: Map<string, Set<SocketMock>> = new Map();
 
   const makeSocket = (
@@ -344,10 +356,7 @@ describe('ChatGateway', () => {
       await new Promise((resolve) => setImmediate(resolve));
 
       expect(roomEmit).toHaveBeenCalledWith('new_message', broadcast);
-      expect(socket.emit).not.toHaveBeenCalledWith(
-        'error',
-        expect.anything(),
-      );
+      expect(socket.emit).not.toHaveBeenCalledWith('error', expect.anything());
     });
 
     it('emits error event when the use case throws', async () => {
@@ -563,6 +572,112 @@ describe('ChatGateway', () => {
 
       expect(socket.leave).toHaveBeenCalledWith('presence:group-1');
       expect(socket.leave).toHaveBeenCalledWith('presence:group-2');
+    });
+  });
+
+  describe('group summaries', () => {
+    it('lets active members watch group summaries and emits an initial update', async () => {
+      const socket = makeSocket();
+      socket.data.user = buildUser();
+      groupRepo.findMember.mockResolvedValue(buildMember(MemberStatus.ACTIVE));
+      groupRepo.getMyGroupSummary.mockResolvedValue(buildSummary());
+
+      const ack = await gateway.onWatchGroupSummaries(socket as never, {
+        groupIds: ['group-1'],
+      });
+
+      expect(ack).toEqual({ ok: true });
+      expect(socket.join).toHaveBeenCalledWith('group_summary:group-1');
+      expect(socket.emit).toHaveBeenCalledWith('group_summary_update', {
+        groupId: 'group-1',
+        lastActivityAt: '2026-05-14T10:00:00.000Z',
+        lastReadAt: '2026-05-14T09:00:00.000Z',
+        unreadCount: 2,
+        lastMessage: {
+          content: 'hi',
+          senderName: 'Alice',
+          createdAt: '2026-05-14T10:00:00.000Z',
+        },
+      });
+    });
+
+    it('suppresses summary watches for non-members', async () => {
+      const socket = makeSocket();
+      socket.data.user = buildUser();
+      groupRepo.findMember.mockResolvedValue(null);
+
+      await gateway.onWatchGroupSummaries(socket as never, {
+        groupIds: ['group-1'],
+      });
+
+      expect(socket.join).not.toHaveBeenCalledWith('group_summary:group-1');
+      expect(socket.emit).not.toHaveBeenCalledWith(
+        'group_summary_update',
+        expect.anything(),
+      );
+    });
+
+    it('marks a group as read and returns a fresh summary', async () => {
+      const socket = makeSocket();
+      socket.data.user = buildUser();
+      groupRepo.markGroupRead.mockResolvedValue(true);
+      groupRepo.getMyGroupSummary.mockResolvedValue({
+        ...buildSummary(),
+        lastReadAt: new Date('2026-05-14T10:01:00Z'),
+        unreadCount: 0,
+      });
+
+      const ack = await gateway.onMarkGroupRead(socket as never, {
+        groupId: 'group-1',
+      });
+
+      expect(ack).toEqual({ ok: true });
+      expect(groupRepo.markGroupRead).toHaveBeenCalledWith(
+        'user-1',
+        'group-1',
+        expect.any(Date),
+      );
+      expect(socket.emit).toHaveBeenCalledWith(
+        'group_summary_update',
+        expect.objectContaining({ unreadCount: 0 }),
+      );
+    });
+
+    it('emits user-specific summaries to summary watchers after a send', async () => {
+      const sender = makeSocket();
+      sender.data.user = buildUser({ id: 'user-1' });
+      const watcher = makeSocket();
+      watcher.data.user = buildUser({ id: 'user-2' });
+      await watcher.join('group_summary:group-1');
+      const broadcast = {
+        id: 'msg-1',
+        groupId: 'group-1',
+        senderId: 'user-1',
+        senderName: 'Alice',
+        senderAvatar: null,
+        content: 'hi',
+        mediaUrl: null,
+        mediaType: null,
+        createdAt: '2026-05-14T10:00:00.000Z',
+      };
+      sendMessage.execute.mockResolvedValue(broadcast);
+      groupRepo.getMyGroupSummary.mockResolvedValue(buildSummary());
+
+      await gateway.onSendMessage(sender as never, {
+        groupId: 'group-1',
+        content: 'hi',
+        storageKey: null,
+        mediaType: null,
+      });
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(watcher.emit).toHaveBeenCalledWith(
+        'group_summary_update',
+        expect.objectContaining({
+          groupId: 'group-1',
+          unreadCount: 2,
+        }),
+      );
     });
   });
 });

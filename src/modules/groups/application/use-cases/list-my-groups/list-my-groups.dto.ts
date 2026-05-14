@@ -30,6 +30,8 @@ export class MyGroupDto {
   myRole!: MemberRole;
   lastActivityAt!: string;
   lastMessage!: LastMessageSummaryDto | null;
+  lastReadAt!: string | null;
+  unreadCount!: number;
 }
 
 export class ListMyGroupsResponseDto {

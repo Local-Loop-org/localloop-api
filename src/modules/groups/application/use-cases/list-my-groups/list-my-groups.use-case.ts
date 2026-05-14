@@ -35,6 +35,8 @@ export class ListMyGroupsUseCase {
       memberCount: row.memberCount,
       myRole: row.myRole,
       lastActivityAt: row.lastActivityAt.toISOString(),
+      lastReadAt: row.lastReadAt ? row.lastReadAt.toISOString() : null,
+      unreadCount: row.unreadCount,
       lastMessage: row.lastMessage
         ? {
             content: row.lastMessage.content,

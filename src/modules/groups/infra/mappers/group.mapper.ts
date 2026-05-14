@@ -33,6 +33,7 @@ export class GroupMapper {
       e.role,
       e.status,
       e.joinedAt,
+      e.lastReadAt,
     );
   }
 
