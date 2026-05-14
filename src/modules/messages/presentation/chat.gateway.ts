@@ -12,6 +12,8 @@ import {
 } from '@nestjs/websockets';
 import { Namespace, Socket } from 'socket.io';
 import {
+  ChatSocketEvents,
+  GroupSummaryUpdate,
   GroupPrivacy,
   MemberStatus,
   PresenceUpdate,
@@ -52,18 +54,6 @@ interface SendMessagePayload {
   content: string | null;
   storageKey: string | null;
   mediaType: 'image' | 'video' | null;
-}
-
-interface GroupSummaryUpdatePayload {
-  groupId: string;
-  lastActivityAt: string;
-  lastMessage: {
-    content: string | null;
-    senderName: string;
-    createdAt: string;
-  } | null;
-  lastReadAt: string | null;
-  unreadCount: number;
 }
 
 interface AuthedSocket extends Socket {
@@ -146,8 +136,10 @@ export class ChatGateway
     const room = groupRoom(groupId);
     const sockets = await this.server.in(room).fetchSockets();
     const payload: PresenceUpdate = { groupId, count: sockets.length };
-    this.server.to(room).emit('presence_update', payload);
-    this.server.to(presenceRoom(groupId)).emit('presence_update', payload);
+    this.server.to(room).emit(ChatSocketEvents.PRESENCE_UPDATE, payload);
+    this.server
+      .to(presenceRoom(groupId))
+      .emit(ChatSocketEvents.PRESENCE_UPDATE, payload);
   }
 
   private normalizeGroupIds(
@@ -180,9 +172,7 @@ export class ChatGateway
     return member?.status === MemberStatus.ACTIVE;
   }
 
-  private toGroupSummaryUpdate(
-    summary: MyGroupSummary,
-  ): GroupSummaryUpdatePayload {
+  private toGroupSummaryUpdate(summary: MyGroupSummary): GroupSummaryUpdate {
     return {
       groupId: summary.groupId,
       lastActivityAt: summary.lastActivityAt.toISOString(),
@@ -207,19 +197,22 @@ export class ChatGateway
       groupId,
     );
     if (!summary) return;
-    socket.emit('group_summary_update', this.toGroupSummaryUpdate(summary));
+    socket.emit(
+      ChatSocketEvents.GROUP_SUMMARY_UPDATE,
+      this.toGroupSummaryUpdate(summary),
+    );
   }
 
   private async emitGroupSummary(groupId: string): Promise<void> {
     const sockets = await this.server
       .in(groupSummaryRoom(groupId))
       .fetchSockets();
-    const payloads = new Map<string, GroupSummaryUpdatePayload | null>();
+    const payloads = new Map<string, GroupSummaryUpdate | null>();
 
     for (const socket of sockets) {
       const summarySocket = socket as unknown as {
         data?: { user?: User };
-        emit: (event: string, payload: GroupSummaryUpdatePayload) => void;
+        emit: (event: string, payload: GroupSummaryUpdate) => void;
       };
       const userId = summarySocket.data?.user?.id;
       if (!userId) continue;
@@ -233,11 +226,13 @@ export class ChatGateway
       }
 
       const payload = payloads.get(userId);
-      if (payload) summarySocket.emit('group_summary_update', payload);
+      if (payload) {
+        summarySocket.emit(ChatSocketEvents.GROUP_SUMMARY_UPDATE, payload);
+      }
     }
   }
 
-  @SubscribeMessage('join_group')
+  @SubscribeMessage(ChatSocketEvents.JOIN_GROUP)
   async onJoinGroup(
     @ConnectedSocket() socket: AuthedSocket,
     @MessageBody() payload: JoinGroupPayload,
@@ -245,7 +240,7 @@ export class ChatGateway
     const userId = socket.data.user.id;
     const member = await this.groupRepo.findMember(payload.groupId, userId);
     if (!member || member.status !== MemberStatus.ACTIVE) {
-      socket.emit('error', {
+      socket.emit(ChatSocketEvents.ERROR, {
         code: 'FORBIDDEN',
         message: 'Not an active member of this group',
       });
@@ -256,7 +251,7 @@ export class ChatGateway
     return { ok: true };
   }
 
-  @SubscribeMessage('watch_presence')
+  @SubscribeMessage(ChatSocketEvents.WATCH_PRESENCE)
   async onWatchPresence(
     @ConnectedSocket() socket: AuthedSocket,
     @MessageBody() payload: WatchPresencePayload | undefined,
@@ -272,7 +267,7 @@ export class ChatGateway
     return { ok: true };
   }
 
-  @SubscribeMessage('unwatch_presence')
+  @SubscribeMessage(ChatSocketEvents.UNWATCH_PRESENCE)
   async onUnwatchPresence(
     @ConnectedSocket() socket: AuthedSocket,
     @MessageBody() payload: WatchPresencePayload | undefined,
@@ -283,7 +278,7 @@ export class ChatGateway
     );
   }
 
-  @SubscribeMessage('watch_group_summaries')
+  @SubscribeMessage(ChatSocketEvents.WATCH_GROUP_SUMMARIES)
   async onWatchGroupSummaries(
     @ConnectedSocket() socket: AuthedSocket,
     @MessageBody() payload: WatchGroupSummariesPayload | undefined,
@@ -299,7 +294,7 @@ export class ChatGateway
     return { ok: true };
   }
 
-  @SubscribeMessage('unwatch_group_summaries')
+  @SubscribeMessage(ChatSocketEvents.UNWATCH_GROUP_SUMMARIES)
   async onUnwatchGroupSummaries(
     @ConnectedSocket() socket: AuthedSocket,
     @MessageBody() payload: WatchGroupSummariesPayload | undefined,
@@ -310,7 +305,7 @@ export class ChatGateway
     );
   }
 
-  @SubscribeMessage('mark_group_read')
+  @SubscribeMessage(ChatSocketEvents.MARK_GROUP_READ)
   async onMarkGroupRead(
     @ConnectedSocket() socket: AuthedSocket,
     @MessageBody() payload: MarkGroupReadPayload,
@@ -325,7 +320,7 @@ export class ChatGateway
       new Date(),
     );
     if (!updated) {
-      socket.emit('error', {
+      socket.emit(ChatSocketEvents.ERROR, {
         code: 'FORBIDDEN',
         message: 'Not an active member of this group',
       });
@@ -336,7 +331,7 @@ export class ChatGateway
     return { ok: true };
   }
 
-  @SubscribeMessage('leave_group')
+  @SubscribeMessage(ChatSocketEvents.LEAVE_GROUP)
   async onLeaveGroup(
     @ConnectedSocket() socket: AuthedSocket,
     @MessageBody() payload: JoinGroupPayload,
@@ -345,7 +340,7 @@ export class ChatGateway
     await this.emitPresence(payload.groupId);
   }
 
-  @SubscribeMessage('send_message')
+  @SubscribeMessage(ChatSocketEvents.SEND_MESSAGE)
   async onSendMessage(
     @ConnectedSocket() socket: AuthedSocket,
     @MessageBody() payload: SendMessagePayload,
@@ -356,7 +351,9 @@ export class ChatGateway
         payload.groupId,
         { content: payload.content ?? null },
       );
-      this.server.to(groupRoom(payload.groupId)).emit('new_message', result);
+      this.server
+        .to(groupRoom(payload.groupId))
+        .emit(ChatSocketEvents.NEW_MESSAGE, result);
       void this.emitGroupSummary(result.groupId).catch(() => {
         this.logger.warn(
           `Group summary fan-out failed for message ${result.id}`,
@@ -372,7 +369,7 @@ export class ChatGateway
         response?: { error?: string; message?: string };
         message?: string;
       };
-      socket.emit('error', {
+      socket.emit(ChatSocketEvents.ERROR, {
         code: e.response?.error ?? 'SEND_FAILED',
         message: e.response?.message ?? e.message ?? 'Failed to send message',
       });

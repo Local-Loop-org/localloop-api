@@ -4,6 +4,7 @@ import {
   AnchorType,
   DmPermission,
   GroupPrivacy,
+  ChatSocketEvents,
   MemberRole,
   MemberStatus,
   Provider,
@@ -255,7 +256,7 @@ describe('ChatGateway', () => {
 
       expect(socket.join).not.toHaveBeenCalled();
       expect(socket.emit).toHaveBeenCalledWith(
-        'error',
+        ChatSocketEvents.ERROR,
         expect.objectContaining({ code: 'FORBIDDEN' }),
       );
       expect(ack).toEqual({ ok: false });
@@ -290,7 +291,10 @@ describe('ChatGateway', () => {
         content: 'hi',
       });
       expect(server.to).toHaveBeenCalledWith('group:group-1');
-      expect(roomEmit).toHaveBeenCalledWith('new_message', broadcast);
+      expect(roomEmit).toHaveBeenCalledWith(
+        ChatSocketEvents.NEW_MESSAGE,
+        broadcast,
+      );
     });
 
     it('notifies offline group members after a successful send', async () => {
@@ -355,8 +359,14 @@ describe('ChatGateway', () => {
       });
       await new Promise((resolve) => setImmediate(resolve));
 
-      expect(roomEmit).toHaveBeenCalledWith('new_message', broadcast);
-      expect(socket.emit).not.toHaveBeenCalledWith('error', expect.anything());
+      expect(roomEmit).toHaveBeenCalledWith(
+        ChatSocketEvents.NEW_MESSAGE,
+        broadcast,
+      );
+      expect(socket.emit).not.toHaveBeenCalledWith(
+        ChatSocketEvents.ERROR,
+        expect.anything(),
+      );
     });
 
     it('emits error event when the use case throws', async () => {
@@ -378,7 +388,7 @@ describe('ChatGateway', () => {
 
       expect(server.to).not.toHaveBeenCalled();
       expect(socket.emit).toHaveBeenCalledWith(
-        'error',
+        ChatSocketEvents.ERROR,
         expect.objectContaining({ code: 'FORBIDDEN' }),
       );
       expect(sendGroupMessagePush.execute).not.toHaveBeenCalled();
@@ -394,7 +404,7 @@ describe('ChatGateway', () => {
       await gateway.onJoinGroup(socket as never, { groupId: 'group-1' });
 
       expect(server.to).toHaveBeenCalledWith('group:group-1');
-      expect(roomEmit).toHaveBeenCalledWith('presence_update', {
+      expect(roomEmit).toHaveBeenCalledWith(ChatSocketEvents.PRESENCE_UPDATE, {
         groupId: 'group-1',
         count: 1,
       });
@@ -408,7 +418,7 @@ describe('ChatGateway', () => {
       await gateway.onJoinGroup(socket as never, { groupId: 'group-1' });
 
       expect(roomEmit).not.toHaveBeenCalledWith(
-        'presence_update',
+        ChatSocketEvents.PRESENCE_UPDATE,
         expect.anything(),
       );
     });
@@ -423,7 +433,7 @@ describe('ChatGateway', () => {
 
       await gateway.onLeaveGroup(socket as never, { groupId: 'group-1' });
 
-      expect(roomEmit).toHaveBeenCalledWith('presence_update', {
+      expect(roomEmit).toHaveBeenCalledWith(ChatSocketEvents.PRESENCE_UPDATE, {
         groupId: 'group-1',
         count: 0,
       });
@@ -450,7 +460,7 @@ describe('ChatGateway', () => {
       roomMembers.get('group:group-1')?.delete(socketA);
       await new Promise((resolve) => setImmediate(resolve));
 
-      expect(roomEmit).toHaveBeenCalledWith('presence_update', {
+      expect(roomEmit).toHaveBeenCalledWith(ChatSocketEvents.PRESENCE_UPDATE, {
         groupId: 'group-1',
         count: 1,
       });
@@ -479,7 +489,7 @@ describe('ChatGateway', () => {
       expect(ack).toEqual({ ok: true });
       expect(socket.join).toHaveBeenCalledWith('presence:group-1');
       expect(socket.join).not.toHaveBeenCalledWith('group:group-1');
-      expect(roomEmit).toHaveBeenCalledWith('presence_update', {
+      expect(roomEmit).toHaveBeenCalledWith(ChatSocketEvents.PRESENCE_UPDATE, {
         groupId: 'group-1',
         count: 0,
       });
@@ -497,7 +507,7 @@ describe('ChatGateway', () => {
 
       expect(socket.join).not.toHaveBeenCalled();
       expect(roomEmit).not.toHaveBeenCalledWith(
-        'presence_update',
+        ChatSocketEvents.PRESENCE_UPDATE,
         expect.anything(),
       );
     });
@@ -517,7 +527,7 @@ describe('ChatGateway', () => {
       expect(ack).toEqual({ ok: true });
       expect(socket.join).not.toHaveBeenCalled();
       expect(roomEmit).not.toHaveBeenCalledWith(
-        'presence_update',
+        ChatSocketEvents.PRESENCE_UPDATE,
         expect.anything(),
       );
     });
@@ -533,7 +543,7 @@ describe('ChatGateway', () => {
       await gateway.onWatchPresence(socket as never, { groupIds: ['group-1'] });
 
       expect(socket.join).toHaveBeenCalledWith('presence:group-1');
-      expect(roomEmit).toHaveBeenCalledWith('presence_update', {
+      expect(roomEmit).toHaveBeenCalledWith(ChatSocketEvents.PRESENCE_UPDATE, {
         groupId: 'group-1',
         count: 0,
       });
@@ -556,7 +566,7 @@ describe('ChatGateway', () => {
 
       expect(watcher.rooms.has('presence:group-1')).toBe(true);
       expect(watcher.rooms.has('group:group-1')).toBe(false);
-      expect(roomEmit).toHaveBeenCalledWith('presence_update', {
+      expect(roomEmit).toHaveBeenCalledWith(ChatSocketEvents.PRESENCE_UPDATE, {
         groupId: 'group-1',
         count: 1,
       });
@@ -588,17 +598,20 @@ describe('ChatGateway', () => {
 
       expect(ack).toEqual({ ok: true });
       expect(socket.join).toHaveBeenCalledWith('group_summary:group-1');
-      expect(socket.emit).toHaveBeenCalledWith('group_summary_update', {
-        groupId: 'group-1',
-        lastActivityAt: '2026-05-14T10:00:00.000Z',
-        lastReadAt: '2026-05-14T09:00:00.000Z',
-        unreadCount: 2,
-        lastMessage: {
-          content: 'hi',
-          senderName: 'Alice',
-          createdAt: '2026-05-14T10:00:00.000Z',
+      expect(socket.emit).toHaveBeenCalledWith(
+        ChatSocketEvents.GROUP_SUMMARY_UPDATE,
+        {
+          groupId: 'group-1',
+          lastActivityAt: '2026-05-14T10:00:00.000Z',
+          lastReadAt: '2026-05-14T09:00:00.000Z',
+          unreadCount: 2,
+          lastMessage: {
+            content: 'hi',
+            senderName: 'Alice',
+            createdAt: '2026-05-14T10:00:00.000Z',
+          },
         },
-      });
+      );
     });
 
     it('suppresses summary watches for non-members', async () => {
@@ -612,7 +625,7 @@ describe('ChatGateway', () => {
 
       expect(socket.join).not.toHaveBeenCalledWith('group_summary:group-1');
       expect(socket.emit).not.toHaveBeenCalledWith(
-        'group_summary_update',
+        ChatSocketEvents.GROUP_SUMMARY_UPDATE,
         expect.anything(),
       );
     });
@@ -638,7 +651,7 @@ describe('ChatGateway', () => {
         expect.any(Date),
       );
       expect(socket.emit).toHaveBeenCalledWith(
-        'group_summary_update',
+        ChatSocketEvents.GROUP_SUMMARY_UPDATE,
         expect.objectContaining({ unreadCount: 0 }),
       );
     });
@@ -672,7 +685,7 @@ describe('ChatGateway', () => {
       await new Promise((resolve) => setImmediate(resolve));
 
       expect(watcher.emit).toHaveBeenCalledWith(
-        'group_summary_update',
+        ChatSocketEvents.GROUP_SUMMARY_UPDATE,
         expect.objectContaining({
           groupId: 'group-1',
           unreadCount: 2,
