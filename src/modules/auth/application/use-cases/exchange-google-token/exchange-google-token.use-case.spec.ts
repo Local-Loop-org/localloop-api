@@ -15,10 +15,10 @@ describe('ExchangeGoogleTokenUseCase', () => {
   const buildExistingUser = (overrides: Partial<User> = {}): User => {
     const user = new User(
       'user-1',
-      'provider-id-1',
+      'google-sub-1',
       Provider.GOOGLE,
-      'Alice',
-      'https://old-avatar.png',
+      'Alice App Name',
+      'https://app-avatar.png',
       null,
       DmPermission.MEMBERS,
       true,
@@ -103,9 +103,8 @@ describe('ExchangeGoogleTokenUseCase', () => {
     );
   });
 
-  it('updates display name, avatar and lastSeen when the user already exists', async () => {
+  it('preserves existing app profile data on subsequent Google login', async () => {
     const existing = buildExistingUser();
-    const originalLastSeen = existing.lastSeenAt;
     supabaseService.verifyGoogleToken.mockResolvedValue(
       buildSupabaseOk() as any,
     );
@@ -114,13 +113,9 @@ describe('ExchangeGoogleTokenUseCase', () => {
     const result = await useCase.execute({ token: 'google.token' });
 
     expect(result.isNewUser).toBe(false);
-    const savedUser = userRepo.save.mock.calls[0][0];
-    expect(savedUser.id).toBe(existing.id);
-    expect(savedUser.displayName).toBe('Alice Doe');
-    expect(savedUser.avatarUrl).toBe('https://avatar.png');
-    expect(savedUser.lastSeenAt.getTime()).toBeGreaterThan(
-      originalLastSeen.getTime(),
-    );
+    expect(userRepo.save).not.toHaveBeenCalled();
+    expect(result.user.displayName).toBe('Alice App Name');
+    expect(result.user.avatarUrl).toBe('https://app-avatar.png');
     expect(result.user.dmPermission).toBe(DmPermission.MEMBERS);
     expect(result.user.createdAt).toBe('2026-01-01T00:00:00.000Z');
   });

@@ -34,21 +34,17 @@ export class ExchangeGoogleTokenUseCase {
     let isNewUser = false;
 
     if (!user) {
-      user = User.create({
-        id: crypto.randomUUID(),
-        providerId,
-        provider: Provider.GOOGLE,
-        displayName: user_metadata?.full_name || 'User',
-        avatarUrl: user_metadata?.avatar_url,
-      });
+      user = await this.userRepo.save(
+        User.create({
+          id: crypto.randomUUID(),
+          providerId,
+          provider: Provider.GOOGLE,
+          displayName: user_metadata?.full_name || 'User',
+          avatarUrl: user_metadata?.avatar_url,
+        }),
+      );
       isNewUser = true;
-    } else {
-      user.displayName = user_metadata?.full_name || user.displayName;
-      user.avatarUrl = user_metadata?.avatar_url || user.avatarUrl;
-      user.lastSeenAt = new Date();
     }
-
-    await this.userRepo.save(user);
 
     const payload = { sub: user.id, email: data.user.email };
 

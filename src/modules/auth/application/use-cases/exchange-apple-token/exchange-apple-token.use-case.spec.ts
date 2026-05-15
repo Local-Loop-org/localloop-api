@@ -102,8 +102,11 @@ describe('ExchangeAppleTokenUseCase', () => {
     );
   });
 
-  it('updates existing user metadata on subsequent Apple login', async () => {
-    const existing = buildExistingUser();
+  it('preserves existing app profile data on subsequent Apple login', async () => {
+    const existing = buildExistingUser({
+      displayName: 'Bob App Name',
+      avatarUrl: 'https://kept.png',
+    });
     supabaseService.verifyAppleToken.mockResolvedValue(
       buildSupabaseOk() as any,
     );
@@ -113,27 +116,12 @@ describe('ExchangeAppleTokenUseCase', () => {
       token: 'apple.token',
     });
 
+    expect(userRepo.save).not.toHaveBeenCalled();
     expect(result.isNewUser).toBe(false);
-    const savedUser = userRepo.save.mock.calls[0][0];
-    expect(savedUser.displayName).toBe('Bob Smith');
-    expect(savedUser.avatarUrl).toBe('https://apple-avatar.png');
+    expect(result.user.displayName).toBe('Bob App Name');
+    expect(result.user.avatarUrl).toBe('https://kept.png');
     expect(result.user.dmPermission).toBe(DmPermission.MEMBERS);
     expect(result.user.createdAt).toBe('2026-01-01T00:00:00.000Z');
-  });
-
-  it('preserves existing avatar when metadata omits avatar_url', async () => {
-    const existing = buildExistingUser({ avatarUrl: 'https://kept.png' });
-    supabaseService.verifyAppleToken.mockResolvedValue(
-      buildSupabaseOk({ user_metadata: { avatar_url: undefined } }) as any,
-    );
-    userRepo.findByProvider.mockResolvedValue(existing);
-
-    await useCase.execute({
-      token: 'apple.token',
-    });
-
-    const savedUser = userRepo.save.mock.calls[0][0];
-    expect(savedUser.avatarUrl).toBe('https://kept.png');
   });
 
   it('throws UnauthorizedException on supabase error', async () => {
