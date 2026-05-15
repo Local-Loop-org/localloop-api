@@ -6,6 +6,7 @@ import {
   CreateGroupData,
   IGroupRepository,
   JoinRequestWithRequester,
+  MyGroupLastMessage,
   MyGroupsCursor,
   MyGroupSummary,
   NearbyGroupRow,
@@ -27,6 +28,57 @@ import {
   MemberStatus,
   RequestStatus,
 } from '@localloop/shared-types';
+
+interface MyGroupSummaryColumns {
+  gm_last_read_at: Date | null;
+  lm_content: string | null;
+  lm_created_at: Date | null;
+  u_display_name: string | null;
+  unread_count: number | string;
+  last_activity_at: Date;
+}
+
+interface MyGroupListRawRow extends MyGroupSummaryColumns {
+  g_id: string;
+  g_name: string;
+  g_anchor_type: AnchorType;
+  g_anchor_label: string;
+  g_member_count: number | string;
+  gm_role: MemberRole;
+  gm_joined_at: Date;
+}
+
+interface MyGroupSummaryRawRow extends MyGroupSummaryColumns {
+  group_id: string;
+}
+
+const MY_GROUP_SUMMARY_SELECT_SQL = `
+        gm.last_read_at AS gm_last_read_at,
+        lm.content AS lm_content,
+        lm.created_at AS lm_created_at,
+        u.display_name AS u_display_name,
+        uc.unread_count AS unread_count,
+        COALESCE(lm.created_at, gm.joined_at) AS last_activity_at
+`;
+
+const MY_GROUP_SUMMARY_JOINS_SQL = `
+      LEFT JOIN LATERAL (
+        SELECT m.content, m.created_at, m.sender_id
+        FROM messages m
+        WHERE m.group_id = g.id AND m.is_deleted = false
+        ORDER BY m.created_at DESC
+        LIMIT 1
+      ) lm ON true
+      LEFT JOIN users u ON u.id = lm.sender_id
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*)::int AS unread_count
+        FROM messages m
+        WHERE m.group_id = g.id
+          AND m.is_deleted = false
+          AND m.sender_id <> $1::uuid
+          AND m.created_at > COALESCE(gm.last_read_at, gm.joined_at)
+      ) uc ON true
+`;
 
 @Injectable()
 export class GroupTypeORMRepository implements IGroupRepository {
@@ -435,30 +487,10 @@ export class GroupTypeORMRepository implements IGroupRepository {
         g.member_count AS g_member_count,
         gm.role        AS gm_role,
         gm.joined_at   AS gm_joined_at,
-        gm.last_read_at AS gm_last_read_at,
-        lm.content     AS lm_content,
-        lm.created_at  AS lm_created_at,
-        u.display_name AS u_display_name,
-        uc.unread_count AS unread_count,
-        COALESCE(lm.created_at, gm.joined_at) AS last_activity_at
+${MY_GROUP_SUMMARY_SELECT_SQL}
       FROM groups g
       INNER JOIN group_members gm ON gm.group_id = g.id
-      LEFT JOIN LATERAL (
-        SELECT m.content, m.created_at, m.sender_id
-        FROM messages m
-        WHERE m.group_id = g.id AND m.is_deleted = false
-        ORDER BY m.created_at DESC
-        LIMIT 1
-      ) lm ON true
-      LEFT JOIN users u ON u.id = lm.sender_id
-      LEFT JOIN LATERAL (
-        SELECT COUNT(*)::int AS unread_count
-        FROM messages m
-        WHERE m.group_id = g.id
-          AND m.is_deleted = false
-          AND m.sender_id <> $1::uuid
-          AND m.created_at > COALESCE(gm.last_read_at, gm.joined_at)
-      ) uc ON true
+${MY_GROUP_SUMMARY_JOINS_SQL}
       WHERE gm.user_id = $1
         AND gm.status = 'active'
         AND g.is_active = true
@@ -467,23 +499,7 @@ export class GroupTypeORMRepository implements IGroupRepository {
       LIMIT $2
     `;
 
-    const raw = await this.dataSource.query<
-      Array<{
-        g_id: string;
-        g_name: string;
-        g_anchor_type: AnchorType;
-        g_anchor_label: string;
-        g_member_count: number | string;
-        gm_role: MemberRole;
-        gm_joined_at: Date;
-        gm_last_read_at: Date | null;
-        lm_content: string | null;
-        lm_created_at: Date | null;
-        u_display_name: string | null;
-        unread_count: number | string;
-        last_activity_at: Date;
-      }>
-    >(sql, params);
+    const raw = await this.dataSource.query<MyGroupListRawRow[]>(sql, params);
 
     const hasMore = raw.length > limit;
     const page = hasMore ? raw.slice(0, limit) : raw;
@@ -505,14 +521,7 @@ export class GroupTypeORMRepository implements IGroupRepository {
         lastActivityAt: row.last_activity_at,
         lastReadAt: row.gm_last_read_at,
         unreadCount: Number(row.unread_count),
-        lastMessage:
-          row.lm_created_at && row.u_display_name !== null
-            ? {
-                content: row.lm_content,
-                senderName: row.u_display_name,
-                createdAt: row.lm_created_at,
-              }
-            : null,
+        lastMessage: this.toLastMessage(row),
       })),
       nextCursor,
     };
@@ -525,31 +534,10 @@ export class GroupTypeORMRepository implements IGroupRepository {
     const sql = `
       SELECT
         g.id AS group_id,
-        gm.joined_at AS gm_joined_at,
-        gm.last_read_at AS gm_last_read_at,
-        lm.content AS lm_content,
-        lm.created_at AS lm_created_at,
-        u.display_name AS u_display_name,
-        uc.unread_count AS unread_count,
-        COALESCE(lm.created_at, gm.joined_at) AS last_activity_at
+${MY_GROUP_SUMMARY_SELECT_SQL}
       FROM groups g
       INNER JOIN group_members gm ON gm.group_id = g.id
-      LEFT JOIN LATERAL (
-        SELECT m.content, m.created_at, m.sender_id
-        FROM messages m
-        WHERE m.group_id = g.id AND m.is_deleted = false
-        ORDER BY m.created_at DESC
-        LIMIT 1
-      ) lm ON true
-      LEFT JOIN users u ON u.id = lm.sender_id
-      LEFT JOIN LATERAL (
-        SELECT COUNT(*)::int AS unread_count
-        FROM messages m
-        WHERE m.group_id = g.id
-          AND m.is_deleted = false
-          AND m.sender_id <> $1::uuid
-          AND m.created_at > COALESCE(gm.last_read_at, gm.joined_at)
-      ) uc ON true
+${MY_GROUP_SUMMARY_JOINS_SQL}
       WHERE gm.user_id = $1
         AND gm.group_id = $2
         AND gm.status = 'active'
@@ -557,35 +545,33 @@ export class GroupTypeORMRepository implements IGroupRepository {
       LIMIT 1
     `;
 
-    const rows = await this.dataSource.query<
-      Array<{
-        group_id: string;
-        gm_joined_at: Date;
-        gm_last_read_at: Date | null;
-        lm_content: string | null;
-        lm_created_at: Date | null;
-        u_display_name: string | null;
-        unread_count: number | string;
-        last_activity_at: Date;
-      }>
-    >(sql, [userId, groupId]);
+    const rows = await this.dataSource.query<MyGroupSummaryRawRow[]>(sql, [
+      userId,
+      groupId,
+    ]);
 
     const row = rows[0];
     if (!row) return null;
 
+    return this.toMyGroupSummary(row);
+  }
+
+  private toMyGroupSummary(row: MyGroupSummaryRawRow): MyGroupSummary {
     return {
       groupId: row.group_id,
       lastActivityAt: row.last_activity_at,
       lastReadAt: row.gm_last_read_at,
       unreadCount: Number(row.unread_count),
-      lastMessage:
-        row.lm_created_at && row.u_display_name !== null
-          ? {
-              content: row.lm_content,
-              senderName: row.u_display_name,
-              createdAt: row.lm_created_at,
-            }
-          : null,
+      lastMessage: this.toLastMessage(row),
+    };
+  }
+
+  private toLastMessage(row: MyGroupSummaryColumns): MyGroupLastMessage | null {
+    if (!row.lm_created_at || row.u_display_name === null) return null;
+    return {
+      content: row.lm_content,
+      senderName: row.u_display_name,
+      createdAt: row.lm_created_at,
     };
   }
 
