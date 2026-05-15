@@ -25,6 +25,7 @@ import { ListJoinRequestsUseCase } from '../application/use-cases/list-join-requ
 import { LeaveGroupUseCase } from '../application/use-cases/leave-group/leave-group.use-case';
 import { ResolveJoinRequestUseCase } from '../application/use-cases/resolve-join-request/resolve-join-request.use-case';
 import { BanMemberUseCase } from '../application/use-cases/ban-member/ban-member.use-case';
+import { UnbanMemberUseCase } from '../application/use-cases/unban-member/unban-member.use-case';
 import { ListGroupMembersUseCase } from '../application/use-cases/list-group-members/list-group-members.use-case';
 import { ListMyGroupsUseCase } from '../application/use-cases/list-my-groups/list-my-groups.use-case';
 import { DeleteGroupUseCase } from '../application/use-cases/delete-group/delete-group.use-case';
@@ -67,6 +68,7 @@ export class GroupsController {
     private readonly leaveGroup: LeaveGroupUseCase,
     private readonly resolveJoinRequest: ResolveJoinRequestUseCase,
     private readonly banMember: BanMemberUseCase,
+    private readonly unbanMember: UnbanMemberUseCase,
     private readonly listMembers: ListGroupMembersUseCase,
     private readonly listMyGroups: ListMyGroupsUseCase,
     private readonly deleteGroup: DeleteGroupUseCase,
@@ -168,6 +170,16 @@ export class GroupsController {
     @Param('userId', new ParseUUIDPipe()) userId: string,
   ): Promise<void> {
     await this.banMember.execute(req.user.id, id, userId);
+  }
+
+  @Post(':id/members/:userId/unban')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async unban(
+    @Request() req: { user: User },
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Param('userId', new ParseUUIDPipe()) userId: string,
+  ): Promise<void> {
+    await this.unbanMember.execute(req.user.id, id, userId);
   }
 
   @Delete(':id')

@@ -1,8 +1,5 @@
 import { IsEnum, IsString, MaxLength, MinLength } from 'class-validator';
-import {
-  DevicePlatform,
-  PushProvider,
-} from '@localloop/shared-types';
+import { DevicePlatform, PushProvider } from '@localloop/shared-types';
 
 export class RegisterCurrentPushDeviceDto {
   @IsString()

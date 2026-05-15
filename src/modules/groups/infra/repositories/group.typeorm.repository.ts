@@ -405,6 +405,18 @@ export class GroupTypeORMRepository implements IGroupRepository {
     });
   }
 
+  async unbanMemberAtomic(groupId: string, userId: string): Promise<void> {
+    await this.dataSource.transaction(async (manager) => {
+      const existing = await manager.findOneBy(GroupMemberOrmEntity, {
+        groupId,
+        userId,
+      });
+      if (!existing) return;
+      if (existing.status !== MemberStatus.BANNED) return;
+      await manager.delete(GroupMemberOrmEntity, { groupId, userId });
+    });
+  }
+
   async deleteGroupAtomic(groupId: string): Promise<void> {
     await this.dataSource.transaction(async (manager) => {
       await manager.query('DELETE FROM messages WHERE group_id = $1', [

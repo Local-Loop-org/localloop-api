@@ -20,6 +20,7 @@ export function buildGroupRepoMock(): jest.Mocked<IGroupRepository> {
     leaveGroupAtomic: jest.fn(),
     approveJoinRequestAtomic: jest.fn(),
     banMemberAtomic: jest.fn(),
+    unbanMemberAtomic: jest.fn(),
     deleteGroupAtomic: jest.fn(),
     listMembersPaginated: jest.fn(),
     listMyGroupsByActivity: jest.fn(),

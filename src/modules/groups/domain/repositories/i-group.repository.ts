@@ -177,6 +177,13 @@ export interface IGroupRepository {
   banMemberAtomic(groupId: string, userId: string): Promise<void>;
 
   /**
+   * Atomically unban a member by hard-deleting their `group_members` row.
+   * Does nothing if the row is missing or its status is not BANNED.
+   * memberCount is unchanged because BANNED rows are not counted.
+   */
+  unbanMemberAtomic(groupId: string, userId: string): Promise<void>;
+
+  /**
    * Atomically delete a group and all its related rows
    * (messages → join_requests → members → group).
    */

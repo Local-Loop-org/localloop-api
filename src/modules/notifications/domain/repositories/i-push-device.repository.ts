@@ -1,7 +1,4 @@
-import {
-  DevicePlatform,
-  PushProvider,
-} from '@localloop/shared-types';
+import { DevicePlatform, PushProvider } from '@localloop/shared-types';
 import { PushDevice } from '../entities/push-device.entity';
 
 export interface UpsertPushDeviceData {
