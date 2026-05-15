@@ -65,23 +65,30 @@ function buildQueryBuilder(result: {
   raw: FindNearbyRawRow[];
 }): FindNearbyQueryBuilderMock {
   const qb = {} as FindNearbyQueryBuilderMock;
-  qb.leftJoin = jest.fn(
-    (
-      _entity: typeof GroupMemberOrmEntity | typeof GroupJoinRequestOrmEntity,
-      _alias: string,
-      _condition: string,
-      _params?: Record<string, unknown>,
-    ) => qb,
-  ) as FindNearbyQueryBuilderMock['leftJoin'];
-  qb.addSelect = jest.fn(
-    (_selection: string, _alias: string) => qb,
-  ) as FindNearbyQueryBuilderMock['addSelect'];
-  qb.where = jest.fn(
-    (_condition: string) => qb,
-  ) as FindNearbyQueryBuilderMock['where'];
-  qb.andWhere = jest.fn(
-    (_condition: string | Brackets, _params?: Record<string, unknown>) => qb,
-  ) as FindNearbyQueryBuilderMock['andWhere'];
+  qb.leftJoin = jest
+    .fn<
+      ReturnType<FindNearbyQueryBuilderMock['leftJoin']>,
+      Parameters<FindNearbyQueryBuilderMock['leftJoin']>
+    >()
+    .mockReturnValue(qb);
+  qb.addSelect = jest
+    .fn<
+      ReturnType<FindNearbyQueryBuilderMock['addSelect']>,
+      Parameters<FindNearbyQueryBuilderMock['addSelect']>
+    >()
+    .mockReturnValue(qb);
+  qb.where = jest
+    .fn<
+      ReturnType<FindNearbyQueryBuilderMock['where']>,
+      Parameters<FindNearbyQueryBuilderMock['where']>
+    >()
+    .mockReturnValue(qb);
+  qb.andWhere = jest
+    .fn<
+      ReturnType<FindNearbyQueryBuilderMock['andWhere']>,
+      Parameters<FindNearbyQueryBuilderMock['andWhere']>
+    >()
+    .mockReturnValue(qb);
   qb.getRawAndEntities = jest
     .fn()
     .mockResolvedValue(
