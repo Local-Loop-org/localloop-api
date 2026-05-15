@@ -147,8 +147,15 @@ export class GroupTypeORMRepository implements IGroupRepository {
         'gm.group_id = g.id AND gm.user_id = :userId',
         { userId },
       )
+      .leftJoin(
+        GroupJoinRequestOrmEntity,
+        'gjr',
+        'gjr.group_id = g.id AND gjr.user_id = :userId AND gjr.status = :pendingRequest',
+        { userId, pendingRequest: RequestStatus.PENDING },
+      )
       .addSelect('gm.role', 'gm_role')
       .addSelect('gm.status', 'gm_status')
+      .addSelect('gjr.status', 'gjr_status')
       .where('g.is_active = TRUE')
       .andWhere('(gm.status IS NULL OR gm.status != :banned)', {
         banned: MemberStatus.BANNED,
@@ -168,8 +175,12 @@ export class GroupTypeORMRepository implements IGroupRepository {
       const raw = result.raw[i] as {
         gm_role: MemberRole | null;
         gm_status: MemberStatus | null;
+        gjr_status: RequestStatus | null;
       };
-      const status = raw.gm_status ?? null;
+      const requestStatus = raw.gjr_status ?? null;
+      const status =
+        raw.gm_status ??
+        (requestStatus === RequestStatus.PENDING ? MemberStatus.PENDING : null);
       const role = raw.gm_role ?? null;
       return {
         group: GroupMapper.toDomain(entity),
