@@ -235,6 +235,14 @@ export class GroupTypeORMRepository implements IGroupRepository {
     await this.membersRepo.update({ groupId, userId }, { status });
   }
 
+  async updateMemberRole(
+    groupId: string,
+    userId: string,
+    role: MemberRole,
+  ): Promise<void> {
+    await this.membersRepo.update({ groupId, userId }, { role });
+  }
+
   async findPendingJoinRequest(
     groupId: string,
     userId: string,

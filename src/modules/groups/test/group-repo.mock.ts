@@ -12,6 +12,7 @@ export function buildGroupRepoMock(): jest.Mocked<IGroupRepository> {
     decrementMemberCount: jest.fn(),
     removeMember: jest.fn(),
     updateMemberStatus: jest.fn(),
+    updateMemberRole: jest.fn(),
     findPendingJoinRequest: jest.fn(),
     createJoinRequest: jest.fn(),
     listJoinRequestsByStatus: jest.fn(),

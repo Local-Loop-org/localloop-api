@@ -131,6 +131,11 @@ export interface IGroupRepository {
     userId: string,
     status: MemberStatus,
   ): Promise<void>;
+  updateMemberRole(
+    groupId: string,
+    userId: string,
+    role: MemberRole,
+  ): Promise<void>;
 
   findPendingJoinRequest(
     groupId: string,

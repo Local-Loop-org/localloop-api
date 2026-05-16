@@ -17,6 +17,8 @@ import { LeaveGroupUseCase } from './application/use-cases/leave-group/leave-gro
 import { ResolveJoinRequestUseCase } from './application/use-cases/resolve-join-request/resolve-join-request.use-case';
 import { BanMemberUseCase } from './application/use-cases/ban-member/ban-member.use-case';
 import { UnbanMemberUseCase } from './application/use-cases/unban-member/unban-member.use-case';
+import { PromoteMemberUseCase } from './application/use-cases/promote-member/promote-member.use-case';
+import { DemoteMemberUseCase } from './application/use-cases/demote-member/demote-member.use-case';
 import { ListGroupMembersUseCase } from './application/use-cases/list-group-members/list-group-members.use-case';
 import { ListMyGroupsUseCase } from './application/use-cases/list-my-groups/list-my-groups.use-case';
 import { DeleteGroupUseCase } from './application/use-cases/delete-group/delete-group.use-case';
@@ -44,6 +46,8 @@ import { GroupsController } from './presentation/groups.controller';
     ResolveJoinRequestUseCase,
     BanMemberUseCase,
     UnbanMemberUseCase,
+    PromoteMemberUseCase,
+    DemoteMemberUseCase,
     ListGroupMembersUseCase,
     ListMyGroupsUseCase,
     DeleteGroupUseCase,
