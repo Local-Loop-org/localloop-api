@@ -27,5 +27,6 @@ export function buildGroupRepoMock(): jest.Mocked<IGroupRepository> {
     listMyGroupsByActivity: jest.fn(),
     getMyGroupSummary: jest.fn(),
     markGroupRead: jest.fn(),
+    hasSharedActiveGroup: jest.fn(),
   };
 }

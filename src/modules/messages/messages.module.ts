@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '@/modules/auth/auth.module';
 import { GroupsModule } from '@/modules/groups/groups.module';
 import { NotificationsModule } from '@/modules/notifications/notifications.module';
+import { DirectMessagesModule } from '@/modules/direct-messages/direct-messages.module';
 
 import { MESSAGE_REPOSITORY } from './domain/repositories/i-message.repository';
 import { MessageOrmEntity } from './infra/repositories/message.entity';
@@ -20,6 +21,7 @@ import { ChatGateway } from './presentation/chat.gateway';
     AuthModule,
     GroupsModule,
     NotificationsModule,
+    DirectMessagesModule,
     TypeOrmModule.forFeature([MessageOrmEntity]),
   ],
   controllers: [MessagesController],

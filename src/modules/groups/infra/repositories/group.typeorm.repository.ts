@@ -635,4 +635,27 @@ ${MY_GROUP_SUMMARY_JOINS_SQL}
 
     return rows.length > 0;
   }
+
+  async hasSharedActiveGroup(
+    userAId: string,
+    userBId: string,
+  ): Promise<boolean> {
+    const rows = await this.dataSource.query<Array<{ exists: boolean }>>(
+      `
+        SELECT EXISTS (
+          SELECT 1
+          FROM group_members gm_a
+          JOIN group_members gm_b
+            ON gm_a.group_id = gm_b.group_id
+          WHERE gm_a.user_id = $1
+            AND gm_b.user_id = $2
+            AND gm_a.status = 'active'
+            AND gm_b.status = 'active'
+        ) AS exists
+      `,
+      [userAId, userBId],
+    );
+
+    return rows[0]?.exists === true;
+  }
 }

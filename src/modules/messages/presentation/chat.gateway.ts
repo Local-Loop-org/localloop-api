@@ -30,6 +30,7 @@ import {
   MyGroupSummary,
 } from '@/modules/groups/domain/repositories/i-group.repository';
 import { SendGroupMessagePushNotificationsUseCase } from '@/modules/notifications/application/use-cases/send-group-message-push-notifications/send-group-message-push-notifications.use-case';
+import { SendDirectMessageUseCase } from '@/modules/direct-messages/application/use-cases/send-direct-message/send-direct-message.use-case';
 import { SendMessageResponseDto } from '../application/use-cases/send-message/send-message.dto';
 import { SendMessageUseCase } from '../application/use-cases/send-message/send-message.use-case';
 
@@ -56,6 +57,15 @@ interface SendMessagePayload {
   mediaType: 'image' | 'video' | null;
 }
 
+interface JoinDmPayload {
+  userId: string;
+}
+
+interface SendDmPayload {
+  recipientId: string;
+  content: string | null;
+}
+
 interface AuthedSocket extends Socket {
   data: { user: User };
 }
@@ -63,12 +73,17 @@ interface AuthedSocket extends Socket {
 const GROUP_ROOM_PREFIX = 'group:';
 const PRESENCE_ROOM_PREFIX = 'presence:';
 const GROUP_SUMMARY_ROOM_PREFIX = 'group_summary:';
+const DM_ROOM_PREFIX = 'dm:';
 const MAX_WATCHED_GROUPS = 50;
 const groupRoom = (groupId: string) => `${GROUP_ROOM_PREFIX}${groupId}`;
 const presenceRoom = (groupId: string) => `${PRESENCE_ROOM_PREFIX}${groupId}`;
 const groupSummaryRoom = (groupId: string) =>
   `${GROUP_SUMMARY_ROOM_PREFIX}${groupId}`;
 const groupIdFromRoom = (room: string) => room.slice(GROUP_ROOM_PREFIX.length);
+const dmRoom = (userAId: string, userBId: string): string => {
+  const [a, b] = [userAId, userBId].sort();
+  return `${DM_ROOM_PREFIX}${a}:${b}`;
+};
 
 @WebSocketGateway({ namespace: '/chat', cors: { origin: '*' } })
 export class ChatGateway
@@ -85,6 +100,7 @@ export class ChatGateway
     @Inject(GROUP_REPOSITORY) private readonly groupRepo: IGroupRepository,
     private readonly sendMessage: SendMessageUseCase,
     private readonly sendGroupMessagePush: SendGroupMessagePushNotificationsUseCase,
+    private readonly sendDirectMessage: SendDirectMessageUseCase,
   ) {}
 
   afterInit(server: Namespace): void {
@@ -372,6 +388,70 @@ export class ChatGateway
       socket.emit(ChatSocketEvents.ERROR, {
         code: e.response?.error ?? 'SEND_FAILED',
         message: e.response?.message ?? e.message ?? 'Failed to send message',
+      });
+    }
+  }
+
+  @SubscribeMessage(ChatSocketEvents.JOIN_DM)
+  async onJoinDm(
+    @ConnectedSocket() socket: AuthedSocket,
+    @MessageBody() payload: JoinDmPayload,
+  ): Promise<{ ok: boolean }> {
+    const callerId = socket.data.user.id;
+    if (
+      !payload ||
+      typeof payload.userId !== 'string' ||
+      payload.userId.length === 0 ||
+      payload.userId === callerId
+    ) {
+      socket.emit(ChatSocketEvents.ERROR, {
+        code: 'BAD_REQUEST',
+        message: 'Invalid DM peer',
+      });
+      return { ok: false };
+    }
+    await socket.join(dmRoom(callerId, payload.userId));
+    return { ok: true };
+  }
+
+  @SubscribeMessage(ChatSocketEvents.LEAVE_DM)
+  async onLeaveDm(
+    @ConnectedSocket() socket: AuthedSocket,
+    @MessageBody() payload: JoinDmPayload,
+  ): Promise<void> {
+    if (
+      !payload ||
+      typeof payload.userId !== 'string' ||
+      payload.userId.length === 0
+    ) {
+      return;
+    }
+    await socket.leave(dmRoom(socket.data.user.id, payload.userId));
+  }
+
+  @SubscribeMessage(ChatSocketEvents.SEND_DM)
+  async onSendDm(
+    @ConnectedSocket() socket: AuthedSocket,
+    @MessageBody() payload: SendDmPayload,
+  ): Promise<void> {
+    try {
+      const result = await this.sendDirectMessage.execute(
+        socket.data.user.id,
+        payload.recipientId,
+        { content: payload.content ?? null },
+      );
+      this.server
+        .to(dmRoom(socket.data.user.id, payload.recipientId))
+        .emit(ChatSocketEvents.NEW_DIRECT_MESSAGE, result);
+    } catch (err) {
+      const e = err as {
+        response?: { error?: string; message?: string };
+        message?: string;
+      };
+      socket.emit(ChatSocketEvents.ERROR, {
+        code: e.response?.error ?? 'SEND_FAILED',
+        message:
+          e.response?.message ?? e.message ?? 'Failed to send direct message',
       });
     }
   }
