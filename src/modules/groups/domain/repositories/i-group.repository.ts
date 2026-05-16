@@ -197,7 +197,8 @@ export interface IGroupRepository {
   listMembersPaginated(
     groupId: string,
     limit: number,
-    cursor?: string,
+    cursor: string | undefined,
+    status: MemberStatus,
   ): Promise<PaginatedMembers>;
 
   /**

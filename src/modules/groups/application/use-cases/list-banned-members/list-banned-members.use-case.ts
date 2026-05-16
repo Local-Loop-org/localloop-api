@@ -4,27 +4,27 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { MemberStatus } from '@localloop/shared-types';
+import { MemberRole, MemberStatus } from '@localloop/shared-types';
 import {
   GROUP_REPOSITORY,
   IGroupRepository,
 } from '@domain/repositories/i-group.repository';
-import { ListGroupMembersResponseDto } from './list-group-members.dto';
+import { ListBannedMembersResponseDto } from './list-banned-members.dto';
 
 const DEFAULT_LIMIT = 50;
 
 @Injectable()
-export class ListGroupMembersUseCase {
+export class ListBannedMembersUseCase {
   constructor(
     @Inject(GROUP_REPOSITORY) private readonly groupRepo: IGroupRepository,
   ) {}
 
   async execute(
-    userId: string,
+    callerId: string,
     groupId: string,
     limit?: number,
     before?: string,
-  ): Promise<ListGroupMembersResponseDto> {
+  ): Promise<ListBannedMembersResponseDto> {
     const group = await this.groupRepo.findById(groupId);
     if (!group) {
       throw new NotFoundException({
@@ -33,11 +33,17 @@ export class ListGroupMembersUseCase {
       });
     }
 
-    const caller = await this.groupRepo.findMember(groupId, userId);
-    if (!caller || caller.status !== MemberStatus.ACTIVE) {
+    const caller = await this.groupRepo.findMember(groupId, callerId);
+    const isPrivileged =
+      caller &&
+      caller.status === MemberStatus.ACTIVE &&
+      (caller.role === MemberRole.OWNER ||
+        caller.role === MemberRole.MODERATOR);
+
+    if (!isPrivileged) {
       throw new ForbiddenException({
         error: 'FORBIDDEN',
-        message: 'Only active members can list group members',
+        message: 'Only owners or moderators can list banned members',
       });
     }
 
@@ -45,7 +51,7 @@ export class ListGroupMembersUseCase {
       groupId,
       limit ?? DEFAULT_LIMIT,
       before,
-      MemberStatus.ACTIVE,
+      MemberStatus.BANNED,
     );
 
     return {

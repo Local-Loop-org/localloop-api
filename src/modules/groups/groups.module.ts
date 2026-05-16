@@ -20,6 +20,7 @@ import { UnbanMemberUseCase } from './application/use-cases/unban-member/unban-m
 import { PromoteMemberUseCase } from './application/use-cases/promote-member/promote-member.use-case';
 import { DemoteMemberUseCase } from './application/use-cases/demote-member/demote-member.use-case';
 import { ListGroupMembersUseCase } from './application/use-cases/list-group-members/list-group-members.use-case';
+import { ListBannedMembersUseCase } from './application/use-cases/list-banned-members/list-banned-members.use-case';
 import { ListMyGroupsUseCase } from './application/use-cases/list-my-groups/list-my-groups.use-case';
 import { DeleteGroupUseCase } from './application/use-cases/delete-group/delete-group.use-case';
 import { UpdateGroupUseCase } from './application/use-cases/update-group/update-group.use-case';
@@ -49,6 +50,7 @@ import { GroupsController } from './presentation/groups.controller';
     PromoteMemberUseCase,
     DemoteMemberUseCase,
     ListGroupMembersUseCase,
+    ListBannedMembersUseCase,
     ListMyGroupsUseCase,
     DeleteGroupUseCase,
     UpdateGroupUseCase,

@@ -29,6 +29,7 @@ import { UnbanMemberUseCase } from '../application/use-cases/unban-member/unban-
 import { PromoteMemberUseCase } from '../application/use-cases/promote-member/promote-member.use-case';
 import { DemoteMemberUseCase } from '../application/use-cases/demote-member/demote-member.use-case';
 import { ListGroupMembersUseCase } from '../application/use-cases/list-group-members/list-group-members.use-case';
+import { ListBannedMembersUseCase } from '../application/use-cases/list-banned-members/list-banned-members.use-case';
 import { ListMyGroupsUseCase } from '../application/use-cases/list-my-groups/list-my-groups.use-case';
 import { DeleteGroupUseCase } from '../application/use-cases/delete-group/delete-group.use-case';
 import { UpdateGroupUseCase } from '../application/use-cases/update-group/update-group.use-case';
@@ -53,6 +54,10 @@ import {
   ListGroupMembersResponseDto,
 } from '../application/use-cases/list-group-members/list-group-members.dto';
 import {
+  ListBannedMembersQueryDto,
+  ListBannedMembersResponseDto,
+} from '../application/use-cases/list-banned-members/list-banned-members.dto';
+import {
   ListMyGroupsQueryDto,
   ListMyGroupsResponseDto,
 } from '../application/use-cases/list-my-groups/list-my-groups.dto';
@@ -74,6 +79,7 @@ export class GroupsController {
     private readonly promoteMember: PromoteMemberUseCase,
     private readonly demoteMember: DemoteMemberUseCase,
     private readonly listMembers: ListGroupMembersUseCase,
+    private readonly listBannedMembers: ListBannedMembersUseCase,
     private readonly listMyGroups: ListMyGroupsUseCase,
     private readonly deleteGroup: DeleteGroupUseCase,
     private readonly updateGroup: UpdateGroupUseCase,
@@ -213,6 +219,20 @@ export class GroupsController {
     @Param('id', new ParseUUIDPipe()) id: string,
   ): Promise<void> {
     await this.deleteGroup.execute(req.user.id, id);
+  }
+
+  @Get(':id/members/banned')
+  async bannedMembers(
+    @Request() req: { user: User },
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Query() query: ListBannedMembersQueryDto,
+  ): Promise<ListBannedMembersResponseDto> {
+    return this.listBannedMembers.execute(
+      req.user.id,
+      id,
+      query.limit,
+      query.before,
+    );
   }
 
   @Get(':id/members')

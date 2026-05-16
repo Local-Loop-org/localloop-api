@@ -442,13 +442,14 @@ export class GroupTypeORMRepository implements IGroupRepository {
   async listMembersPaginated(
     groupId: string,
     limit: number,
-    cursor?: string,
+    cursor: string | undefined,
+    status: MemberStatus,
   ): Promise<PaginatedMembers> {
     const qb = this.membersRepo
       .createQueryBuilder('m')
       .innerJoin(UserEntity, 'u', 'u.id = m.user_id')
       .where('m.group_id = :groupId', { groupId })
-      .andWhere('m.status = :status', { status: MemberStatus.ACTIVE });
+      .andWhere('m.status = :status', { status });
 
     if (cursor) {
       qb.andWhere('m.joined_at > :cursor', { cursor });
