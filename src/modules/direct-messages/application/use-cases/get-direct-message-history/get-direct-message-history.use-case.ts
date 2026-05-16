@@ -1,0 +1,71 @@
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+
+import {
+  IUserRepository,
+  USER_REPOSITORY,
+} from '@/modules/auth/domain/repositories/i-user.repository';
+import {
+  DIRECT_MESSAGE_REPOSITORY,
+  IDirectMessageRepository,
+} from '@/modules/direct-messages/domain/repositories/i-direct-message.repository';
+import { GetDirectMessageHistoryResponseDto } from './get-direct-message-history.dto';
+
+const DEFAULT_LIMIT = 50;
+
+@Injectable()
+export class GetDirectMessageHistoryUseCase {
+  constructor(
+    @Inject(DIRECT_MESSAGE_REPOSITORY)
+    private readonly directMessageRepo: IDirectMessageRepository,
+    @Inject(USER_REPOSITORY) private readonly userRepo: IUserRepository,
+  ) {}
+
+  async execute(
+    callerId: string,
+    otherUserId: string,
+    limit?: number,
+    before?: string,
+  ): Promise<GetDirectMessageHistoryResponseDto> {
+    if (otherUserId === callerId) {
+      throw new BadRequestException({
+        error: 'CANNOT_DM_SELF',
+        message: 'You cannot read direct messages with yourself',
+      });
+    }
+
+    const other = await this.userRepo.findById(otherUserId);
+    if (!other || !other.isActive) {
+      throw new NotFoundException({
+        error: 'RECIPIENT_NOT_FOUND',
+        message: 'User not found',
+      });
+    }
+
+    const { rows, nextCursor } = await this.directMessageRepo.listConversation(
+      callerId,
+      otherUserId,
+      limit ?? DEFAULT_LIMIT,
+      before,
+    );
+
+    return {
+      data: rows.map((row) => ({
+        id: row.id,
+        senderId: row.senderId,
+        senderName: row.senderName,
+        senderAvatar: row.senderAvatar,
+        recipientId: row.recipientId,
+        content: row.content,
+        mediaUrl: row.mediaUrl,
+        mediaType: row.mediaType,
+        createdAt: row.createdAt.toISOString(),
+      })),
+      next_cursor: nextCursor,
+    };
+  }
+}

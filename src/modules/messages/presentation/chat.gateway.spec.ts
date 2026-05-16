@@ -16,6 +16,7 @@ import { buildGroupRepoMock } from '@/modules/groups/test/group-repo.mock';
 import { User } from '@/modules/auth/domain/entities/user.entity';
 import { IUserRepository } from '@/modules/auth/domain/repositories/i-user.repository';
 import { SendGroupMessagePushNotificationsUseCase } from '@/modules/notifications/application/use-cases/send-group-message-push-notifications/send-group-message-push-notifications.use-case';
+import { SendDirectMessageUseCase } from '@/modules/direct-messages/application/use-cases/send-direct-message/send-direct-message.use-case';
 import { SendMessageUseCase } from '../application/use-cases/send-message/send-message.use-case';
 import { ChatGateway } from './chat.gateway';
 
@@ -50,6 +51,7 @@ describe('ChatGateway', () => {
   let groupRepo: ReturnType<typeof buildGroupRepoMock>;
   let sendMessage: jest.Mocked<SendMessageUseCase>;
   let sendGroupMessagePush: jest.Mocked<SendGroupMessagePushNotificationsUseCase>;
+  let sendDirectMessage: jest.Mocked<SendDirectMessageUseCase>;
   let server: ServerMock;
   let roomEmit: jest.Mock;
 
@@ -164,6 +166,9 @@ describe('ChatGateway', () => {
     sendGroupMessagePush = {
       execute: jest.fn(),
     } as unknown as jest.Mocked<SendGroupMessagePushNotificationsUseCase>;
+    sendDirectMessage = {
+      execute: jest.fn(),
+    } as unknown as jest.Mocked<SendDirectMessageUseCase>;
 
     roomMembers.clear();
     roomEmit = jest.fn();
@@ -181,6 +186,7 @@ describe('ChatGateway', () => {
       groupRepo,
       sendMessage,
       sendGroupMessagePush,
+      sendDirectMessage,
     );
     (gateway as unknown as { server: ServerMock }).server = server;
   });
@@ -691,6 +697,133 @@ describe('ChatGateway', () => {
           unreadCount: 2,
         }),
       );
+    });
+  });
+
+  describe('direct messages', () => {
+    const dmRoomKey = (a: string, b: string) => `dm:${[a, b].sort().join(':')}`;
+
+    describe('join_dm', () => {
+      it('joins the sorted-pair room and acks ok', async () => {
+        const socket = makeSocket();
+        socket.data.user = buildUser({ id: 'user-1' });
+
+        const ack = await gateway.onJoinDm(socket as never, {
+          userId: 'user-2',
+        });
+
+        expect(socket.join).toHaveBeenCalledWith(dmRoomKey('user-1', 'user-2'));
+        expect(ack).toEqual({ ok: true });
+      });
+
+      it('produces the same room regardless of which side joins', async () => {
+        const a = makeSocket();
+        a.data.user = buildUser({ id: 'user-a' });
+        const b = makeSocket();
+        b.data.user = buildUser({ id: 'user-b' });
+
+        await gateway.onJoinDm(a as never, { userId: 'user-b' });
+        await gateway.onJoinDm(b as never, { userId: 'user-a' });
+
+        const expected = dmRoomKey('user-a', 'user-b');
+        expect(a.join).toHaveBeenCalledWith(expected);
+        expect(b.join).toHaveBeenCalledWith(expected);
+      });
+
+      it('rejects joining a DM with self', async () => {
+        const socket = makeSocket();
+        socket.data.user = buildUser({ id: 'user-1' });
+
+        const ack = await gateway.onJoinDm(socket as never, {
+          userId: 'user-1',
+        });
+
+        expect(ack).toEqual({ ok: false });
+        expect(socket.join).not.toHaveBeenCalled();
+        expect(socket.emit).toHaveBeenCalledWith(
+          ChatSocketEvents.ERROR,
+          expect.objectContaining({ code: 'BAD_REQUEST' }),
+        );
+      });
+    });
+
+    describe('leave_dm', () => {
+      it('leaves the sorted-pair room', async () => {
+        const socket = makeSocket();
+        socket.data.user = buildUser({ id: 'user-1' });
+
+        await gateway.onLeaveDm(socket as never, { userId: 'user-2' });
+
+        expect(socket.leave).toHaveBeenCalledWith(
+          dmRoomKey('user-1', 'user-2'),
+        );
+      });
+
+      it('no-ops on missing payload', async () => {
+        const socket = makeSocket();
+        socket.data.user = buildUser({ id: 'user-1' });
+
+        await gateway.onLeaveDm(socket as never, { userId: '' });
+
+        expect(socket.leave).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('send_dm', () => {
+      it('emits new_direct_message to the sorted-pair room on success', async () => {
+        const socket = makeSocket();
+        socket.data.user = buildUser({ id: 'user-1' });
+        const broadcast = {
+          id: 'dm-1',
+          senderId: 'user-1',
+          senderName: 'Alice',
+          senderAvatar: null,
+          recipientId: 'user-2',
+          content: 'hi',
+          mediaUrl: null,
+          mediaType: null,
+          createdAt: new Date().toISOString(),
+        };
+        sendDirectMessage.execute.mockResolvedValue(broadcast);
+
+        await gateway.onSendDm(socket as never, {
+          recipientId: 'user-2',
+          content: 'hi',
+        });
+
+        expect(sendDirectMessage.execute).toHaveBeenCalledWith(
+          'user-1',
+          'user-2',
+          { content: 'hi' },
+        );
+        expect(server.to).toHaveBeenCalledWith(dmRoomKey('user-1', 'user-2'));
+        expect(roomEmit).toHaveBeenCalledWith(
+          ChatSocketEvents.NEW_DIRECT_MESSAGE,
+          broadcast,
+        );
+      });
+
+      it('emits error event and skips broadcast when the use case throws', async () => {
+        const socket = makeSocket();
+        socket.data.user = buildUser({ id: 'user-1' });
+        sendDirectMessage.execute.mockRejectedValue(
+          new ForbiddenException({
+            error: 'DM_NOT_ALLOWED',
+            message: "Recipient's settings do not allow direct messages",
+          }),
+        );
+
+        await gateway.onSendDm(socket as never, {
+          recipientId: 'user-2',
+          content: 'hi',
+        });
+
+        expect(server.to).not.toHaveBeenCalled();
+        expect(socket.emit).toHaveBeenCalledWith(
+          ChatSocketEvents.ERROR,
+          expect.objectContaining({ code: 'DM_NOT_ALLOWED' }),
+        );
+      });
     });
   });
 });

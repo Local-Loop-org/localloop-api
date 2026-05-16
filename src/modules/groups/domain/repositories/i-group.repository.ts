@@ -230,6 +230,12 @@ export interface IGroupRepository {
     groupId: string,
     readAt: Date,
   ): Promise<boolean>;
+
+  /**
+   * Returns true if both users are ACTIVE members of at least one common group.
+   * Used by the DM `MEMBERS` policy to gate sending without listing all groups.
+   */
+  hasSharedActiveGroup(userAId: string, userBId: string): Promise<boolean>;
 }
 
 export const GROUP_REPOSITORY = Symbol('GROUP_REPOSITORY');
