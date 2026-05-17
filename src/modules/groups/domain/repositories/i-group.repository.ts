@@ -8,6 +8,10 @@ import {
   MemberStatus,
   RequestStatus,
 } from '@localloop/shared-types';
+import {
+  LastMessageSummary,
+  PaginatedResult,
+} from '@/shared/pagination/types';
 
 export interface CreateGroupData {
   name: string;
@@ -44,16 +48,6 @@ export interface MemberRow {
   joinedAt: Date;
 }
 
-export interface PaginatedMembers {
-  rows: MemberRow[];
-  nextCursor: string | null;
-}
-
-export interface MyGroupLastMessage {
-  content: string | null;
-  senderName: string;
-  createdAt: Date;
-}
 
 export interface MyGroupRow {
   id: string;
@@ -63,7 +57,7 @@ export interface MyGroupRow {
   memberCount: number;
   myRole: MemberRole;
   lastActivityAt: Date;
-  lastMessage: MyGroupLastMessage | null;
+  lastMessage: LastMessageSummary | null;
   lastReadAt: Date | null;
   unreadCount: number;
 }
@@ -71,7 +65,7 @@ export interface MyGroupRow {
 export interface MyGroupSummary {
   groupId: string;
   lastActivityAt: Date;
-  lastMessage: MyGroupLastMessage | null;
+  lastMessage: LastMessageSummary | null;
   lastReadAt: Date | null;
   unreadCount: number;
 }
@@ -81,10 +75,6 @@ export interface MyGroupsCursor {
   groupId: string;
 }
 
-export interface PaginatedMyGroups {
-  rows: MyGroupRow[];
-  nextCursor: MyGroupsCursor | null;
-}
 
 export interface ApproveJoinRequestAtomicParams {
   requestId: string;
@@ -199,7 +189,7 @@ export interface IGroupRepository {
     limit: number,
     cursor: string | undefined,
     status: MemberStatus,
-  ): Promise<PaginatedMembers>;
+  ): Promise<PaginatedResult<MemberRow>>;
 
   /**
    * List the caller's active group memberships, ordered by latest activity DESC
@@ -211,7 +201,7 @@ export interface IGroupRepository {
     userId: string,
     limit: number,
     cursor?: MyGroupsCursor,
-  ): Promise<PaginatedMyGroups>;
+  ): Promise<PaginatedResult<MyGroupRow, MyGroupsCursor>>;
 
   /**
    * Return a user-specific summary for one active membership.

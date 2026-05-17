@@ -6,14 +6,17 @@ import {
   CreateGroupData,
   IGroupRepository,
   JoinRequestWithRequester,
-  MyGroupLastMessage,
+  MemberRow,
+  MyGroupRow,
   MyGroupsCursor,
   MyGroupSummary,
   NearbyGroupRow,
-  PaginatedMembers,
-  PaginatedMyGroups,
   UpdateGroupData,
 } from '@domain/repositories/i-group.repository';
+import {
+  LastMessageSummary,
+  PaginatedResult,
+} from '@/shared/pagination/types';
 import { AnchorType } from '@localloop/shared-types';
 import { Group } from '@domain/entities/group.entity';
 import { GroupMember } from '@domain/entities/group-member.entity';
@@ -444,7 +447,7 @@ export class GroupTypeORMRepository implements IGroupRepository {
     limit: number,
     cursor: string | undefined,
     status: MemberStatus,
-  ): Promise<PaginatedMembers> {
+  ): Promise<PaginatedResult<MemberRow>> {
     const qb = this.membersRepo
       .createQueryBuilder('m')
       .innerJoin(UserEntity, 'u', 'u.id = m.user_id')
@@ -497,7 +500,7 @@ export class GroupTypeORMRepository implements IGroupRepository {
     userId: string,
     limit: number,
     cursor?: MyGroupsCursor,
-  ): Promise<PaginatedMyGroups> {
+  ): Promise<PaginatedResult<MyGroupRow, MyGroupsCursor>> {
     const params: unknown[] = [userId, limit + 1];
     let cursorClause = '';
     if (cursor) {
@@ -598,7 +601,7 @@ ${MY_GROUP_SUMMARY_JOINS_SQL}
     };
   }
 
-  private toLastMessage(row: MyGroupSummaryColumns): MyGroupLastMessage | null {
+  private toLastMessage(row: MyGroupSummaryColumns): LastMessageSummary | null {
     if (!row.lm_created_at || row.u_display_name === null) return null;
     return {
       content: row.lm_content,
