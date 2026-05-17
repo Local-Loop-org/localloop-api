@@ -13,10 +13,7 @@ import {
   NearbyGroupRow,
   UpdateGroupData,
 } from '@domain/repositories/i-group.repository';
-import {
-  LastMessageSummary,
-  PaginatedResult,
-} from '@/shared/pagination/types';
+import { LastMessageSummary, PaginatedResult } from '@/shared/pagination/types';
 import { AnchorType } from '@localloop/shared-types';
 import { Group } from '@domain/entities/group.entity';
 import { GroupMember } from '@domain/entities/group-member.entity';

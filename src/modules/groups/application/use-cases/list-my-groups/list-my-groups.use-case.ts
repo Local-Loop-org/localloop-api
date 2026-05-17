@@ -1,12 +1,12 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import {
   GROUP_REPOSITORY,
   IGroupRepository,
   MyGroupsCursor,
 } from '@domain/repositories/i-group.repository';
 import {
-  decodeJsonCursor,
   encodeJsonCursor,
+  parseTimestampIdCursor,
 } from '@/shared/pagination/cursor.utils';
 import { ListMyGroupsResponseDto, MyGroupDto } from './list-my-groups.dto';
 
@@ -25,31 +25,12 @@ export class ListMyGroupsUseCase {
   ): Promise<ListMyGroupsResponseDto> {
     let decodedCursor: MyGroupsCursor | undefined;
     if (cursor) {
-      const decoded = decodeJsonCursor(cursor);
-      if (
-        !decoded ||
-        typeof decoded !== 'object' ||
-        typeof (decoded as { lastActivityAt?: unknown }).lastActivityAt !==
-          'string' ||
-        typeof (decoded as { groupId?: unknown }).groupId !== 'string'
-      ) {
-        throw new BadRequestException({
-          error: 'INVALID_CURSOR',
-          message: 'Cursor payload is missing required fields',
-        });
-      }
-      const { lastActivityAt, groupId } = decoded as {
-        lastActivityAt: string;
-        groupId: string;
-      };
-      const date = new Date(lastActivityAt);
-      if (Number.isNaN(date.getTime())) {
-        throw new BadRequestException({
-          error: 'INVALID_CURSOR',
-          message: 'Cursor lastActivityAt is not a valid ISO timestamp',
-        });
-      }
-      decodedCursor = { lastActivityAt: date, groupId };
+      const { timestamp, id } = parseTimestampIdCursor(
+        cursor,
+        'lastActivityAt',
+        'groupId',
+      );
+      decodedCursor = { lastActivityAt: timestamp, groupId: id };
     }
 
     const { rows, nextCursor } = await this.groupRepo.listMyGroupsByActivity(

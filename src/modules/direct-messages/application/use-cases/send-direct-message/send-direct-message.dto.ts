@@ -9,14 +9,18 @@ export class SendDirectMessageDto {
   content?: string | null;
 }
 
-export class SendDirectMessageResponseDto {
-  id!: string;
-  senderId!: string;
-  senderName!: string;
-  senderAvatar!: string | null;
-  recipientId!: string;
-  content!: string | null;
-  mediaUrl!: string | null;
-  mediaType!: MediaType | null;
-  createdAt!: string;
+export interface DirectMessagePayload {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderAvatar: string | null;
+  recipientId: string;
+  content: string | null;
+  mediaUrl: string | null;
+  mediaType: MediaType | null;
+  createdAt: string;
 }
+
+export type SendDirectMessageResponseDto =
+  | ({ type: 'message' } & DirectMessagePayload)
+  | { type: 'request'; requestId: string };

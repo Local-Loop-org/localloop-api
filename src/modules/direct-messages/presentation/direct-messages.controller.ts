@@ -22,6 +22,16 @@ import {
   SendDirectMessageDto,
   SendDirectMessageResponseDto,
 } from '../application/use-cases/send-direct-message/send-direct-message.dto';
+import { ListDmConversationsUseCase } from '../application/use-cases/list-dm-conversations/list-dm-conversations.use-case';
+import {
+  ListDmConversationsQueryDto,
+  ListDmConversationsResponseDto,
+} from '../application/use-cases/list-dm-conversations/list-dm-conversations.dto';
+import { ListDmRequestsUseCase } from '../application/use-cases/list-dm-requests/list-dm-requests.use-case';
+import {
+  ListDmRequestsQueryDto,
+  ListDmRequestsResponseDto,
+} from '../application/use-cases/list-dm-requests/list-dm-requests.dto';
 
 @Controller('dm')
 @UseGuards(AuthGuard('jwt'))
@@ -29,7 +39,32 @@ export class DirectMessagesController {
   constructor(
     private readonly getHistory: GetDirectMessageHistoryUseCase,
     private readonly sendDirectMessage: SendDirectMessageUseCase,
+    private readonly listDmConversations: ListDmConversationsUseCase,
+    private readonly listDmRequests: ListDmRequestsUseCase,
   ) {}
+
+  // @Get() and @Get('requests') MUST appear before @Get(':userId') so NestJS
+  // does not treat the literal strings as UUID params.
+
+  @Get()
+  async inbox(
+    @Request() req: { user: User },
+    @Query() query: ListDmConversationsQueryDto,
+  ): Promise<ListDmConversationsResponseDto> {
+    return this.listDmConversations.execute(
+      req.user.id,
+      query.limit,
+      query.cursor,
+    );
+  }
+
+  @Get('requests')
+  async requests(
+    @Request() req: { user: User },
+    @Query() query: ListDmRequestsQueryDto,
+  ): Promise<ListDmRequestsResponseDto> {
+    return this.listDmRequests.execute(req.user.id, query.limit, query.cursor);
+  }
 
   @Get(':userId')
   async history(
