@@ -1,4 +1,5 @@
 import { MediaType } from '@localloop/shared-types';
+import { PaginatedResult } from '@/shared/pagination/types';
 import { Message } from '../entities/message.entity';
 
 export interface CreateMessageData {
@@ -21,11 +22,6 @@ export interface MessageRow {
   createdAt: Date;
 }
 
-export interface PaginatedMessages {
-  rows: MessageRow[];
-  nextCursor: string | null;
-}
-
 export interface IMessageRepository {
   create(data: CreateMessageData): Promise<Message>;
   findByIdWithSender(id: string): Promise<MessageRow | null>;
@@ -33,7 +29,7 @@ export interface IMessageRepository {
     groupId: string,
     limit: number,
     before?: string,
-  ): Promise<PaginatedMessages>;
+  ): Promise<PaginatedResult<MessageRow>>;
 }
 
 export const MESSAGE_REPOSITORY = Symbol('MESSAGE_REPOSITORY');

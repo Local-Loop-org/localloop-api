@@ -1,4 +1,5 @@
 import { MediaType } from '@localloop/shared-types';
+import { PaginatedResult } from '@/shared/pagination/types';
 import { DirectMessage } from '../entities/direct-message.entity';
 
 export interface CreateDirectMessageData {
@@ -21,11 +22,6 @@ export interface DirectMessageRow {
   createdAt: Date;
 }
 
-export interface PaginatedDirectMessages {
-  rows: DirectMessageRow[];
-  nextCursor: string | null;
-}
-
 export interface IDirectMessageRepository {
   create(data: CreateDirectMessageData): Promise<DirectMessage>;
   findByIdWithSender(id: string): Promise<DirectMessageRow | null>;
@@ -34,7 +30,7 @@ export interface IDirectMessageRepository {
     userBId: string,
     limit: number,
     before?: string,
-  ): Promise<PaginatedDirectMessages>;
+  ): Promise<PaginatedResult<DirectMessageRow>>;
 }
 
 export const DIRECT_MESSAGE_REPOSITORY = Symbol('DIRECT_MESSAGE_REPOSITORY');

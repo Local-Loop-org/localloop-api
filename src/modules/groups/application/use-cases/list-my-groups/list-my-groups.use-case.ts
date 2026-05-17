@@ -4,6 +4,10 @@ import {
   IGroupRepository,
   MyGroupsCursor,
 } from '@domain/repositories/i-group.repository';
+import {
+  decodeJsonCursor,
+  encodeJsonCursor,
+} from '@/shared/pagination/cursor.utils';
 import { ListMyGroupsResponseDto, MyGroupDto } from './list-my-groups.dto';
 
 const DEFAULT_LIMIT = 20;
@@ -19,7 +23,34 @@ export class ListMyGroupsUseCase {
     limit?: number,
     cursor?: string,
   ): Promise<ListMyGroupsResponseDto> {
-    const decodedCursor = cursor ? decodeCursor(cursor) : undefined;
+    let decodedCursor: MyGroupsCursor | undefined;
+    if (cursor) {
+      const decoded = decodeJsonCursor(cursor);
+      if (
+        !decoded ||
+        typeof decoded !== 'object' ||
+        typeof (decoded as { lastActivityAt?: unknown }).lastActivityAt !==
+          'string' ||
+        typeof (decoded as { groupId?: unknown }).groupId !== 'string'
+      ) {
+        throw new BadRequestException({
+          error: 'INVALID_CURSOR',
+          message: 'Cursor payload is missing required fields',
+        });
+      }
+      const { lastActivityAt, groupId } = decoded as {
+        lastActivityAt: string;
+        groupId: string;
+      };
+      const date = new Date(lastActivityAt);
+      if (Number.isNaN(date.getTime())) {
+        throw new BadRequestException({
+          error: 'INVALID_CURSOR',
+          message: 'Cursor lastActivityAt is not a valid ISO timestamp',
+        });
+      }
+      decodedCursor = { lastActivityAt: date, groupId };
+    }
 
     const { rows, nextCursor } = await this.groupRepo.listMyGroupsByActivity(
       userId,
@@ -48,55 +79,12 @@ export class ListMyGroupsUseCase {
 
     return {
       data,
-      next_cursor: nextCursor ? encodeCursor(nextCursor) : null,
+      next_cursor: nextCursor
+        ? encodeJsonCursor({
+            lastActivityAt: nextCursor.lastActivityAt.toISOString(),
+            groupId: nextCursor.groupId,
+          })
+        : null,
     };
   }
-}
-
-function encodeCursor(cursor: MyGroupsCursor): string {
-  const payload = JSON.stringify({
-    lastActivityAt: cursor.lastActivityAt.toISOString(),
-    groupId: cursor.groupId,
-  });
-  return Buffer.from(payload, 'utf8').toString('base64url');
-}
-
-function decodeCursor(raw: string): MyGroupsCursor {
-  let payload: unknown;
-  try {
-    const json = Buffer.from(raw, 'base64url').toString('utf8');
-    payload = JSON.parse(json);
-  } catch {
-    throw new BadRequestException({
-      error: 'INVALID_CURSOR',
-      message: 'Cursor is not a valid base64url-encoded JSON payload',
-    });
-  }
-
-  if (
-    !payload ||
-    typeof payload !== 'object' ||
-    typeof (payload as { lastActivityAt?: unknown }).lastActivityAt !==
-      'string' ||
-    typeof (payload as { groupId?: unknown }).groupId !== 'string'
-  ) {
-    throw new BadRequestException({
-      error: 'INVALID_CURSOR',
-      message: 'Cursor payload is missing required fields',
-    });
-  }
-
-  const { lastActivityAt, groupId } = payload as {
-    lastActivityAt: string;
-    groupId: string;
-  };
-  const date = new Date(lastActivityAt);
-  if (Number.isNaN(date.getTime())) {
-    throw new BadRequestException({
-      error: 'INVALID_CURSOR',
-      message: 'Cursor lastActivityAt is not a valid ISO timestamp',
-    });
-  }
-
-  return { lastActivityAt: date, groupId };
 }

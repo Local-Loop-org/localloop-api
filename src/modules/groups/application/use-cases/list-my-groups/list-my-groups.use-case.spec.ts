@@ -3,8 +3,8 @@ import { BadRequestException } from '@nestjs/common';
 import {
   MyGroupRow,
   MyGroupsCursor,
-  PaginatedMyGroups,
 } from '@domain/repositories/i-group.repository';
+import { PaginatedResult } from '@/shared/pagination/types';
 import { buildGroupRepoMock } from '@/modules/groups/test/group-repo.mock';
 import { ListMyGroupsUseCase } from './list-my-groups.use-case';
 
@@ -131,7 +131,7 @@ describe('ListMyGroupsUseCase', () => {
       lastActivityAt: new Date('2026-04-25T15:30:00Z'),
       groupId: 'group-7',
     };
-    const repoResult: PaginatedMyGroups = {
+    const repoResult: PaginatedResult<MyGroupRow, MyGroupsCursor> = {
       rows: [buildRow({ id: 'group-7' })],
       nextCursor,
     };

@@ -2,13 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MediaType } from '@localloop/shared-types';
+import { PaginatedResult } from '@/shared/pagination/types';
 
 import { Message } from '@/modules/messages/domain/entities/message.entity';
 import {
   CreateMessageData,
   IMessageRepository,
   MessageRow,
-  PaginatedMessages,
 } from '@/modules/messages/domain/repositories/i-message.repository';
 import { UserEntity } from '@/modules/auth/infra/repositories/user.entity';
 import { MessageMapper } from '../mappers/message.mapper';
@@ -57,7 +57,7 @@ export class MessageTypeORMRepository implements IMessageRepository {
     groupId: string,
     limit: number,
     before?: string,
-  ): Promise<PaginatedMessages> {
+  ): Promise<PaginatedResult<MessageRow>> {
     const qb = this.baseQuery()
       .where('m.group_id = :groupId', { groupId })
       .andWhere('m.is_deleted = false');

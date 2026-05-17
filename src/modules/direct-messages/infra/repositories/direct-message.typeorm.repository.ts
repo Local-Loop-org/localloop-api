@@ -2,13 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MediaType } from '@localloop/shared-types';
+import { PaginatedResult } from '@/shared/pagination/types';
 
 import { DirectMessage } from '@/modules/direct-messages/domain/entities/direct-message.entity';
 import {
   CreateDirectMessageData,
   DirectMessageRow,
   IDirectMessageRepository,
-  PaginatedDirectMessages,
 } from '@/modules/direct-messages/domain/repositories/i-direct-message.repository';
 import { UserEntity } from '@/modules/auth/infra/repositories/user.entity';
 import { DirectMessageMapper } from '../mappers/direct-message.mapper';
@@ -58,7 +58,7 @@ export class DirectMessageTypeORMRepository implements IDirectMessageRepository 
     userBId: string,
     limit: number,
     before?: string,
-  ): Promise<PaginatedDirectMessages> {
+  ): Promise<PaginatedResult<DirectMessageRow>> {
     const qb = this.baseQuery()
       .where(
         '((m.sender_id = :a AND m.recipient_id = :b) OR (m.sender_id = :b AND m.recipient_id = :a))',
