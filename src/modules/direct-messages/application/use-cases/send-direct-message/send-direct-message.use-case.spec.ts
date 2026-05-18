@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { DmPermission } from '@localloop/shared-types';
 
 import { DirectMessage } from '@/modules/direct-messages/domain/entities/direct-message.entity';
@@ -54,6 +50,7 @@ describe('SendDirectMessageUseCase', () => {
 
   beforeEach(() => {
     directMessageRepo = buildDirectMessageRepoMock();
+    directMessageRepo.hasPermissionException.mockResolvedValue(false);
     userRepo = buildUserRepoMock();
     groupRepo = buildGroupRepoMock();
     useCase = new SendDirectMessageUseCase(
@@ -63,7 +60,7 @@ describe('SendDirectMessageUseCase', () => {
     );
   });
 
-  it('persists the DM and returns it enriched with sender info', async () => {
+  it('persists the DM and returns type=message when EVERYONE', async () => {
     userRepo.findById.mockResolvedValue(
       buildUser({ id: RECIPIENT, dmPermission: DmPermission.EVERYONE }),
     );
@@ -74,14 +71,8 @@ describe('SendDirectMessageUseCase', () => {
       content: 'hello',
     });
 
-    expect(directMessageRepo.create).toHaveBeenCalledWith({
-      senderId: SENDER,
-      recipientId: RECIPIENT,
-      content: 'hello',
-      mediaUrl: null,
-      mediaType: null,
-    });
-    expect(result).toEqual({
+    expect(result).toMatchObject({
+      type: 'message',
       id: 'dm-1',
       senderId: SENDER,
       senderName: 'Alice',
@@ -91,6 +82,13 @@ describe('SendDirectMessageUseCase', () => {
       mediaUrl: null,
       mediaType: null,
       createdAt: '2026-05-16T10:00:00.000Z',
+    });
+    expect(directMessageRepo.create).toHaveBeenCalledWith({
+      senderId: SENDER,
+      recipientId: RECIPIENT,
+      content: 'hello',
+      mediaUrl: null,
+      mediaType: null,
     });
   });
 
@@ -123,7 +121,7 @@ describe('SendDirectMessageUseCase', () => {
     expect(directMessageRepo.create).not.toHaveBeenCalled();
   });
 
-  it('rejects when recipient is inactive (soft-banned)', async () => {
+  it('rejects when recipient is inactive', async () => {
     userRepo.findById.mockResolvedValue(
       buildUser({ id: RECIPIENT, isActive: false }),
     );
@@ -133,19 +131,37 @@ describe('SendDirectMessageUseCase', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it("rejects when recipient's dmPermission is NOBODY", async () => {
+  it('creates a request when dmPermission is NOBODY', async () => {
     userRepo.findById.mockResolvedValue(
       buildUser({ id: RECIPIENT, dmPermission: DmPermission.NOBODY }),
     );
+    directMessageRepo.createRequest.mockResolvedValue({ id: 'req-1' });
 
-    await expect(
-      useCase.execute(SENDER, RECIPIENT, { content: 'hi' }),
-    ).rejects.toBeInstanceOf(ForbiddenException);
-    expect(groupRepo.hasSharedActiveGroup).not.toHaveBeenCalled();
+    const result = await useCase.execute(SENDER, RECIPIENT, { content: 'hi' });
+
+    expect(result).toEqual({ type: 'request', requestId: 'req-1' });
+    expect(directMessageRepo.createRequest).toHaveBeenCalledWith({
+      senderId: SENDER,
+      recipientId: RECIPIENT,
+      content: 'hi',
+    });
     expect(directMessageRepo.create).not.toHaveBeenCalled();
   });
 
-  it('allows when dmPermission is MEMBERS and sender shares an active group', async () => {
+  it('creates a request when MEMBERS and no shared group', async () => {
+    userRepo.findById.mockResolvedValue(
+      buildUser({ id: RECIPIENT, dmPermission: DmPermission.MEMBERS }),
+    );
+    groupRepo.hasSharedActiveGroup.mockResolvedValue(false);
+    directMessageRepo.createRequest.mockResolvedValue({ id: 'req-2' });
+
+    const result = await useCase.execute(SENDER, RECIPIENT, { content: 'hi' });
+
+    expect(result).toEqual({ type: 'request', requestId: 'req-2' });
+    expect(directMessageRepo.create).not.toHaveBeenCalled();
+  });
+
+  it('sends direct message when MEMBERS and shares active group', async () => {
     userRepo.findById.mockResolvedValue(
       buildUser({ id: RECIPIENT, dmPermission: DmPermission.MEMBERS }),
     );
@@ -157,26 +173,31 @@ describe('SendDirectMessageUseCase', () => {
       content: 'hello',
     });
 
+    expect(result).toMatchObject({ type: 'message', id: 'dm-1' });
     expect(groupRepo.hasSharedActiveGroup).toHaveBeenCalledWith(
       SENDER,
       RECIPIENT,
     );
-    expect(result.id).toBe('dm-1');
   });
 
-  it('rejects when dmPermission is MEMBERS but sender shares no active group', async () => {
+  it('sends direct message when NOBODY but sender is in exceptions', async () => {
     userRepo.findById.mockResolvedValue(
-      buildUser({ id: RECIPIENT, dmPermission: DmPermission.MEMBERS }),
+      buildUser({ id: RECIPIENT, dmPermission: DmPermission.NOBODY }),
     );
-    groupRepo.hasSharedActiveGroup.mockResolvedValue(false);
+    directMessageRepo.hasPermissionException.mockResolvedValue(true);
+    directMessageRepo.create.mockResolvedValue(buildDm());
+    directMessageRepo.findByIdWithSender.mockResolvedValue(buildRow());
 
-    await expect(
-      useCase.execute(SENDER, RECIPIENT, { content: 'hi' }),
-    ).rejects.toBeInstanceOf(ForbiddenException);
-    expect(directMessageRepo.create).not.toHaveBeenCalled();
+    const result = await useCase.execute(SENDER, RECIPIENT, {
+      content: 'hello',
+    });
+
+    expect(result).toMatchObject({ type: 'message', id: 'dm-1' });
+    expect(directMessageRepo.createRequest).not.toHaveBeenCalled();
+    expect(groupRepo.hasSharedActiveGroup).not.toHaveBeenCalled();
   });
 
-  it('skips the shared-group check when dmPermission is EVERYONE', async () => {
+  it('skips the shared-group check when EVERYONE', async () => {
     userRepo.findById.mockResolvedValue(
       buildUser({ id: RECIPIENT, dmPermission: DmPermission.EVERYONE }),
     );

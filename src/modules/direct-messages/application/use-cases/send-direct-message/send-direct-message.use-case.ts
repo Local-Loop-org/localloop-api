@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
@@ -61,7 +60,20 @@ export class SendDirectMessageUseCase {
       });
     }
 
-    await this.assertDmAllowed(senderId, recipient.id, recipient.dmPermission);
+    const route = await this.routeDm(
+      senderId,
+      recipient.id,
+      recipient.dmPermission,
+    );
+
+    if (route === 'request') {
+      const req = await this.directMessageRepo.createRequest({
+        senderId,
+        recipientId,
+        content,
+      });
+      return { type: 'request', requestId: req.id };
+    }
 
     const created = await this.directMessageRepo.create({
       senderId,
@@ -79,6 +91,7 @@ export class SendDirectMessageUseCase {
     }
 
     return {
+      type: 'message',
       id: row.id,
       senderId: row.senderId,
       senderName: row.senderName,
@@ -91,27 +104,28 @@ export class SendDirectMessageUseCase {
     };
   }
 
-  private async assertDmAllowed(
+  private async routeDm(
     senderId: string,
     recipientId: string,
     recipientDmPermission: DmPermission,
-  ): Promise<void> {
-    if (recipientDmPermission === DmPermission.EVERYONE) return;
-    if (recipientDmPermission === DmPermission.NOBODY) {
-      throw new ForbiddenException({
-        error: 'DM_NOT_ALLOWED',
-        message: "Recipient's settings do not allow direct messages",
-      });
-    }
-    const sharesGroup = await this.groupRepo.hasSharedActiveGroup(
-      senderId,
+  ): Promise<'direct' | 'request'> {
+    const hasException = await this.directMessageRepo.hasPermissionException(
       recipientId,
+      senderId,
     );
-    if (!sharesGroup) {
-      throw new ForbiddenException({
-        error: 'DM_NOT_ALLOWED',
-        message: "Recipient's settings do not allow direct messages",
-      });
+    if (hasException) return 'direct';
+
+    if (recipientDmPermission === DmPermission.EVERYONE) return 'direct';
+
+    if (recipientDmPermission === DmPermission.MEMBERS) {
+      const sharesGroup = await this.groupRepo.hasSharedActiveGroup(
+        senderId,
+        recipientId,
+      );
+      return sharesGroup ? 'direct' : 'request';
     }
+
+    // NOBODY
+    return 'request';
   }
 }

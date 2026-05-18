@@ -8,10 +8,7 @@ import {
   MemberStatus,
   RequestStatus,
 } from '@localloop/shared-types';
-import {
-  LastMessageSummary,
-  PaginatedResult,
-} from '@/shared/pagination/types';
+import { LastMessageSummary, PaginatedResult } from '@/shared/pagination/types';
 
 export interface CreateGroupData {
   name: string;
@@ -48,7 +45,6 @@ export interface MemberRow {
   joinedAt: Date;
 }
 
-
 export interface MyGroupRow {
   id: string;
   name: string;
@@ -74,7 +70,6 @@ export interface MyGroupsCursor {
   lastActivityAt: Date;
   groupId: string;
 }
-
 
 export interface ApproveJoinRequestAtomicParams {
   requestId: string;

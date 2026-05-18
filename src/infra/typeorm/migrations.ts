@@ -6,6 +6,7 @@ import { AddGroupRadius1715000000000 } from '../migrations/1715000000000-AddGrou
 import { AddPushNotifications1716000000000 } from '../migrations/1716000000000-AddPushNotifications';
 import { AddGroupMemberLastReadAt1716100000000 } from '../migrations/1716100000000-AddGroupMemberLastReadAt';
 import { CreateDirectMessages1717000000000 } from '../migrations/1717000000000-CreateDirectMessages';
+import { AddDmInboxSupport1717100000000 } from '../migrations/1717100000000-AddDmInboxSupport';
 
 export const typeormMigrations = [
   InitialSetup1710770000000,
@@ -16,4 +17,5 @@ export const typeormMigrations = [
   AddPushNotifications1716000000000,
   AddGroupMemberLastReadAt1716100000000,
   CreateDirectMessages1717000000000,
+  AddDmInboxSupport1717100000000,
 ];

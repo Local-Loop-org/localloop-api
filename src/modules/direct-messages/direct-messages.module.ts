@@ -10,6 +10,8 @@ import { DirectMessageTypeORMRepository } from './infra/repositories/direct-mess
 
 import { SendDirectMessageUseCase } from './application/use-cases/send-direct-message/send-direct-message.use-case';
 import { GetDirectMessageHistoryUseCase } from './application/use-cases/get-direct-message-history/get-direct-message-history.use-case';
+import { ListDmConversationsUseCase } from './application/use-cases/list-dm-conversations/list-dm-conversations.use-case';
+import { ListDmRequestsUseCase } from './application/use-cases/list-dm-requests/list-dm-requests.use-case';
 
 import { DirectMessagesController } from './presentation/direct-messages.controller';
 
@@ -23,11 +25,18 @@ import { DirectMessagesController } from './presentation/direct-messages.control
   providers: [
     SendDirectMessageUseCase,
     GetDirectMessageHistoryUseCase,
+    ListDmConversationsUseCase,
+    ListDmRequestsUseCase,
     {
       provide: DIRECT_MESSAGE_REPOSITORY,
       useClass: DirectMessageTypeORMRepository,
     },
   ],
-  exports: [SendDirectMessageUseCase, GetDirectMessageHistoryUseCase],
+  exports: [
+    SendDirectMessageUseCase,
+    GetDirectMessageHistoryUseCase,
+    ListDmConversationsUseCase,
+    ListDmRequestsUseCase,
+  ],
 })
 export class DirectMessagesModule {}

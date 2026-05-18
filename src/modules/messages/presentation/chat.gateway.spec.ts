@@ -774,6 +774,7 @@ describe('ChatGateway', () => {
         const socket = makeSocket();
         socket.data.user = buildUser({ id: 'user-1' });
         const broadcast = {
+          type: 'message' as const,
           id: 'dm-1',
           senderId: 'user-1',
           senderName: 'Alice',
