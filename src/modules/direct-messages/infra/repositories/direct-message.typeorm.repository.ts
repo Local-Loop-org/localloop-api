@@ -59,17 +59,37 @@ export class DirectMessageTypeORMRepository implements IDirectMessageRepository 
     private readonly dataSource: DataSource,
   ) {}
 
-  async create(data: CreateDirectMessageData): Promise<DirectMessage> {
-    const entity = this.directMessagesRepo.create({
-      senderId: data.senderId,
-      recipientId: data.recipientId,
-      content: data.content,
-      mediaUrl: data.mediaUrl,
-      mediaType: data.mediaType,
-      isDeleted: false,
+  async createDirectDeliveryAtomic(
+    data: CreateDirectMessageData,
+  ): Promise<DirectMessage> {
+    return this.dataSource.transaction(async (manager) => {
+      const messagesRepo = manager.getRepository(DirectMessageOrmEntity);
+      const entity = messagesRepo.create({
+        senderId: data.senderId,
+        recipientId: data.recipientId,
+        content: data.content,
+        mediaUrl: data.mediaUrl,
+        mediaType: data.mediaType,
+        isDeleted: false,
+      });
+      const saved = await messagesRepo.save(entity);
+
+      await manager.query(
+        `INSERT INTO dm_permission_exceptions (user_id, allowed_peer_id)
+         VALUES ($1, $2)
+         ON CONFLICT DO NOTHING`,
+        [data.senderId, data.recipientId],
+      );
+
+      await manager.query(
+        `INSERT INTO dm_conversation_state (user_id, peer_id, last_read_at)
+         VALUES ($1, $2, now())
+         ON CONFLICT DO NOTHING`,
+        [data.senderId, data.recipientId],
+      );
+
+      return DirectMessageMapper.toDomain(saved);
     });
-    const saved = await this.directMessagesRepo.save(entity);
-    return DirectMessageMapper.toDomain(saved);
   }
 
   async findByIdWithSender(id: string): Promise<DirectMessageRow | null> {

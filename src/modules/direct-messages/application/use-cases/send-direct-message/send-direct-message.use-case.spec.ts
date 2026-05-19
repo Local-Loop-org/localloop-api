@@ -64,7 +64,7 @@ describe('SendDirectMessageUseCase', () => {
     userRepo.findById.mockResolvedValue(
       buildUser({ id: RECIPIENT, dmPermission: DmPermission.EVERYONE }),
     );
-    directMessageRepo.create.mockResolvedValue(buildDm());
+    directMessageRepo.createDirectDeliveryAtomic.mockResolvedValue(buildDm());
     directMessageRepo.findByIdWithSender.mockResolvedValue(buildRow());
 
     const result = await useCase.execute(SENDER, RECIPIENT, {
@@ -83,7 +83,7 @@ describe('SendDirectMessageUseCase', () => {
       mediaType: null,
       createdAt: '2026-05-16T10:00:00.000Z',
     });
-    expect(directMessageRepo.create).toHaveBeenCalledWith({
+    expect(directMessageRepo.createDirectDeliveryAtomic).toHaveBeenCalledWith({
       senderId: SENDER,
       recipientId: RECIPIENT,
       content: 'hello',
@@ -118,7 +118,7 @@ describe('SendDirectMessageUseCase', () => {
     await expect(
       useCase.execute(SENDER, RECIPIENT, { content: 'hi' }),
     ).rejects.toBeInstanceOf(NotFoundException);
-    expect(directMessageRepo.create).not.toHaveBeenCalled();
+    expect(directMessageRepo.createDirectDeliveryAtomic).not.toHaveBeenCalled();
   });
 
   it('rejects when recipient is inactive', async () => {
@@ -145,7 +145,7 @@ describe('SendDirectMessageUseCase', () => {
       recipientId: RECIPIENT,
       content: 'hi',
     });
-    expect(directMessageRepo.create).not.toHaveBeenCalled();
+    expect(directMessageRepo.createDirectDeliveryAtomic).not.toHaveBeenCalled();
   });
 
   it('creates a request when MEMBERS and no shared group', async () => {
@@ -158,7 +158,7 @@ describe('SendDirectMessageUseCase', () => {
     const result = await useCase.execute(SENDER, RECIPIENT, { content: 'hi' });
 
     expect(result).toEqual({ type: 'request', requestId: 'req-2' });
-    expect(directMessageRepo.create).not.toHaveBeenCalled();
+    expect(directMessageRepo.createDirectDeliveryAtomic).not.toHaveBeenCalled();
   });
 
   it('sends direct message when MEMBERS and shares active group', async () => {
@@ -166,7 +166,7 @@ describe('SendDirectMessageUseCase', () => {
       buildUser({ id: RECIPIENT, dmPermission: DmPermission.MEMBERS }),
     );
     groupRepo.hasSharedActiveGroup.mockResolvedValue(true);
-    directMessageRepo.create.mockResolvedValue(buildDm());
+    directMessageRepo.createDirectDeliveryAtomic.mockResolvedValue(buildDm());
     directMessageRepo.findByIdWithSender.mockResolvedValue(buildRow());
 
     const result = await useCase.execute(SENDER, RECIPIENT, {
@@ -185,7 +185,7 @@ describe('SendDirectMessageUseCase', () => {
       buildUser({ id: RECIPIENT, dmPermission: DmPermission.NOBODY }),
     );
     directMessageRepo.hasPermissionException.mockResolvedValue(true);
-    directMessageRepo.create.mockResolvedValue(buildDm());
+    directMessageRepo.createDirectDeliveryAtomic.mockResolvedValue(buildDm());
     directMessageRepo.findByIdWithSender.mockResolvedValue(buildRow());
 
     const result = await useCase.execute(SENDER, RECIPIENT, {
@@ -197,11 +197,26 @@ describe('SendDirectMessageUseCase', () => {
     expect(groupRepo.hasSharedActiveGroup).not.toHaveBeenCalled();
   });
 
+  it('repeat sends invoke createDirectDeliveryAtomic each time (idempotent side-table writes)', async () => {
+    userRepo.findById.mockResolvedValue(
+      buildUser({ id: RECIPIENT, dmPermission: DmPermission.EVERYONE }),
+    );
+    directMessageRepo.createDirectDeliveryAtomic.mockResolvedValue(buildDm());
+    directMessageRepo.findByIdWithSender.mockResolvedValue(buildRow());
+
+    await useCase.execute(SENDER, RECIPIENT, { content: 'hello' });
+    await useCase.execute(SENDER, RECIPIENT, { content: 'hello' });
+
+    expect(directMessageRepo.createDirectDeliveryAtomic).toHaveBeenCalledTimes(
+      2,
+    );
+  });
+
   it('skips the shared-group check when EVERYONE', async () => {
     userRepo.findById.mockResolvedValue(
       buildUser({ id: RECIPIENT, dmPermission: DmPermission.EVERYONE }),
     );
-    directMessageRepo.create.mockResolvedValue(buildDm());
+    directMessageRepo.createDirectDeliveryAtomic.mockResolvedValue(buildDm());
     directMessageRepo.findByIdWithSender.mockResolvedValue(buildRow());
 
     await useCase.execute(SENDER, RECIPIENT, { content: 'hello' });

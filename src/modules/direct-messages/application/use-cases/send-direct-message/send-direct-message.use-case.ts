@@ -75,7 +75,7 @@ export class SendDirectMessageUseCase {
       return { type: 'request', requestId: req.id };
     }
 
-    const created = await this.directMessageRepo.create({
+    const created = await this.directMessageRepo.createDirectDeliveryAtomic({
       senderId,
       recipientId,
       content,

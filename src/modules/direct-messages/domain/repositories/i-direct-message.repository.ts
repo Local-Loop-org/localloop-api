@@ -59,7 +59,15 @@ export interface DmRequestCursor {
 }
 
 export interface IDirectMessageRepository {
-  create(data: CreateDirectMessageData): Promise<DirectMessage>;
+  /**
+   * Direct-delivery write. In one transaction: inserts the message row, writes
+   * the sender→recipient permission exception, and eager-inits the sender's
+   * conversation_state row (last_read_at = now()). Side-table writes are
+   * idempotent (ON CONFLICT DO NOTHING) so repeat sends are safe.
+   */
+  createDirectDeliveryAtomic(
+    data: CreateDirectMessageData,
+  ): Promise<DirectMessage>;
   findByIdWithSender(id: string): Promise<DirectMessageRow | null>;
   listConversation(
     userAId: string,
