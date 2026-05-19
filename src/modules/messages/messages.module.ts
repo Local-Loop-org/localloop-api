@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AuthModule } from '@/modules/auth/auth.module';
@@ -21,7 +21,7 @@ import { ChatGateway } from './presentation/chat.gateway';
     AuthModule,
     GroupsModule,
     NotificationsModule,
-    DirectMessagesModule,
+    forwardRef(() => DirectMessagesModule),
     TypeOrmModule.forFeature([MessageOrmEntity]),
   ],
   controllers: [MessagesController],
@@ -34,5 +34,6 @@ import { ChatGateway } from './presentation/chat.gateway';
       useClass: MessageTypeORMRepository,
     },
   ],
+  exports: [ChatGateway],
 })
 export class MessagesModule {}

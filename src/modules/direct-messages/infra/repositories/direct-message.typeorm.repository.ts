@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { MediaType } from '@localloop/shared-types';
@@ -12,6 +12,7 @@ import {
   DmConversationRow,
   DmInboxCursor,
   DmRequestCursor,
+  DmRequestRecord,
   DmRequestRow,
   IDirectMessageRepository,
 } from '@/modules/direct-messages/domain/repositories/i-direct-message.repository';
@@ -49,6 +50,14 @@ interface RequestRawRow {
   r_created_at: Date;
   u_display_name: string;
   u_avatar_url: string | null;
+}
+
+interface RequestRecordRawRow {
+  id: string;
+  sender_id: string;
+  recipient_id: string;
+  content: string | null;
+  created_at: Date;
 }
 
 @Injectable()
@@ -155,6 +164,92 @@ export class DirectMessageTypeORMRepository implements IDirectMessageRepository 
       [data.senderId, data.recipientId, data.content],
     );
     return { id: rows[0].id };
+  }
+
+  async findRequestById(requestId: string): Promise<DmRequestRecord | null> {
+    const rows = await this.dataSource.query<RequestRecordRawRow[]>(
+      `SELECT id, sender_id, recipient_id, content, created_at
+       FROM dm_requests
+       WHERE id = $1`,
+      [requestId],
+    );
+    if (rows.length === 0) return null;
+    const r = rows[0];
+    return {
+      id: r.id,
+      senderId: r.sender_id,
+      recipientId: r.recipient_id,
+      content: r.content,
+      createdAt: r.created_at,
+    };
+  }
+
+  async acceptRequestAtomic(requestId: string): Promise<DirectMessageRow> {
+    return this.dataSource.transaction(async (manager) => {
+      const locked = await manager.query<RequestRecordRawRow[]>(
+        `SELECT id, sender_id, recipient_id, content, created_at
+         FROM dm_requests
+         WHERE id = $1
+         FOR UPDATE`,
+        [requestId],
+      );
+      if (locked.length === 0) {
+        throw new NotFoundException({
+          error: 'DM_REQUEST_NOT_FOUND',
+          message: 'DM request not found',
+        });
+      }
+      const req = locked[0];
+
+      const inserted = await manager.query<{ id: string }[]>(
+        `INSERT INTO direct_messages
+           (sender_id, recipient_id, content, media_url, media_type, is_deleted, created_at)
+         VALUES ($1, $2, $3, NULL, NULL, false, $4)
+         RETURNING id`,
+        [req.sender_id, req.recipient_id, req.content, req.created_at],
+      );
+      const newId = inserted[0].id;
+
+      await manager.query(
+        `INSERT INTO dm_permission_exceptions (user_id, allowed_peer_id)
+         VALUES ($1, $2)
+         ON CONFLICT DO NOTHING`,
+        [req.recipient_id, req.sender_id],
+      );
+
+      await manager.query(
+        `INSERT INTO dm_conversation_state (user_id, peer_id, last_read_at)
+         VALUES ($1, $2, now())
+         ON CONFLICT DO NOTHING`,
+        [req.sender_id, req.recipient_id],
+      );
+
+      await manager.query(`DELETE FROM dm_requests WHERE id = $1`, [requestId]);
+
+      const joined = await manager.query<DirectMessageJoinRow[]>(
+        `SELECT
+           m.id           AS m_id,
+           m.sender_id    AS m_sender_id,
+           m.recipient_id AS m_recipient_id,
+           m.content      AS m_content,
+           m.media_url    AS m_media_url,
+           m.media_type   AS m_media_type,
+           m.created_at   AS m_created_at,
+           u.display_name AS u_display_name,
+           u.avatar_url   AS u_avatar_url
+         FROM direct_messages m
+         JOIN users u ON u.id = m.sender_id
+         WHERE m.id = $1`,
+        [newId],
+      );
+      return this.rowToDm(joined[0]);
+    });
+  }
+
+  async declineRequest(requestId: string): Promise<void> {
+    await this.dataSource.query(`DELETE FROM dm_requests WHERE id = $1`, [
+      requestId,
+    ]);
   }
 
   async listInbox(
