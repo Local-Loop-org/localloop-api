@@ -440,9 +440,15 @@ export class ChatGateway
         payload.recipientId,
         { content: payload.content ?? null },
       );
-      this.server
-        .to(dmRoom(socket.data.user.id, payload.recipientId))
-        .emit(ChatSocketEvents.NEW_DIRECT_MESSAGE, result);
+      if (result.type === 'message') {
+        this.server
+          .to(dmRoom(socket.data.user.id, payload.recipientId))
+          .emit(ChatSocketEvents.NEW_DIRECT_MESSAGE, result);
+      } else {
+        socket.emit(ChatSocketEvents.DM_REQUEST_SENT, {
+          requestId: result.requestId,
+        });
+      }
     } catch (err) {
       const e = err as {
         response?: { error?: string; message?: string };

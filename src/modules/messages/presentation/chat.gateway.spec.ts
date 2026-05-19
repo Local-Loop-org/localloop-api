@@ -802,6 +802,53 @@ describe('ChatGateway', () => {
           ChatSocketEvents.NEW_DIRECT_MESSAGE,
           broadcast,
         );
+        expect(socket.emit).not.toHaveBeenCalledWith(
+          ChatSocketEvents.DM_REQUEST_SENT,
+          expect.anything(),
+        );
+      });
+
+      it('emits dm_request_sent to sender socket only when the use case returns a request', async () => {
+        const socket = makeSocket();
+        socket.data.user = buildUser({ id: 'user-1' });
+        sendDirectMessage.execute.mockResolvedValue({
+          type: 'request',
+          requestId: 'req-7',
+        });
+
+        await gateway.onSendDm(socket as never, {
+          recipientId: 'user-2',
+          content: 'hi',
+        });
+
+        expect(socket.emit).toHaveBeenCalledWith(
+          ChatSocketEvents.DM_REQUEST_SENT,
+          { requestId: 'req-7' },
+        );
+        expect(server.to).not.toHaveBeenCalled();
+        expect(roomEmit).not.toHaveBeenCalled();
+      });
+
+      it('does not leak the request payload into the dm room (no-cross-leak)', async () => {
+        const sender = makeSocket(undefined, 'sock-sender');
+        sender.data.user = buildUser({ id: 'user-1' });
+        const observer = makeSocket(undefined, 'sock-observer');
+        observer.data.user = buildUser({ id: 'user-2' });
+        await observer.join(dmRoomKey('user-1', 'user-2'));
+        observer.emit.mockClear();
+
+        sendDirectMessage.execute.mockResolvedValue({
+          type: 'request',
+          requestId: 'req-8',
+        });
+
+        await gateway.onSendDm(sender as never, {
+          recipientId: 'user-2',
+          content: 'hi',
+        });
+
+        expect(observer.emit).not.toHaveBeenCalled();
+        expect(server.to).not.toHaveBeenCalled();
       });
 
       it('emits error event and skips broadcast when the use case throws', async () => {
