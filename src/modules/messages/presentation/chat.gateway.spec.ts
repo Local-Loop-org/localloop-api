@@ -36,6 +36,7 @@ type SocketMock = {
 type ServerMock = {
   to: jest.Mock;
   in: jest.Mock;
+  fetchSockets: jest.Mock;
   use?: jest.Mock;
 };
 
@@ -116,6 +117,7 @@ describe('ChatGateway', () => {
   });
 
   const roomMembers: Map<string, Set<SocketMock>> = new Map();
+  const allSockets: Set<SocketMock> = new Set();
 
   const makeSocket = (
     token?: string,
@@ -145,6 +147,7 @@ describe('ChatGateway', () => {
         handlers.get(event)?.(...args);
       },
     };
+    allSockets.add(socket);
     return socket;
   };
 
@@ -171,6 +174,7 @@ describe('ChatGateway', () => {
     } as unknown as jest.Mocked<SendDirectMessageUseCase>;
 
     roomMembers.clear();
+    allSockets.clear();
     roomEmit = jest.fn();
     server = {
       to: jest.fn(() => ({ emit: roomEmit })),
@@ -178,6 +182,7 @@ describe('ChatGateway', () => {
         fetchSockets: () =>
           Promise.resolve(Array.from(roomMembers.get(room) ?? [])),
       })),
+      fetchSockets: jest.fn(() => Promise.resolve(Array.from(allSockets))),
     };
 
     gateway = new ChatGateway(
@@ -871,6 +876,80 @@ describe('ChatGateway', () => {
           ChatSocketEvents.ERROR,
           expect.objectContaining({ code: 'DM_NOT_ALLOWED' }),
         );
+      });
+    });
+
+    describe('emitDmRequestAccepted', () => {
+      const buildPayload = () => ({
+        id: 'dm-9',
+        senderId: 'user-1',
+        senderName: 'Alice',
+        senderAvatar: null,
+        recipientId: 'user-2',
+        content: 'hello',
+        mediaUrl: null,
+        mediaType: null,
+        createdAt: new Date('2026-05-19T10:00:00Z').toISOString(),
+      });
+
+      it('emits to every socket of the original sender', async () => {
+        const sender = makeSocket(undefined, 'sock-sender');
+        sender.data.user = buildUser({ id: 'user-1' });
+        const payload = buildPayload();
+
+        await gateway.emitDmRequestAccepted('user-1', payload);
+
+        expect(sender.emit).toHaveBeenCalledWith(
+          ChatSocketEvents.DM_REQUEST_ACCEPTED,
+          payload,
+        );
+        expect(server.to).not.toHaveBeenCalled();
+      });
+
+      it('fans out to multiple devices of the same sender', async () => {
+        const dev1 = makeSocket(undefined, 'sock-dev-1');
+        dev1.data.user = buildUser({ id: 'user-1' });
+        const dev2 = makeSocket(undefined, 'sock-dev-2');
+        dev2.data.user = buildUser({ id: 'user-1' });
+        const payload = buildPayload();
+
+        await gateway.emitDmRequestAccepted('user-1', payload);
+
+        expect(dev1.emit).toHaveBeenCalledWith(
+          ChatSocketEvents.DM_REQUEST_ACCEPTED,
+          payload,
+        );
+        expect(dev2.emit).toHaveBeenCalledWith(
+          ChatSocketEvents.DM_REQUEST_ACCEPTED,
+          payload,
+        );
+      });
+
+      it('does not leak to other users or to DM-room observers', async () => {
+        const sender = makeSocket(undefined, 'sock-sender');
+        sender.data.user = buildUser({ id: 'user-1' });
+        const stranger = makeSocket(undefined, 'sock-stranger');
+        stranger.data.user = buildUser({ id: 'user-99' });
+        const observer = makeSocket(undefined, 'sock-observer');
+        observer.data.user = buildUser({ id: 'user-2' });
+        await observer.join(dmRoomKey('user-1', 'user-2'));
+        observer.emit.mockClear();
+
+        await gateway.emitDmRequestAccepted('user-1', buildPayload());
+
+        expect(stranger.emit).not.toHaveBeenCalled();
+        expect(observer.emit).not.toHaveBeenCalled();
+        expect(server.to).not.toHaveBeenCalled();
+      });
+
+      it('is a no-op when the sender has no live socket', async () => {
+        const other = makeSocket(undefined, 'sock-other');
+        other.data.user = buildUser({ id: 'user-2' });
+
+        await gateway.emitDmRequestAccepted('user-1', buildPayload());
+
+        expect(other.emit).not.toHaveBeenCalled();
+        expect(server.to).not.toHaveBeenCalled();
       });
     });
   });

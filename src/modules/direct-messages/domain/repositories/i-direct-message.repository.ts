@@ -58,6 +58,15 @@ export interface DmRequestCursor {
   requestId: string;
 }
 
+/** Minimal row shape used for auth + existence checks on a single dm_requests row. */
+export interface DmRequestRecord {
+  id: string;
+  senderId: string;
+  recipientId: string;
+  content: string | null;
+  createdAt: Date;
+}
+
 export interface IDirectMessageRepository {
   /**
    * Direct-delivery write. In one transaction: inserts the message row, writes
@@ -77,6 +86,23 @@ export interface IDirectMessageRepository {
   ): Promise<PaginatedResult<DirectMessageRow>>;
   hasPermissionException(userId: string, peerId: string): Promise<boolean>;
   createRequest(data: CreateDmRequestData): Promise<{ id: string }>;
+  /**
+   * Single-row lookup on dm_requests. Used by the use cases to drive the
+   * 404-vs-403 decision before mutating. Returns null when no row exists.
+   */
+  findRequestById(requestId: string): Promise<DmRequestRecord | null>;
+  /**
+   * Materializes a held dm_requests row into direct_messages in one transaction:
+   *   1) SELECT … FOR UPDATE on the request (throws if gone — covers accept-then-accept)
+   *   2) INSERT into direct_messages preserving the original created_at
+   *   3) idempotent INSERT into dm_permission_exceptions (recipient → sender)
+   *   4) idempotent INSERT into dm_conversation_state for the sender's row
+   *   5) DELETE the dm_requests row
+   * Returns the materialized message with sender display fields joined.
+   */
+  acceptRequestAtomic(requestId: string): Promise<DirectMessageRow>;
+  /** Idempotent DELETE on dm_requests by id. */
+  declineRequest(requestId: string): Promise<void>;
   listInbox(
     userId: string,
     limit: number,

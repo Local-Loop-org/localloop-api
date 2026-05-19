@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
   Param,
   ParseUUIDPipe,
   Post,
@@ -12,6 +13,7 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 
 import { User } from '@/modules/auth/domain/entities/user.entity';
+import { ChatGateway } from '@/modules/messages/presentation/chat.gateway';
 import { GetDirectMessageHistoryUseCase } from '../application/use-cases/get-direct-message-history/get-direct-message-history.use-case';
 import {
   GetDirectMessageHistoryQueryDto,
@@ -32,6 +34,9 @@ import {
   ListDmRequestsQueryDto,
   ListDmRequestsResponseDto,
 } from '../application/use-cases/list-dm-requests/list-dm-requests.dto';
+import { AcceptDmRequestUseCase } from '../application/use-cases/accept-dm-request/accept-dm-request.use-case';
+import { AcceptDmRequestResponseDto } from '../application/use-cases/accept-dm-request/accept-dm-request.dto';
+import { DeclineDmRequestUseCase } from '../application/use-cases/decline-dm-request/decline-dm-request.use-case';
 
 @Controller('dm')
 @UseGuards(AuthGuard('jwt'))
@@ -41,10 +46,14 @@ export class DirectMessagesController {
     private readonly sendDirectMessage: SendDirectMessageUseCase,
     private readonly listDmConversations: ListDmConversationsUseCase,
     private readonly listDmRequests: ListDmRequestsUseCase,
+    private readonly acceptDmRequest: AcceptDmRequestUseCase,
+    private readonly declineDmRequest: DeclineDmRequestUseCase,
+    private readonly chatGateway: ChatGateway,
   ) {}
 
-  // @Get() and @Get('requests') MUST appear before @Get(':userId') so NestJS
-  // does not treat the literal strings as UUID params.
+  // @Get() and @Get('requests') / @Post('requests/...') MUST appear before
+  // @Get(':userId') / @Post(':userId') so NestJS does not treat the literal
+  // strings as UUID params.
 
   @Get()
   async inbox(
@@ -64,6 +73,25 @@ export class DirectMessagesController {
     @Query() query: ListDmRequestsQueryDto,
   ): Promise<ListDmRequestsResponseDto> {
     return this.listDmRequests.execute(req.user.id, query.limit, query.cursor);
+  }
+
+  @Post('requests/:requestId/accept')
+  async acceptRequest(
+    @Request() req: { user: User },
+    @Param('requestId', new ParseUUIDPipe()) requestId: string,
+  ): Promise<AcceptDmRequestResponseDto> {
+    const payload = await this.acceptDmRequest.execute(req.user.id, requestId);
+    await this.chatGateway.emitDmRequestAccepted(payload.senderId, payload);
+    return payload;
+  }
+
+  @Post('requests/:requestId/decline')
+  @HttpCode(204)
+  async declineRequest(
+    @Request() req: { user: User },
+    @Param('requestId', new ParseUUIDPipe()) requestId: string,
+  ): Promise<void> {
+    await this.declineDmRequest.execute(req.user.id, requestId);
   }
 
   @Get(':userId')

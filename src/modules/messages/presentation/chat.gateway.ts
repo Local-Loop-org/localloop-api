@@ -31,6 +31,7 @@ import {
 } from '@/modules/groups/domain/repositories/i-group.repository';
 import { SendGroupMessagePushNotificationsUseCase } from '@/modules/notifications/application/use-cases/send-group-message-push-notifications/send-group-message-push-notifications.use-case';
 import { SendDirectMessageUseCase } from '@/modules/direct-messages/application/use-cases/send-direct-message/send-direct-message.use-case';
+import { DirectMessagePayload } from '@/modules/direct-messages/application/use-cases/send-direct-message/send-direct-message.dto';
 import { SendMessageResponseDto } from '../application/use-cases/send-message/send-message.dto';
 import { SendMessageUseCase } from '../application/use-cases/send-message/send-message.use-case';
 
@@ -217,6 +218,29 @@ export class ChatGateway
       ChatSocketEvents.GROUP_SUMMARY_UPDATE,
       this.toGroupSummaryUpdate(summary),
     );
+  }
+
+  /**
+   * Fan out `dm_request_accepted` to every socket currently connected as the
+   * original sender (multi-device safe). No persistent `user:{userId}` room is
+   * used here — Task E will introduce explicit `watch_dm_inbox` subscriptions.
+   * Recipient learns of the materialized message via the HTTP response, so no
+   * room broadcast is needed.
+   */
+  async emitDmRequestAccepted(
+    senderId: string,
+    payload: DirectMessagePayload,
+  ): Promise<void> {
+    const sockets = await this.server.fetchSockets();
+    for (const socket of sockets) {
+      const authed = socket as unknown as {
+        data?: { user?: User };
+        emit: (event: string, payload: DirectMessagePayload) => void;
+      };
+      if (authed.data?.user?.id === senderId) {
+        authed.emit(ChatSocketEvents.DM_REQUEST_ACCEPTED, payload);
+      }
+    }
   }
 
   private async emitGroupSummary(groupId: string): Promise<void> {
