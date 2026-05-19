@@ -10,6 +10,8 @@ import {
   CreateDmRequestData,
   DirectMessageRow,
   DmConversationRow,
+  DmExceptionCursor,
+  DmExceptionRow,
   DmInboxCursor,
   DmRequestCursor,
   DmRequestRecord,
@@ -50,6 +52,13 @@ interface RequestRawRow {
   r_created_at: Date;
   u_display_name: string;
   u_avatar_url: string | null;
+}
+
+interface ExceptionRawRow {
+  peer_id: string;
+  peer_name: string;
+  peer_avatar_url: string | null;
+  created_at: Date;
 }
 
 interface RequestRecordRawRow {
@@ -250,6 +259,70 @@ export class DirectMessageTypeORMRepository implements IDirectMessageRepository 
     await this.dataSource.query(`DELETE FROM dm_requests WHERE id = $1`, [
       requestId,
     ]);
+  }
+
+  async listExceptions(
+    userId: string,
+    limit: number,
+    cursor?: DmExceptionCursor,
+  ): Promise<PaginatedResult<DmExceptionRow, DmExceptionCursor>> {
+    const params: unknown[] = [userId, limit + 1];
+    let cursorClause = '';
+    if (cursor) {
+      params.push(cursor.createdAt.toISOString(), cursor.peerId);
+      cursorClause = `AND (e.created_at, e.allowed_peer_id) < ($3::timestamptz, $4::uuid)`;
+    }
+
+    const sql = `
+      SELECT
+        e.allowed_peer_id AS peer_id,
+        e.created_at      AS created_at,
+        u.display_name    AS peer_name,
+        u.avatar_url      AS peer_avatar_url
+      FROM dm_permission_exceptions e
+      JOIN users u ON u.id = e.allowed_peer_id
+      WHERE e.user_id = $1
+        AND u.is_active = true
+        ${cursorClause}
+      ORDER BY e.created_at DESC, e.allowed_peer_id DESC
+      LIMIT $2
+    `;
+
+    const raw = await this.dataSource.query<ExceptionRawRow[]>(sql, params);
+    const hasMore = raw.length > limit;
+    const page = hasMore ? raw.slice(0, limit) : raw;
+    const last = page.length > 0 ? page[page.length - 1] : null;
+    const nextCursor =
+      hasMore && last
+        ? { createdAt: last.created_at, peerId: last.peer_id }
+        : null;
+
+    return {
+      rows: page.map((r) => ({
+        peerId: r.peer_id,
+        peerName: r.peer_name,
+        peerAvatarUrl: r.peer_avatar_url,
+        createdAt: r.created_at,
+      })),
+      nextCursor,
+    };
+  }
+
+  async addException(userId: string, peerId: string): Promise<void> {
+    await this.dataSource.query(
+      `INSERT INTO dm_permission_exceptions (user_id, allowed_peer_id)
+       VALUES ($1, $2)
+       ON CONFLICT DO NOTHING`,
+      [userId, peerId],
+    );
+  }
+
+  async removeException(userId: string, peerId: string): Promise<void> {
+    await this.dataSource.query(
+      `DELETE FROM dm_permission_exceptions
+       WHERE user_id = $1 AND allowed_peer_id = $2`,
+      [userId, peerId],
+    );
   }
 
   async listInbox(

@@ -15,8 +15,12 @@ import { ListDmConversationsUseCase } from './application/use-cases/list-dm-conv
 import { ListDmRequestsUseCase } from './application/use-cases/list-dm-requests/list-dm-requests.use-case';
 import { AcceptDmRequestUseCase } from './application/use-cases/accept-dm-request/accept-dm-request.use-case';
 import { DeclineDmRequestUseCase } from './application/use-cases/decline-dm-request/decline-dm-request.use-case';
+import { ListDmExceptionsUseCase } from './application/use-cases/list-dm-exceptions/list-dm-exceptions.use-case';
+import { AddDmExceptionUseCase } from './application/use-cases/add-dm-exception/add-dm-exception.use-case';
+import { RemoveDmExceptionUseCase } from './application/use-cases/remove-dm-exception/remove-dm-exception.use-case';
 
 import { DirectMessagesController } from './presentation/direct-messages.controller';
+import { DmExceptionsController } from './presentation/dm-exceptions.controller';
 
 @Module({
   imports: [
@@ -25,7 +29,7 @@ import { DirectMessagesController } from './presentation/direct-messages.control
     forwardRef(() => MessagesModule),
     TypeOrmModule.forFeature([DirectMessageOrmEntity]),
   ],
-  controllers: [DirectMessagesController],
+  controllers: [DirectMessagesController, DmExceptionsController],
   providers: [
     SendDirectMessageUseCase,
     GetDirectMessageHistoryUseCase,
@@ -33,6 +37,9 @@ import { DirectMessagesController } from './presentation/direct-messages.control
     ListDmRequestsUseCase,
     AcceptDmRequestUseCase,
     DeclineDmRequestUseCase,
+    ListDmExceptionsUseCase,
+    AddDmExceptionUseCase,
+    RemoveDmExceptionUseCase,
     {
       provide: DIRECT_MESSAGE_REPOSITORY,
       useClass: DirectMessageTypeORMRepository,
@@ -45,6 +52,9 @@ import { DirectMessagesController } from './presentation/direct-messages.control
     ListDmRequestsUseCase,
     AcceptDmRequestUseCase,
     DeclineDmRequestUseCase,
+    ListDmExceptionsUseCase,
+    AddDmExceptionUseCase,
+    RemoveDmExceptionUseCase,
   ],
 })
 export class DirectMessagesModule {}

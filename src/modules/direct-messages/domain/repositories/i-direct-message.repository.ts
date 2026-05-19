@@ -67,6 +67,18 @@ export interface DmRequestRecord {
   createdAt: Date;
 }
 
+export interface DmExceptionRow {
+  peerId: string;
+  peerName: string;
+  peerAvatarUrl: string | null;
+  createdAt: Date;
+}
+
+export interface DmExceptionCursor {
+  createdAt: Date;
+  peerId: string;
+}
+
 export interface IDirectMessageRepository {
   /**
    * Direct-delivery write. In one transaction: inserts the message row, writes
@@ -113,6 +125,21 @@ export interface IDirectMessageRepository {
     limit: number,
     cursor?: DmRequestCursor,
   ): Promise<PaginatedResult<DmRequestRow, DmRequestCursor>>;
+  /**
+   * Paginated list of the caller's `dm_permission_exceptions` rows. Joins
+   * `users` for display name + avatar; inactive peers are filtered out (the
+   * row remains in the table; the list just hides them — DM-TASK-G is the
+   * placeholder-substitution rule for read paths that must keep them visible).
+   */
+  listExceptions(
+    userId: string,
+    limit: number,
+    cursor?: DmExceptionCursor,
+  ): Promise<PaginatedResult<DmExceptionRow, DmExceptionCursor>>;
+  /** Idempotent UPSERT — adding the same pair twice is a no-op. */
+  addException(userId: string, peerId: string): Promise<void>;
+  /** Idempotent DELETE — removing a non-existent pair succeeds. */
+  removeException(userId: string, peerId: string): Promise<void>;
 }
 
 export const DIRECT_MESSAGE_REPOSITORY = Symbol('DIRECT_MESSAGE_REPOSITORY');
