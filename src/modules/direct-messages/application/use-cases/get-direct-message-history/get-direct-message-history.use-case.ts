@@ -58,7 +58,7 @@ export class GetDirectMessageHistoryUseCase {
         id: row.id,
         senderId: row.senderId,
         senderName: row.senderName,
-        senderAvatar: row.senderAvatar,
+        senderAvatarUrl: row.senderAvatarUrl,
         recipientId: row.recipientId,
         content: row.content,
         mediaUrl: row.mediaUrl,

@@ -105,7 +105,7 @@ export class MessageTypeORMRepository implements IMessageRepository {
       groupId: row.m_group_id,
       senderId: row.m_sender_id,
       senderName: row.u_display_name,
-      senderAvatar: row.u_avatar_url,
+      senderAvatarUrl: row.u_avatar_url,
       content: row.m_content,
       mediaUrl: row.m_media_url,
       mediaType: row.m_media_type,

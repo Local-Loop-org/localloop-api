@@ -74,7 +74,7 @@ export class SendMessageUseCase {
       groupId: row.groupId,
       senderId: row.senderId,
       senderName: row.senderName,
-      senderAvatar: row.senderAvatar,
+      senderAvatarUrl: row.senderAvatarUrl,
       content: row.content,
       mediaUrl: row.mediaUrl,
       mediaType: row.mediaType,

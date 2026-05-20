@@ -19,7 +19,7 @@ export class MessageDto {
   id!: string;
   senderId!: string;
   senderName!: string;
-  senderAvatar!: string | null;
+  senderAvatarUrl!: string | null;
   content!: string | null;
   mediaUrl!: string | null;
   mediaType!: MediaType | null;

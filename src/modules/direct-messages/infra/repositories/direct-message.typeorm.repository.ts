@@ -573,7 +573,7 @@ export class DirectMessageTypeORMRepository implements IDirectMessageRepository 
       id: row.m_id,
       senderId: row.m_sender_id,
       senderName: row.u_display_name,
-      senderAvatar: row.u_avatar_url,
+      senderAvatarUrl: row.u_avatar_url,
       recipientId: row.m_recipient_id,
       content: row.m_content,
       mediaUrl: row.m_media_url,
