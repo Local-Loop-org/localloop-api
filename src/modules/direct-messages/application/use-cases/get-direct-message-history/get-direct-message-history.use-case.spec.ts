@@ -108,13 +108,23 @@ describe('GetDirectMessageHistoryUseCase', () => {
     expect(directMessageRepo.listConversation).not.toHaveBeenCalled();
   });
 
-  it('rejects when the other user is inactive', async () => {
+  it('returns history when the other user is inactive (placeholder applied at repo layer)', async () => {
     userRepo.findById.mockResolvedValue(
       buildUser({ id: OTHER, isActive: false }),
     );
+    directMessageRepo.listConversation.mockResolvedValue({
+      rows: [buildRow('dm-1', '2026-05-16T10:00:00Z', OTHER)],
+      nextCursor: null,
+    });
 
-    await expect(useCase.execute(CALLER, OTHER)).rejects.toBeInstanceOf(
-      NotFoundException,
+    const result = await useCase.execute(CALLER, OTHER);
+
+    expect(directMessageRepo.listConversation).toHaveBeenCalledWith(
+      CALLER,
+      OTHER,
+      50,
+      undefined,
     );
+    expect(result.data).toHaveLength(1);
   });
 });

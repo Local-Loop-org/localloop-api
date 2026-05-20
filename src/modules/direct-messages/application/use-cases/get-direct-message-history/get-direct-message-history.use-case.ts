@@ -39,7 +39,7 @@ export class GetDirectMessageHistoryUseCase {
     }
 
     const other = await this.userRepo.findById(otherUserId);
-    if (!other || !other.isActive) {
+    if (!other) {
       throw new NotFoundException({
         error: 'RECIPIENT_NOT_FOUND',
         message: 'User not found',

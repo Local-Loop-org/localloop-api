@@ -23,6 +23,8 @@ import { UserEntity } from '@/modules/auth/infra/repositories/user.entity';
 import { DirectMessageMapper } from '../mappers/direct-message.mapper';
 import { DirectMessageOrmEntity } from './direct-message.entity';
 
+export const DEACTIVATED_PEER_NAME = 'Conta desativada';
+
 interface DirectMessageJoinRow {
   m_id: string;
   m_sender_id: string;
@@ -256,8 +258,8 @@ export class DirectMessageTypeORMRepository implements IDirectMessageRepository 
            m.media_url    AS m_media_url,
            m.media_type   AS m_media_type,
            m.created_at   AS m_created_at,
-           u.display_name AS u_display_name,
-           u.avatar_url   AS u_avatar_url
+           CASE WHEN u.is_active = false THEN '${DEACTIVATED_PEER_NAME}' ELSE u.display_name END AS u_display_name,
+           CASE WHEN u.is_active = false THEN NULL ELSE u.avatar_url END AS u_avatar_url
          FROM direct_messages m
          JOIN users u ON u.id = m.sender_id
          WHERE m.id = $1`,
@@ -368,9 +370,9 @@ export class DirectMessageTypeORMRepository implements IDirectMessageRepository 
         l.peer_id,
         l.last_content,
         l.last_msg_at,
-        up.display_name AS peer_name,
-        up.avatar_url   AS peer_avatar_url,
-        us.display_name AS last_sender_name,
+        CASE WHEN up.is_active = false THEN '${DEACTIVATED_PEER_NAME}' ELSE up.display_name END AS peer_name,
+        CASE WHEN up.is_active = false THEN NULL ELSE up.avatar_url END   AS peer_avatar_url,
+        CASE WHEN us.is_active = false THEN '${DEACTIVATED_PEER_NAME}' ELSE us.display_name END AS last_sender_name,
         COALESCE(cs.archived, false) AS archived,
         cs.last_read_at AS last_read_at,
         (
@@ -464,7 +466,7 @@ export class DirectMessageTypeORMRepository implements IDirectMessageRepository 
         l.peer_id,
         l.last_content,
         l.last_msg_at,
-        us.display_name AS last_sender_name,
+        CASE WHEN us.is_active = false THEN '${DEACTIVATED_PEER_NAME}' ELSE us.display_name END AS last_sender_name,
         COALESCE(cs.archived, false) AS archived,
         cs.last_read_at AS last_read_at,
         (
@@ -517,8 +519,8 @@ export class DirectMessageTypeORMRepository implements IDirectMessageRepository 
         r.sender_id    AS r_sender_id,
         r.content      AS r_content,
         r.created_at   AS r_created_at,
-        u.display_name AS u_display_name,
-        u.avatar_url   AS u_avatar_url
+        CASE WHEN u.is_active = false THEN '${DEACTIVATED_PEER_NAME}' ELSE u.display_name END AS u_display_name,
+        CASE WHEN u.is_active = false THEN NULL ELSE u.avatar_url END   AS u_avatar_url
       FROM dm_requests r
       JOIN users u ON u.id = r.sender_id
       WHERE r.recipient_id = $1
@@ -561,8 +563,8 @@ export class DirectMessageTypeORMRepository implements IDirectMessageRepository 
         'm.media_url AS m_media_url',
         'm.media_type AS m_media_type',
         'm.created_at AS m_created_at',
-        'u.display_name AS u_display_name',
-        'u.avatar_url AS u_avatar_url',
+        `CASE WHEN u.is_active = false THEN '${DEACTIVATED_PEER_NAME}' ELSE u.display_name END AS u_display_name`,
+        'CASE WHEN u.is_active = false THEN NULL ELSE u.avatar_url END AS u_avatar_url',
       ]);
   }
 
