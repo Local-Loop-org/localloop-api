@@ -1,11 +1,13 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   Param,
   ParseUUIDPipe,
   Post,
+  Put,
   Query,
   Request,
   UseGuards,
@@ -37,6 +39,8 @@ import {
 import { AcceptDmRequestUseCase } from '../application/use-cases/accept-dm-request/accept-dm-request.use-case';
 import { AcceptDmRequestResponseDto } from '../application/use-cases/accept-dm-request/accept-dm-request.dto';
 import { DeclineDmRequestUseCase } from '../application/use-cases/decline-dm-request/decline-dm-request.use-case';
+import { ArchiveDmConversationUseCase } from '../application/use-cases/archive-dm-conversation/archive-dm-conversation.use-case';
+import { UnarchiveDmConversationUseCase } from '../application/use-cases/unarchive-dm-conversation/unarchive-dm-conversation.use-case';
 
 @Controller('dm')
 @UseGuards(AuthGuard('jwt'))
@@ -48,12 +52,16 @@ export class DirectMessagesController {
     private readonly listDmRequests: ListDmRequestsUseCase,
     private readonly acceptDmRequest: AcceptDmRequestUseCase,
     private readonly declineDmRequest: DeclineDmRequestUseCase,
+    private readonly archiveDmConversation: ArchiveDmConversationUseCase,
+    private readonly unarchiveDmConversation: UnarchiveDmConversationUseCase,
     private readonly chatGateway: ChatGateway,
   ) {}
 
   // @Get() and @Get('requests') / @Post('requests/...') MUST appear before
   // @Get(':userId') / @Post(':userId') so NestJS does not treat the literal
-  // strings as UUID params.
+  // strings as UUID params. `@Put(':userId/archive')` is a two-segment pattern
+  // so it does not conflict with `@Get(':userId')`, but we keep it grouped
+  // with the request routes for readability.
 
   @Get()
   async inbox(
@@ -82,6 +90,10 @@ export class DirectMessagesController {
   ): Promise<AcceptDmRequestResponseDto> {
     const payload = await this.acceptDmRequest.execute(req.user.id, requestId);
     await this.chatGateway.emitDmRequestAccepted(payload.senderId, payload);
+    await Promise.all([
+      this.chatGateway.emitDmSummary(payload.senderId, payload.recipientId),
+      this.chatGateway.emitDmSummary(payload.recipientId, payload.senderId),
+    ]);
     return payload;
   }
 
@@ -92,6 +104,26 @@ export class DirectMessagesController {
     @Param('requestId', new ParseUUIDPipe()) requestId: string,
   ): Promise<void> {
     await this.declineDmRequest.execute(req.user.id, requestId);
+  }
+
+  @Put(':userId/archive')
+  @HttpCode(204)
+  async archive(
+    @Request() req: { user: User },
+    @Param('userId', new ParseUUIDPipe()) userId: string,
+  ): Promise<void> {
+    await this.archiveDmConversation.execute(req.user.id, userId);
+    await this.chatGateway.emitDmSummary(req.user.id, userId);
+  }
+
+  @Delete(':userId/archive')
+  @HttpCode(204)
+  async unarchive(
+    @Request() req: { user: User },
+    @Param('userId', new ParseUUIDPipe()) userId: string,
+  ): Promise<void> {
+    await this.unarchiveDmConversation.execute(req.user.id, userId);
+    await this.chatGateway.emitDmSummary(req.user.id, userId);
   }
 
   @Get(':userId')

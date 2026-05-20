@@ -1,5 +1,5 @@
 import { MediaType } from '@localloop/shared-types';
-import { PaginatedResult } from '@/shared/pagination/types';
+import { LastMessageSummary, PaginatedResult } from '@/shared/pagination/types';
 import { DirectMessage } from '../entities/direct-message.entity';
 
 export interface CreateDirectMessageData {
@@ -35,6 +35,21 @@ export interface DmConversationRow {
   lastMessageContent: string | null;
   lastMessageSenderName: string;
   lastMessageAt: Date;
+  lastReadAt: Date | null;
+  unreadCount: number;
+  archived: boolean;
+}
+
+/**
+ * Single-pair summary for inbox liveness emits (DM-TASK-E). Mirrors
+ * `MyGroupSummary` in the groups module — `peerId` instead of `groupId`,
+ * plus DM-specific `archived` flag.
+ */
+export interface DmSummary {
+  peerId: string;
+  lastActivityAt: Date;
+  lastMessage: LastMessageSummary | null;
+  lastReadAt: Date | null;
   unreadCount: number;
   archived: boolean;
 }
@@ -140,6 +155,24 @@ export interface IDirectMessageRepository {
   addException(userId: string, peerId: string): Promise<void>;
   /** Idempotent DELETE — removing a non-existent pair succeeds. */
   removeException(userId: string, peerId: string): Promise<void>;
+  /**
+   * UPSERT `dm_conversation_state(userId, peerId).last_read_at = readAt`.
+   * Returns the new last_read_at so the caller can echo it back to the client.
+   * Lazy-initializes the row if it does not already exist (no preconditions).
+   */
+  markRead(userId: string, peerId: string, readAt: Date): Promise<Date>;
+  /**
+   * UPSERT `dm_conversation_state(userId, peerId).archived = archived`.
+   * Idempotent — repeat calls with the same value are a no-op. Does NOT touch
+   * `last_read_at` on update (existing read-state preserved).
+   */
+  setArchived(userId: string, peerId: string, archived: boolean): Promise<void>;
+  /**
+   * Per-pair summary for inbox liveness emits. Returns null when no message has
+   * been exchanged with the peer (a row in `dm_conversation_state` alone is not
+   * enough — there must be at least one row in `direct_messages` to surface).
+   */
+  getDmSummary(userId: string, peerId: string): Promise<DmSummary | null>;
 }
 
 export const DIRECT_MESSAGE_REPOSITORY = Symbol('DIRECT_MESSAGE_REPOSITORY');

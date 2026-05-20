@@ -15,5 +15,8 @@ export function buildDirectMessageRepoMock(): jest.Mocked<IDirectMessageReposito
     listExceptions: jest.fn(),
     addException: jest.fn(),
     removeException: jest.fn(),
+    markRead: jest.fn(),
+    setArchived: jest.fn(),
+    getDmSummary: jest.fn(),
   };
 }

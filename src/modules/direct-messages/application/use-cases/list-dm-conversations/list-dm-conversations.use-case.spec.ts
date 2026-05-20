@@ -19,6 +19,7 @@ describe('ListDmConversationsUseCase', () => {
     lastMessageContent: 'hey',
     lastMessageSenderName: 'Alice',
     lastMessageAt: LAST_MSG_AT,
+    lastReadAt: null,
     unreadCount: 2,
     archived: false,
   });

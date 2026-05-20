@@ -13,6 +13,7 @@ import {
 import { Namespace, Socket } from 'socket.io';
 import {
   ChatSocketEvents,
+  DmSummaryUpdate,
   GroupSummaryUpdate,
   GroupPrivacy,
   MemberStatus,
@@ -32,6 +33,12 @@ import {
 import { SendGroupMessagePushNotificationsUseCase } from '@/modules/notifications/application/use-cases/send-group-message-push-notifications/send-group-message-push-notifications.use-case';
 import { SendDirectMessageUseCase } from '@/modules/direct-messages/application/use-cases/send-direct-message/send-direct-message.use-case';
 import { DirectMessagePayload } from '@/modules/direct-messages/application/use-cases/send-direct-message/send-direct-message.dto';
+import { MarkDmReadUseCase } from '@/modules/direct-messages/application/use-cases/mark-dm-read/mark-dm-read.use-case';
+import {
+  DIRECT_MESSAGE_REPOSITORY,
+  DmSummary,
+  IDirectMessageRepository,
+} from '@/modules/direct-messages/domain/repositories/i-direct-message.repository';
 import { SendMessageResponseDto } from '../application/use-cases/send-message/send-message.dto';
 import { SendMessageUseCase } from '../application/use-cases/send-message/send-message.use-case';
 
@@ -49,6 +56,10 @@ interface WatchGroupSummariesPayload {
 
 interface MarkGroupReadPayload {
   groupId: string;
+}
+
+interface MarkDmReadPayload {
+  peerId: string;
 }
 
 interface SendMessagePayload {
@@ -75,6 +86,7 @@ const GROUP_ROOM_PREFIX = 'group:';
 const PRESENCE_ROOM_PREFIX = 'presence:';
 const GROUP_SUMMARY_ROOM_PREFIX = 'group_summary:';
 const DM_ROOM_PREFIX = 'dm:';
+const DM_INBOX_ROOM_PREFIX = 'dm_inbox:user:';
 const MAX_WATCHED_GROUPS = 50;
 const groupRoom = (groupId: string) => `${GROUP_ROOM_PREFIX}${groupId}`;
 const presenceRoom = (groupId: string) => `${PRESENCE_ROOM_PREFIX}${groupId}`;
@@ -85,6 +97,7 @@ const dmRoom = (userAId: string, userBId: string): string => {
   const [a, b] = [userAId, userBId].sort();
   return `${DM_ROOM_PREFIX}${a}:${b}`;
 };
+const dmInboxRoom = (userId: string) => `${DM_INBOX_ROOM_PREFIX}${userId}`;
 
 @WebSocketGateway({ namespace: '/chat', cors: { origin: '*' } })
 export class ChatGateway
@@ -102,6 +115,9 @@ export class ChatGateway
     private readonly sendMessage: SendMessageUseCase,
     private readonly sendGroupMessagePush: SendGroupMessagePushNotificationsUseCase,
     private readonly sendDirectMessage: SendDirectMessageUseCase,
+    @Inject(DIRECT_MESSAGE_REPOSITORY)
+    private readonly directMessageRepo: IDirectMessageRepository,
+    private readonly markDmRead: MarkDmReadUseCase,
   ) {}
 
   afterInit(server: Namespace): void {
@@ -221,26 +237,54 @@ export class ChatGateway
   }
 
   /**
-   * Fan out `dm_request_accepted` to every socket currently connected as the
-   * original sender (multi-device safe). No persistent `user:{userId}` room is
-   * used here — Task E will introduce explicit `watch_dm_inbox` subscriptions.
-   * Recipient learns of the materialized message via the HTTP response, so no
-   * room broadcast is needed.
+   * Fan out `dm_request_accepted` to every connected socket of the original
+   * sender via the `dm_inbox:user:{senderId}` room. Multi-device fan-out is
+   * an implicit property of the room: every socket that has called
+   * `watch_dm_inbox` is in it. Mobile MUST emit `watch_dm_inbox` on connect
+   * (architecture.md, "Direct messages → WS contract"). Recipient learns of
+   * the materialized message via the HTTP response, so no room broadcast for
+   * them is needed.
    */
   async emitDmRequestAccepted(
     senderId: string,
     payload: DirectMessagePayload,
   ): Promise<void> {
-    const sockets = await this.server.fetchSockets();
-    for (const socket of sockets) {
-      const authed = socket as unknown as {
-        data?: { user?: User };
-        emit: (event: string, payload: DirectMessagePayload) => void;
-      };
-      if (authed.data?.user?.id === senderId) {
-        authed.emit(ChatSocketEvents.DM_REQUEST_ACCEPTED, payload);
-      }
-    }
+    this.server
+      .to(dmInboxRoom(senderId))
+      .emit(ChatSocketEvents.DM_REQUEST_ACCEPTED, payload);
+  }
+
+  private toDmSummaryUpdate(summary: DmSummary): DmSummaryUpdate {
+    return {
+      peerId: summary.peerId,
+      lastActivityAt: summary.lastActivityAt.toISOString(),
+      lastReadAt: summary.lastReadAt ? summary.lastReadAt.toISOString() : null,
+      unreadCount: summary.unreadCount,
+      archived: summary.archived,
+      lastMessage: summary.lastMessage
+        ? {
+            content: summary.lastMessage.content,
+            senderName: summary.lastMessage.senderName,
+            createdAt: summary.lastMessage.createdAt.toISOString(),
+          }
+        : null,
+    };
+  }
+
+  /**
+   * Emits `dm_summary_update` to `dm_inbox:user:{userId}`. Silent when there's
+   * no message exchanged with the peer (returns null from the repo) so we
+   * never push an empty/stale payload.
+   */
+  async emitDmSummary(userId: string, peerId: string): Promise<void> {
+    const summary = await this.directMessageRepo.getDmSummary(userId, peerId);
+    if (!summary) return;
+    this.server
+      .to(dmInboxRoom(userId))
+      .emit(
+        ChatSocketEvents.DM_SUMMARY_UPDATE,
+        this.toDmSummaryUpdate(summary),
+      );
   }
 
   private async emitGroupSummary(groupId: string): Promise<void> {
@@ -459,15 +503,26 @@ export class ChatGateway
     @MessageBody() payload: SendDmPayload,
   ): Promise<void> {
     try {
+      const callerId = socket.data.user.id;
       const result = await this.sendDirectMessage.execute(
-        socket.data.user.id,
+        callerId,
         payload.recipientId,
         { content: payload.content ?? null },
       );
       if (result.type === 'message') {
         this.server
-          .to(dmRoom(socket.data.user.id, payload.recipientId))
+          .to(dmRoom(callerId, payload.recipientId))
           .emit(ChatSocketEvents.NEW_DIRECT_MESSAGE, result);
+        void this.emitDmSummary(callerId, payload.recipientId).catch((err) =>
+          this.logger.warn(
+            `DM summary fan-out failed for sender ${callerId}: ${(err as Error).message}`,
+          ),
+        );
+        void this.emitDmSummary(payload.recipientId, callerId).catch((err) =>
+          this.logger.warn(
+            `DM summary fan-out failed for recipient ${payload.recipientId}: ${(err as Error).message}`,
+          ),
+        );
       } else {
         socket.emit(ChatSocketEvents.DM_REQUEST_SENT, {
           requestId: result.requestId,
@@ -483,6 +538,56 @@ export class ChatGateway
         message:
           e.response?.message ?? e.message ?? 'Failed to send direct message',
       });
+    }
+  }
+
+  @SubscribeMessage(ChatSocketEvents.WATCH_DM_INBOX)
+  async onWatchDmInbox(
+    @ConnectedSocket() socket: AuthedSocket,
+  ): Promise<{ ok: boolean }> {
+    await socket.join(dmInboxRoom(socket.data.user.id));
+    return { ok: true };
+  }
+
+  @SubscribeMessage(ChatSocketEvents.UNWATCH_DM_INBOX)
+  async onUnwatchDmInbox(
+    @ConnectedSocket() socket: AuthedSocket,
+  ): Promise<void> {
+    await socket.leave(dmInboxRoom(socket.data.user.id));
+  }
+
+  @SubscribeMessage(ChatSocketEvents.MARK_DM_READ)
+  async onMarkDmRead(
+    @ConnectedSocket() socket: AuthedSocket,
+    @MessageBody() payload: MarkDmReadPayload,
+  ): Promise<{ ok: boolean }> {
+    const callerId = socket.data.user.id;
+    if (
+      !payload ||
+      typeof payload.peerId !== 'string' ||
+      payload.peerId.length === 0 ||
+      payload.peerId === callerId
+    ) {
+      socket.emit(ChatSocketEvents.ERROR, {
+        code: 'BAD_REQUEST',
+        message: 'Invalid DM peer',
+      });
+      return { ok: false };
+    }
+    try {
+      await this.markDmRead.execute(callerId, payload.peerId);
+      await this.emitDmSummary(callerId, payload.peerId);
+      return { ok: true };
+    } catch (err) {
+      const e = err as {
+        response?: { error?: string; message?: string };
+        message?: string;
+      };
+      socket.emit(ChatSocketEvents.ERROR, {
+        code: e.response?.error ?? 'MARK_DM_READ_FAILED',
+        message: e.response?.message ?? e.message ?? 'Failed to mark DM read',
+      });
+      return { ok: false };
     }
   }
 

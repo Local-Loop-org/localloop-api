@@ -18,6 +18,9 @@ import { DeclineDmRequestUseCase } from './application/use-cases/decline-dm-requ
 import { ListDmExceptionsUseCase } from './application/use-cases/list-dm-exceptions/list-dm-exceptions.use-case';
 import { AddDmExceptionUseCase } from './application/use-cases/add-dm-exception/add-dm-exception.use-case';
 import { RemoveDmExceptionUseCase } from './application/use-cases/remove-dm-exception/remove-dm-exception.use-case';
+import { MarkDmReadUseCase } from './application/use-cases/mark-dm-read/mark-dm-read.use-case';
+import { ArchiveDmConversationUseCase } from './application/use-cases/archive-dm-conversation/archive-dm-conversation.use-case';
+import { UnarchiveDmConversationUseCase } from './application/use-cases/unarchive-dm-conversation/unarchive-dm-conversation.use-case';
 
 import { DirectMessagesController } from './presentation/direct-messages.controller';
 import { DmExceptionsController } from './presentation/dm-exceptions.controller';
@@ -40,6 +43,9 @@ import { DmExceptionsController } from './presentation/dm-exceptions.controller'
     ListDmExceptionsUseCase,
     AddDmExceptionUseCase,
     RemoveDmExceptionUseCase,
+    MarkDmReadUseCase,
+    ArchiveDmConversationUseCase,
+    UnarchiveDmConversationUseCase,
     {
       provide: DIRECT_MESSAGE_REPOSITORY,
       useClass: DirectMessageTypeORMRepository,
@@ -55,6 +61,10 @@ import { DmExceptionsController } from './presentation/dm-exceptions.controller'
     ListDmExceptionsUseCase,
     AddDmExceptionUseCase,
     RemoveDmExceptionUseCase,
+    MarkDmReadUseCase,
+    ArchiveDmConversationUseCase,
+    UnarchiveDmConversationUseCase,
+    DIRECT_MESSAGE_REPOSITORY,
   ],
 })
 export class DirectMessagesModule {}

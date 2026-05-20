@@ -1,0 +1,48 @@
+import { BadRequestException } from '@nestjs/common';
+
+import { IDirectMessageRepository } from '@/modules/direct-messages/domain/repositories/i-direct-message.repository';
+import { buildDirectMessageRepoMock } from '@/modules/direct-messages/test/direct-message-repo.mock';
+import { ArchiveDmConversationUseCase } from './archive-dm-conversation.use-case';
+
+describe('ArchiveDmConversationUseCase', () => {
+  let useCase: ArchiveDmConversationUseCase;
+  let directMessageRepo: jest.Mocked<IDirectMessageRepository>;
+
+  const CALLER = 'user-caller';
+  const PEER = 'user-peer';
+
+  beforeEach(() => {
+    directMessageRepo = buildDirectMessageRepoMock();
+    useCase = new ArchiveDmConversationUseCase(directMessageRepo);
+  });
+
+  it('upserts archived = true on the caller side', async () => {
+    await useCase.execute(CALLER, PEER);
+
+    expect(directMessageRepo.setArchived).toHaveBeenCalledWith(
+      CALLER,
+      PEER,
+      true,
+    );
+  });
+
+  it('rejects self-archive with BadRequestException', async () => {
+    await expect(useCase.execute(CALLER, CALLER)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(directMessageRepo.setArchived).not.toHaveBeenCalled();
+  });
+
+  it('is idempotent — repeat call writes the same row again', async () => {
+    await useCase.execute(CALLER, PEER);
+    await useCase.execute(CALLER, PEER);
+
+    expect(directMessageRepo.setArchived).toHaveBeenCalledTimes(2);
+    expect(directMessageRepo.setArchived).toHaveBeenNthCalledWith(
+      2,
+      CALLER,
+      PEER,
+      true,
+    );
+  });
+});

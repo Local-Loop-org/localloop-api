@@ -17,6 +17,9 @@ import { User } from '@/modules/auth/domain/entities/user.entity';
 import { IUserRepository } from '@/modules/auth/domain/repositories/i-user.repository';
 import { SendGroupMessagePushNotificationsUseCase } from '@/modules/notifications/application/use-cases/send-group-message-push-notifications/send-group-message-push-notifications.use-case';
 import { SendDirectMessageUseCase } from '@/modules/direct-messages/application/use-cases/send-direct-message/send-direct-message.use-case';
+import { MarkDmReadUseCase } from '@/modules/direct-messages/application/use-cases/mark-dm-read/mark-dm-read.use-case';
+import { IDirectMessageRepository } from '@/modules/direct-messages/domain/repositories/i-direct-message.repository';
+import { buildDirectMessageRepoMock } from '@/modules/direct-messages/test/direct-message-repo.mock';
 import { SendMessageUseCase } from '../application/use-cases/send-message/send-message.use-case';
 import { ChatGateway } from './chat.gateway';
 
@@ -53,6 +56,8 @@ describe('ChatGateway', () => {
   let sendMessage: jest.Mocked<SendMessageUseCase>;
   let sendGroupMessagePush: jest.Mocked<SendGroupMessagePushNotificationsUseCase>;
   let sendDirectMessage: jest.Mocked<SendDirectMessageUseCase>;
+  let directMessageRepo: jest.Mocked<IDirectMessageRepository>;
+  let markDmRead: jest.Mocked<MarkDmReadUseCase>;
   let server: ServerMock;
   let roomEmit: jest.Mock;
 
@@ -172,6 +177,10 @@ describe('ChatGateway', () => {
     sendDirectMessage = {
       execute: jest.fn(),
     } as unknown as jest.Mocked<SendDirectMessageUseCase>;
+    directMessageRepo = buildDirectMessageRepoMock();
+    markDmRead = {
+      execute: jest.fn(),
+    } as unknown as jest.Mocked<MarkDmReadUseCase>;
 
     roomMembers.clear();
     allSockets.clear();
@@ -192,6 +201,8 @@ describe('ChatGateway', () => {
       sendMessage,
       sendGroupMessagePush,
       sendDirectMessage,
+      directMessageRepo,
+      markDmRead,
     );
     (gateway as unknown as { server: ServerMock }).server = server;
   });
@@ -707,6 +718,7 @@ describe('ChatGateway', () => {
 
   describe('direct messages', () => {
     const dmRoomKey = (a: string, b: string) => `dm:${[a, b].sort().join(':')}`;
+    const dmInboxRoomKey = (userId: string) => `dm_inbox:user:${userId}`;
 
     describe('join_dm', () => {
       it('joins the sorted-pair room and acks ok', async () => {
@@ -879,6 +891,246 @@ describe('ChatGateway', () => {
       });
     });
 
+    describe('watch_dm_inbox', () => {
+      it("joins the caller's own dm inbox room", async () => {
+        const socket = makeSocket();
+        socket.data.user = buildUser({ id: 'user-1' });
+
+        const ack = await gateway.onWatchDmInbox(socket as never);
+
+        expect(socket.join).toHaveBeenCalledWith(dmInboxRoomKey('user-1'));
+        expect(ack).toEqual({ ok: true });
+      });
+
+      it('two sockets of the same user both join the same room (multi-device)', async () => {
+        const phone = makeSocket(undefined, 'sock-phone');
+        phone.data.user = buildUser({ id: 'user-1' });
+        const laptop = makeSocket(undefined, 'sock-laptop');
+        laptop.data.user = buildUser({ id: 'user-1' });
+
+        await gateway.onWatchDmInbox(phone as never);
+        await gateway.onWatchDmInbox(laptop as never);
+
+        const room = dmInboxRoomKey('user-1');
+        expect(roomMembers.get(room)?.size).toBe(2);
+      });
+    });
+
+    describe('unwatch_dm_inbox', () => {
+      it("leaves the caller's own dm inbox room", async () => {
+        const socket = makeSocket();
+        socket.data.user = buildUser({ id: 'user-1' });
+        await gateway.onWatchDmInbox(socket as never);
+
+        await gateway.onUnwatchDmInbox(socket as never);
+
+        expect(socket.leave).toHaveBeenCalledWith(dmInboxRoomKey('user-1'));
+      });
+    });
+
+    describe('mark_dm_read', () => {
+      const buildSummary = () => ({
+        peerId: 'user-2',
+        lastActivityAt: new Date('2026-05-19T10:00:00Z'),
+        lastReadAt: new Date('2026-05-19T10:00:00Z'),
+        unreadCount: 0,
+        archived: false,
+        lastMessage: {
+          content: 'hi',
+          senderName: 'Bob',
+          createdAt: new Date('2026-05-19T10:00:00Z'),
+        },
+      });
+
+      it('calls the use case then emits dm_summary_update to the caller inbox room', async () => {
+        const socket = makeSocket();
+        socket.data.user = buildUser({ id: 'user-1' });
+        markDmRead.execute.mockResolvedValue({
+          lastReadAt: new Date('2026-05-19T10:00:00Z'),
+        });
+        directMessageRepo.getDmSummary.mockResolvedValue(buildSummary());
+
+        const ack = await gateway.onMarkDmRead(socket as never, {
+          peerId: 'user-2',
+        });
+
+        expect(markDmRead.execute).toHaveBeenCalledWith('user-1', 'user-2');
+        expect(server.to).toHaveBeenCalledWith(dmInboxRoomKey('user-1'));
+        expect(roomEmit).toHaveBeenCalledWith(
+          ChatSocketEvents.DM_SUMMARY_UPDATE,
+          expect.objectContaining({
+            peerId: 'user-2',
+            unreadCount: 0,
+            archived: false,
+          }),
+        );
+        expect(ack).toEqual({ ok: true });
+      });
+
+      it('rejects self-DM with BAD_REQUEST error', async () => {
+        const socket = makeSocket();
+        socket.data.user = buildUser({ id: 'user-1' });
+
+        const ack = await gateway.onMarkDmRead(socket as never, {
+          peerId: 'user-1',
+        });
+
+        expect(markDmRead.execute).not.toHaveBeenCalled();
+        expect(socket.emit).toHaveBeenCalledWith(
+          ChatSocketEvents.ERROR,
+          expect.objectContaining({ code: 'BAD_REQUEST' }),
+        );
+        expect(ack).toEqual({ ok: false });
+      });
+
+      it('rejects empty or missing peerId', async () => {
+        const socket = makeSocket();
+        socket.data.user = buildUser({ id: 'user-1' });
+
+        const ack = await gateway.onMarkDmRead(socket as never, {
+          peerId: '',
+        });
+
+        expect(markDmRead.execute).not.toHaveBeenCalled();
+        expect(ack).toEqual({ ok: false });
+      });
+
+      it('does not leak summary to other users (user-scoped)', async () => {
+        const socket = makeSocket();
+        socket.data.user = buildUser({ id: 'user-1' });
+        markDmRead.execute.mockResolvedValue({
+          lastReadAt: new Date('2026-05-19T10:00:00Z'),
+        });
+        directMessageRepo.getDmSummary.mockResolvedValue(buildSummary());
+
+        await gateway.onMarkDmRead(socket as never, { peerId: 'user-2' });
+
+        expect(server.to).toHaveBeenCalledWith(dmInboxRoomKey('user-1'));
+        expect(server.to).not.toHaveBeenCalledWith(dmInboxRoomKey('user-2'));
+        expect(server.to).not.toHaveBeenCalledWith(dmInboxRoomKey('user-99'));
+      });
+    });
+
+    describe('send_dm summary fan-out', () => {
+      const buildSummary = (peerId: string, unreadCount: number) => ({
+        peerId,
+        lastActivityAt: new Date('2026-05-19T10:00:00Z'),
+        lastReadAt: null,
+        unreadCount,
+        archived: false,
+        lastMessage: {
+          content: 'hi',
+          senderName: 'Alice',
+          createdAt: new Date('2026-05-19T10:00:00Z'),
+        },
+      });
+
+      it('emits dm_summary_update to both sender and recipient inbox rooms on direct delivery', async () => {
+        const socket = makeSocket();
+        socket.data.user = buildUser({ id: 'user-1' });
+        sendDirectMessage.execute.mockResolvedValue({
+          type: 'message',
+          id: 'dm-1',
+          senderId: 'user-1',
+          senderName: 'Alice',
+          senderAvatar: null,
+          recipientId: 'user-2',
+          content: 'hi',
+          mediaUrl: null,
+          mediaType: null,
+          createdAt: new Date('2026-05-19T10:00:00Z').toISOString(),
+        });
+        directMessageRepo.getDmSummary.mockImplementation(
+          async (userId, peerId) =>
+            buildSummary(peerId, userId === 'user-1' ? 0 : 1),
+        );
+
+        await gateway.onSendDm(socket as never, {
+          recipientId: 'user-2',
+          content: 'hi',
+        });
+        // fire-and-forget: let the catch handlers settle
+        await new Promise((r) => setImmediate(r));
+
+        expect(server.to).toHaveBeenCalledWith(dmInboxRoomKey('user-1'));
+        expect(server.to).toHaveBeenCalledWith(dmInboxRoomKey('user-2'));
+        expect(roomEmit).toHaveBeenCalledWith(
+          ChatSocketEvents.DM_SUMMARY_UPDATE,
+          expect.objectContaining({ peerId: 'user-2' }),
+        );
+        expect(roomEmit).toHaveBeenCalledWith(
+          ChatSocketEvents.DM_SUMMARY_UPDATE,
+          expect.objectContaining({ peerId: 'user-1' }),
+        );
+      });
+
+      it('does NOT emit dm_summary_update on the request branch', async () => {
+        const socket = makeSocket();
+        socket.data.user = buildUser({ id: 'user-1' });
+        sendDirectMessage.execute.mockResolvedValue({
+          type: 'request',
+          requestId: 'req-7',
+        });
+
+        await gateway.onSendDm(socket as never, {
+          recipientId: 'user-2',
+          content: 'hi',
+        });
+        await new Promise((r) => setImmediate(r));
+
+        expect(directMessageRepo.getDmSummary).not.toHaveBeenCalled();
+        expect(roomEmit).not.toHaveBeenCalledWith(
+          ChatSocketEvents.DM_SUMMARY_UPDATE,
+          expect.anything(),
+        );
+      });
+    });
+
+    describe('emitDmSummary', () => {
+      it('is silent when no message has been exchanged with the peer (getDmSummary returns null)', async () => {
+        directMessageRepo.getDmSummary.mockResolvedValue(null);
+
+        await gateway.emitDmSummary('user-1', 'user-2');
+
+        expect(server.to).not.toHaveBeenCalled();
+        expect(roomEmit).not.toHaveBeenCalled();
+      });
+
+      it('serializes Date fields to ISO strings on emit', async () => {
+        const summary = {
+          peerId: 'user-2',
+          lastActivityAt: new Date('2026-05-19T10:00:00Z'),
+          lastReadAt: new Date('2026-05-19T09:00:00Z'),
+          unreadCount: 3,
+          archived: true,
+          lastMessage: {
+            content: 'hi',
+            senderName: 'Bob',
+            createdAt: new Date('2026-05-19T10:00:00Z'),
+          },
+        };
+        directMessageRepo.getDmSummary.mockResolvedValue(summary);
+
+        await gateway.emitDmSummary('user-1', 'user-2');
+
+        expect(roomEmit).toHaveBeenCalledWith(
+          ChatSocketEvents.DM_SUMMARY_UPDATE,
+          {
+            peerId: 'user-2',
+            lastActivityAt: '2026-05-19T10:00:00.000Z',
+            lastReadAt: '2026-05-19T09:00:00.000Z',
+            unreadCount: 3,
+            archived: true,
+            lastMessage: {
+              content: 'hi',
+              senderName: 'Bob',
+              createdAt: '2026-05-19T10:00:00.000Z',
+            },
+          },
+        );
+      });
+    });
+
     describe('emitDmRequestAccepted', () => {
       const buildPayload = () => ({
         id: 'dm-9',
@@ -892,64 +1144,43 @@ describe('ChatGateway', () => {
         createdAt: new Date('2026-05-19T10:00:00Z').toISOString(),
       });
 
-      it('emits to every socket of the original sender', async () => {
-        const sender = makeSocket(undefined, 'sock-sender');
-        sender.data.user = buildUser({ id: 'user-1' });
+      // After DM-TASK-E the emit goes to the per-user inbox room (multi-device
+      // fan-out is an implicit property of the room). Mobile MUST emit
+      // `watch_dm_inbox` on connect for these sockets to receive the event.
+
+      it("emits dm_request_accepted to the sender's inbox room", async () => {
         const payload = buildPayload();
 
         await gateway.emitDmRequestAccepted('user-1', payload);
 
-        expect(sender.emit).toHaveBeenCalledWith(
-          ChatSocketEvents.DM_REQUEST_ACCEPTED,
-          payload,
-        );
-        expect(server.to).not.toHaveBeenCalled();
-      });
-
-      it('fans out to multiple devices of the same sender', async () => {
-        const dev1 = makeSocket(undefined, 'sock-dev-1');
-        dev1.data.user = buildUser({ id: 'user-1' });
-        const dev2 = makeSocket(undefined, 'sock-dev-2');
-        dev2.data.user = buildUser({ id: 'user-1' });
-        const payload = buildPayload();
-
-        await gateway.emitDmRequestAccepted('user-1', payload);
-
-        expect(dev1.emit).toHaveBeenCalledWith(
-          ChatSocketEvents.DM_REQUEST_ACCEPTED,
-          payload,
-        );
-        expect(dev2.emit).toHaveBeenCalledWith(
+        expect(server.to).toHaveBeenCalledWith(dmInboxRoomKey('user-1'));
+        expect(roomEmit).toHaveBeenCalledWith(
           ChatSocketEvents.DM_REQUEST_ACCEPTED,
           payload,
         );
       });
 
-      it('does not leak to other users or to DM-room observers', async () => {
-        const sender = makeSocket(undefined, 'sock-sender');
-        sender.data.user = buildUser({ id: 'user-1' });
-        const stranger = makeSocket(undefined, 'sock-stranger');
-        stranger.data.user = buildUser({ id: 'user-99' });
-        const observer = makeSocket(undefined, 'sock-observer');
-        observer.data.user = buildUser({ id: 'user-2' });
-        await observer.join(dmRoomKey('user-1', 'user-2'));
-        observer.emit.mockClear();
-
+      it("targets only the sender's room, not the recipient's", async () => {
         await gateway.emitDmRequestAccepted('user-1', buildPayload());
 
-        expect(stranger.emit).not.toHaveBeenCalled();
-        expect(observer.emit).not.toHaveBeenCalled();
-        expect(server.to).not.toHaveBeenCalled();
+        expect(server.to).toHaveBeenCalledWith(dmInboxRoomKey('user-1'));
+        expect(server.to).not.toHaveBeenCalledWith(dmInboxRoomKey('user-2'));
       });
 
-      it('is a no-op when the sender has no live socket', async () => {
-        const other = makeSocket(undefined, 'sock-other');
-        other.data.user = buildUser({ id: 'user-2' });
-
+      it('does not broadcast into the dm conversation room', async () => {
         await gateway.emitDmRequestAccepted('user-1', buildPayload());
 
-        expect(other.emit).not.toHaveBeenCalled();
-        expect(server.to).not.toHaveBeenCalled();
+        expect(server.to).not.toHaveBeenCalledWith(
+          dmRoomKey('user-1', 'user-2'),
+        );
+      });
+
+      it('emits exactly once regardless of how many sockets the sender has', async () => {
+        // Multi-device delivery is socket.io's job (room membership); the
+        // gateway only fires the single room emit.
+        await gateway.emitDmRequestAccepted('user-1', buildPayload());
+
+        expect(roomEmit).toHaveBeenCalledTimes(1);
       });
     });
   });

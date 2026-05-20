@@ -16,6 +16,7 @@ import {
   DmRequestCursor,
   DmRequestRecord,
   DmRequestRow,
+  DmSummary,
   IDirectMessageRepository,
 } from '@/modules/direct-messages/domain/repositories/i-direct-message.repository';
 import { UserEntity } from '@/modules/auth/infra/repositories/user.entity';
@@ -42,6 +43,17 @@ interface InboxRawRow {
   peer_avatar_url: string | null;
   last_sender_name: string;
   archived: boolean;
+  last_read_at: Date | null;
+  unread_count: number;
+}
+
+interface SummaryRawRow {
+  peer_id: string;
+  last_content: string | null;
+  last_msg_at: Date;
+  last_sender_name: string;
+  archived: boolean;
+  last_read_at: Date | null;
   unread_count: number;
 }
 
@@ -360,6 +372,7 @@ export class DirectMessageTypeORMRepository implements IDirectMessageRepository 
         up.avatar_url   AS peer_avatar_url,
         us.display_name AS last_sender_name,
         COALESCE(cs.archived, false) AS archived,
+        cs.last_read_at AS last_read_at,
         (
           SELECT COUNT(*)::int
           FROM direct_messages m2
@@ -396,10 +409,93 @@ export class DirectMessageTypeORMRepository implements IDirectMessageRepository 
         lastMessageContent: r.last_content,
         lastMessageSenderName: r.last_sender_name,
         lastMessageAt: r.last_msg_at,
+        lastReadAt: r.last_read_at,
         unreadCount: Number(r.unread_count),
         archived: r.archived,
       })),
       nextCursor,
+    };
+  }
+
+  async markRead(userId: string, peerId: string, readAt: Date): Promise<Date> {
+    const rows = await this.dataSource.query<{ last_read_at: Date }[]>(
+      `INSERT INTO dm_conversation_state (user_id, peer_id, last_read_at)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (user_id, peer_id) DO UPDATE SET last_read_at = EXCLUDED.last_read_at
+       RETURNING last_read_at`,
+      [userId, peerId, readAt.toISOString()],
+    );
+    return rows[0].last_read_at;
+  }
+
+  async setArchived(
+    userId: string,
+    peerId: string,
+    archived: boolean,
+  ): Promise<void> {
+    await this.dataSource.query(
+      `INSERT INTO dm_conversation_state (user_id, peer_id, archived)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (user_id, peer_id) DO UPDATE SET archived = EXCLUDED.archived`,
+      [userId, peerId, archived],
+    );
+  }
+
+  async getDmSummary(
+    userId: string,
+    peerId: string,
+  ): Promise<DmSummary | null> {
+    const rows = await this.dataSource.query<SummaryRawRow[]>(
+      `
+      WITH latest AS (
+        SELECT
+          CASE WHEN sender_id = $1 THEN recipient_id ELSE sender_id END AS peer_id,
+          sender_id AS last_sender_id,
+          content   AS last_content,
+          created_at AS last_msg_at
+        FROM direct_messages
+        WHERE ((sender_id = $1 AND recipient_id = $2)
+            OR (sender_id = $2 AND recipient_id = $1))
+          AND is_deleted = false
+        ORDER BY created_at DESC
+        LIMIT 1
+      )
+      SELECT
+        l.peer_id,
+        l.last_content,
+        l.last_msg_at,
+        us.display_name AS last_sender_name,
+        COALESCE(cs.archived, false) AS archived,
+        cs.last_read_at AS last_read_at,
+        (
+          SELECT COUNT(*)::int
+          FROM direct_messages m2
+          WHERE ((m2.sender_id = $1 AND m2.recipient_id = $2)
+              OR (m2.sender_id = $2 AND m2.recipient_id = $1))
+            AND m2.is_deleted = false
+            AND m2.sender_id != $1
+            AND m2.created_at > COALESCE(cs.last_read_at, '-infinity'::timestamptz)
+        ) AS unread_count
+      FROM latest l
+      JOIN users us ON us.id = l.last_sender_id
+      LEFT JOIN dm_conversation_state cs
+        ON cs.user_id = $1 AND cs.peer_id = l.peer_id
+      `,
+      [userId, peerId],
+    );
+    if (rows.length === 0) return null;
+    const r = rows[0];
+    return {
+      peerId: r.peer_id,
+      lastActivityAt: r.last_msg_at,
+      lastReadAt: r.last_read_at,
+      unreadCount: Number(r.unread_count),
+      archived: r.archived,
+      lastMessage: {
+        content: r.last_content,
+        senderName: r.last_sender_name,
+        createdAt: r.last_msg_at,
+      },
     };
   }
 
