@@ -21,6 +21,7 @@ export interface IPushDeviceRepository {
     groupId: string,
     excludedUserIds: string[],
   ): Promise<PushRecipientDevice[]>;
+  listEnabledDevicesForUser(userId: string): Promise<PushRecipientDevice[]>;
   disableCurrentDevice(
     userId: string,
     installationId: string,

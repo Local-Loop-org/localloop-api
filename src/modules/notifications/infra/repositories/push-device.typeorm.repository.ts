@@ -12,8 +12,8 @@ import {
   IPushDeviceRepository,
   PushRecipientDevice,
   UpsertPushDeviceData,
-} from '../../domain/repositories/i-push-device.repository';
-import { PushDevice } from '../../domain/entities/push-device.entity';
+} from '@/modules/notifications/domain/repositories/i-push-device.repository';
+import { PushDevice } from '@/modules/notifications/domain/entities/push-device.entity';
 import { PushDeviceMapper } from '../mappers/push-device.mapper';
 import { PushDeviceOrmEntity } from './push-device.entity';
 
@@ -78,6 +78,36 @@ export class PushDeviceTypeORMRepository implements IPushDeviceRepository {
     }
 
     const rows = await qb
+      .select([
+        'd.user_id AS user_id',
+        'd.provider AS provider',
+        'd.token AS token',
+      ])
+      .getRawMany<{
+        user_id: string;
+        provider: PushProvider;
+        token: string;
+      }>();
+
+    return rows.map((row) => ({
+      userId: row.user_id,
+      provider: row.provider,
+      token: row.token,
+    }));
+  }
+
+  async listEnabledDevicesForUser(
+    userId: string,
+  ): Promise<PushRecipientDevice[]> {
+    const rows = await this.repo
+      .createQueryBuilder('d')
+      .innerJoin(UserEntity, 'u', 'u.id = d.user_id')
+      .where('d.user_id = :userId', { userId })
+      .andWhere('d.enabled = :enabled', { enabled: true })
+      .andWhere('u.is_active = :isActive', { isActive: true })
+      .andWhere('u.push_permission_status = :permissionStatus', {
+        permissionStatus: PushPermissionStatus.GRANTED,
+      })
       .select([
         'd.user_id AS user_id',
         'd.provider AS provider',

@@ -49,6 +49,7 @@ describe('SendGroupMessagePushNotificationsUseCase', () => {
     pushDeviceRepo = {
       upsertCurrentDevice: jest.fn(),
       listEnabledGroupMemberDevices: jest.fn(),
+      listEnabledDevicesForUser: jest.fn(),
       disableCurrentDevice: jest.fn(),
       disableAllForUser: jest.fn(),
       disableByProviderToken: jest.fn(),

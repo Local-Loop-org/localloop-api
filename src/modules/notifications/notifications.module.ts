@@ -11,6 +11,7 @@ import { RegisterCurrentPushDeviceUseCase } from './application/use-cases/regist
 import { DisableCurrentPushDeviceUseCase } from './application/use-cases/disable-current-push-device/disable-current-push-device.use-case';
 import { UpdatePushPermissionUseCase } from './application/use-cases/update-push-permission/update-push-permission.use-case';
 import { SendGroupMessagePushNotificationsUseCase } from './application/use-cases/send-group-message-push-notifications/send-group-message-push-notifications.use-case';
+import { SendDirectMessagePushNotificationsUseCase } from './application/use-cases/send-direct-message-push-notifications/send-direct-message-push-notifications.use-case';
 import { NotificationsController } from './presentation/notifications.controller';
 
 @Module({
@@ -25,6 +26,7 @@ import { NotificationsController } from './presentation/notifications.controller
     DisableCurrentPushDeviceUseCase,
     UpdatePushPermissionUseCase,
     SendGroupMessagePushNotificationsUseCase,
+    SendDirectMessagePushNotificationsUseCase,
     {
       provide: PUSH_DEVICE_REPOSITORY,
       useClass: PushDeviceTypeORMRepository,
@@ -38,6 +40,7 @@ import { NotificationsController } from './presentation/notifications.controller
     PUSH_DEVICE_REPOSITORY,
     PUSH_NOTIFICATION_PROVIDER,
     SendGroupMessagePushNotificationsUseCase,
+    SendDirectMessagePushNotificationsUseCase,
   ],
 })
 export class NotificationsModule {}

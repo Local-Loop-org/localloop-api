@@ -31,6 +31,7 @@ import {
   MyGroupSummary,
 } from '@/modules/groups/domain/repositories/i-group.repository';
 import { SendGroupMessagePushNotificationsUseCase } from '@/modules/notifications/application/use-cases/send-group-message-push-notifications/send-group-message-push-notifications.use-case';
+import { SendDirectMessagePushNotificationsUseCase } from '@/modules/notifications/application/use-cases/send-direct-message-push-notifications/send-direct-message-push-notifications.use-case';
 import { SendDirectMessageUseCase } from '@/modules/direct-messages/application/use-cases/send-direct-message/send-direct-message.use-case';
 import { DirectMessagePayload } from '@/modules/direct-messages/application/use-cases/send-direct-message/send-direct-message.dto';
 import { MarkDmReadUseCase } from '@/modules/direct-messages/application/use-cases/mark-dm-read/mark-dm-read.use-case';
@@ -115,6 +116,7 @@ export class ChatGateway
     private readonly sendMessage: SendMessageUseCase,
     private readonly sendGroupMessagePush: SendGroupMessagePushNotificationsUseCase,
     private readonly sendDirectMessage: SendDirectMessageUseCase,
+    private readonly sendDirectMessagePush: SendDirectMessagePushNotificationsUseCase,
     @Inject(DIRECT_MESSAGE_REPOSITORY)
     private readonly directMessageRepo: IDirectMessageRepository,
     private readonly markDmRead: MarkDmReadUseCase,
@@ -523,6 +525,15 @@ export class ChatGateway
             `DM summary fan-out failed for recipient ${payload.recipientId}: ${(err as Error).message}`,
           ),
         );
+        void this.notifyDirectMessage({
+          callerId,
+          recipientId: payload.recipientId,
+          message: result,
+        }).catch(() => {
+          this.logger.warn(
+            `DM push fan-out failed for direct message ${result.id}`,
+          );
+        });
       } else {
         socket.emit(ChatSocketEvents.DM_REQUEST_SENT, {
           requestId: result.requestId,
@@ -608,6 +619,29 @@ export class ChatGateway
       senderName: message.senderName,
       content: message.content,
       excludedUserIds: activeUserIds,
+    });
+  }
+
+  private async notifyDirectMessage(args: {
+    callerId: string;
+    recipientId: string;
+    message: DirectMessagePayload;
+  }): Promise<void> {
+    const sockets = await this.server
+      .in(dmRoom(args.callerId, args.recipientId))
+      .fetchSockets();
+    const onlineUserIds = sockets
+      .map((socket) => (socket.data as { user?: User } | undefined)?.user?.id)
+      .filter((id): id is string => typeof id === 'string' && id.length > 0);
+
+    if (onlineUserIds.includes(args.recipientId)) return;
+
+    await this.sendDirectMessagePush.execute({
+      senderId: args.callerId,
+      senderName: args.message.senderName,
+      recipientId: args.recipientId,
+      messageId: args.message.id,
+      content: args.message.content,
     });
   }
 

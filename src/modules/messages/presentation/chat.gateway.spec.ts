@@ -16,6 +16,7 @@ import { buildGroupRepoMock } from '@/modules/groups/test/group-repo.mock';
 import { User } from '@/modules/auth/domain/entities/user.entity';
 import { IUserRepository } from '@/modules/auth/domain/repositories/i-user.repository';
 import { SendGroupMessagePushNotificationsUseCase } from '@/modules/notifications/application/use-cases/send-group-message-push-notifications/send-group-message-push-notifications.use-case';
+import { SendDirectMessagePushNotificationsUseCase } from '@/modules/notifications/application/use-cases/send-direct-message-push-notifications/send-direct-message-push-notifications.use-case';
 import { SendDirectMessageUseCase } from '@/modules/direct-messages/application/use-cases/send-direct-message/send-direct-message.use-case';
 import { MarkDmReadUseCase } from '@/modules/direct-messages/application/use-cases/mark-dm-read/mark-dm-read.use-case';
 import { IDirectMessageRepository } from '@/modules/direct-messages/domain/repositories/i-direct-message.repository';
@@ -56,6 +57,7 @@ describe('ChatGateway', () => {
   let sendMessage: jest.Mocked<SendMessageUseCase>;
   let sendGroupMessagePush: jest.Mocked<SendGroupMessagePushNotificationsUseCase>;
   let sendDirectMessage: jest.Mocked<SendDirectMessageUseCase>;
+  let sendDirectMessagePush: jest.Mocked<SendDirectMessagePushNotificationsUseCase>;
   let directMessageRepo: jest.Mocked<IDirectMessageRepository>;
   let markDmRead: jest.Mocked<MarkDmReadUseCase>;
   let server: ServerMock;
@@ -177,6 +179,13 @@ describe('ChatGateway', () => {
     sendDirectMessage = {
       execute: jest.fn(),
     } as unknown as jest.Mocked<SendDirectMessageUseCase>;
+    sendDirectMessagePush = {
+      execute: jest.fn().mockResolvedValue({
+        eligibleDeviceCount: 0,
+        sentCount: 0,
+        disabledTokenCount: 0,
+      }),
+    } as unknown as jest.Mocked<SendDirectMessagePushNotificationsUseCase>;
     directMessageRepo = buildDirectMessageRepoMock();
     markDmRead = {
       execute: jest.fn(),
@@ -201,6 +210,7 @@ describe('ChatGateway', () => {
       sendMessage,
       sendGroupMessagePush,
       sendDirectMessage,
+      sendDirectMessagePush,
       directMessageRepo,
       markDmRead,
     );
@@ -887,6 +897,119 @@ describe('ChatGateway', () => {
         expect(socket.emit).toHaveBeenCalledWith(
           ChatSocketEvents.ERROR,
           expect.objectContaining({ code: 'DM_NOT_ALLOWED' }),
+        );
+      });
+    });
+
+    describe('send_dm push fan-out', () => {
+      const buildDmBroadcast = () => ({
+        type: 'message' as const,
+        id: 'dm-1',
+        senderId: 'user-1',
+        senderName: 'Alice',
+        senderAvatar: null,
+        recipientId: 'user-2',
+        content: 'hi',
+        mediaUrl: null,
+        mediaType: null,
+        createdAt: new Date().toISOString(),
+      });
+
+      it('fires a push to the recipient when they are not in the DM room', async () => {
+        const sender = makeSocket(undefined, 'sock-sender');
+        sender.data.user = buildUser({ id: 'user-1' });
+        sendDirectMessage.execute.mockResolvedValue(buildDmBroadcast());
+
+        await gateway.onSendDm(sender as never, {
+          recipientId: 'user-2',
+          content: 'hi',
+        });
+        await new Promise((resolve) => setImmediate(resolve));
+
+        expect(sendDirectMessagePush.execute).toHaveBeenCalledWith({
+          senderId: 'user-1',
+          senderName: 'Alice',
+          recipientId: 'user-2',
+          messageId: 'dm-1',
+          content: 'hi',
+        });
+      });
+
+      it('skips the push when the recipient already has a socket in the DM room (WS dedup)', async () => {
+        const sender = makeSocket(undefined, 'sock-sender');
+        sender.data.user = buildUser({ id: 'user-1' });
+        const recipientSocket = makeSocket(undefined, 'sock-recipient');
+        recipientSocket.data.user = buildUser({ id: 'user-2' });
+        await recipientSocket.join(dmRoomKey('user-1', 'user-2'));
+        sendDirectMessage.execute.mockResolvedValue(buildDmBroadcast());
+
+        await gateway.onSendDm(sender as never, {
+          recipientId: 'user-2',
+          content: 'hi',
+        });
+        await new Promise((resolve) => setImmediate(resolve));
+
+        expect(sendDirectMessagePush.execute).not.toHaveBeenCalled();
+      });
+
+      it('still fires the push when only the sender (not the recipient) is in the DM room', async () => {
+        const sender = makeSocket(undefined, 'sock-sender');
+        sender.data.user = buildUser({ id: 'user-1' });
+        await sender.join(dmRoomKey('user-1', 'user-2'));
+        sendDirectMessage.execute.mockResolvedValue(buildDmBroadcast());
+
+        await gateway.onSendDm(sender as never, {
+          recipientId: 'user-2',
+          content: 'hi',
+        });
+        await new Promise((resolve) => setImmediate(resolve));
+
+        expect(sendDirectMessagePush.execute).toHaveBeenCalledWith(
+          expect.objectContaining({ recipientId: 'user-2' }),
+        );
+      });
+
+      it('does not fire a push on the request branch', async () => {
+        const sender = makeSocket();
+        sender.data.user = buildUser({ id: 'user-1' });
+        sendDirectMessage.execute.mockResolvedValue({
+          type: 'request',
+          requestId: 'req-9',
+        });
+
+        await gateway.onSendDm(sender as never, {
+          recipientId: 'user-2',
+          content: 'hi',
+        });
+        await new Promise((resolve) => setImmediate(resolve));
+
+        expect(sendDirectMessagePush.execute).not.toHaveBeenCalled();
+        expect(sender.emit).toHaveBeenCalledWith(
+          ChatSocketEvents.DM_REQUEST_SENT,
+          { requestId: 'req-9' },
+        );
+      });
+
+      it('does not fail the message delivery when the push fan-out rejects', async () => {
+        const sender = makeSocket();
+        sender.data.user = buildUser({ id: 'user-1' });
+        const broadcast = buildDmBroadcast();
+        sendDirectMessage.execute.mockResolvedValue(broadcast);
+        sendDirectMessagePush.execute.mockRejectedValue(new Error('Expo down'));
+
+        await gateway.onSendDm(sender as never, {
+          recipientId: 'user-2',
+          content: 'hi',
+        });
+        await new Promise((resolve) => setImmediate(resolve));
+
+        expect(roomEmit).toHaveBeenCalledWith(
+          ChatSocketEvents.NEW_DIRECT_MESSAGE,
+          broadcast,
+        );
+        expect(sender.emit).not.toHaveBeenCalledWith(
+          ChatSocketEvents.ERROR,
+          expect.anything(),
         );
       });
     });
