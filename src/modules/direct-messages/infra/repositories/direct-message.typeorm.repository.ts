@@ -10,6 +10,8 @@ import {
   CreateDmRequestData,
   DirectMessageRow,
   DmConversationRow,
+  DmExceptionCandidateCursor,
+  DmExceptionCandidateRow,
   DmExceptionCursor,
   DmExceptionRow,
   DmInboxCursor,
@@ -73,6 +75,12 @@ interface ExceptionRawRow {
   peer_name: string;
   peer_avatar_url: string | null;
   created_at: Date;
+}
+
+interface ExceptionCandidateRawRow {
+  user_id: string;
+  display_name: string;
+  avatar_url: string | null;
 }
 
 interface RequestRecordRawRow {
@@ -337,6 +345,80 @@ export class DirectMessageTypeORMRepository implements IDirectMessageRepository 
        WHERE user_id = $1 AND allowed_peer_id = $2`,
       [userId, peerId],
     );
+  }
+
+  async listExceptionCandidates(
+    callerId: string,
+    q: string | undefined,
+    cursor: DmExceptionCandidateCursor | undefined,
+    limit: number,
+  ): Promise<
+    PaginatedResult<DmExceptionCandidateRow, DmExceptionCandidateCursor>
+  > {
+    const params: unknown[] = [callerId, limit + 1];
+    let qClause = '';
+    let cursorClause = '';
+
+    if (q !== undefined) {
+      params.push(`%${q.toLowerCase()}%`);
+      qClause = `AND LOWER(u.display_name) LIKE $${params.length}`;
+    }
+
+    if (cursor) {
+      params.push(cursor.displayName.toLowerCase());
+      const displayNameParamIndex = params.length;
+      params.push(cursor.userId);
+      const userIdParamIndex = params.length;
+      cursorClause = `AND (LOWER(u.display_name), u.id) > ($${displayNameParamIndex}, $${userIdParamIndex}::uuid)`;
+    }
+
+    const sql = `
+      SELECT
+        u.id           AS user_id,
+        u.display_name AS display_name,
+        u.avatar_url   AS avatar_url
+      FROM users u
+      WHERE u.is_active = true
+        AND u.id <> $1
+        AND EXISTS (
+          SELECT 1 FROM group_members gm_self
+          JOIN group_members gm_peer
+            ON gm_peer.group_id = gm_self.group_id
+          WHERE gm_self.user_id = $1
+            AND gm_peer.user_id = u.id
+            AND gm_self.status = 'active'
+            AND gm_peer.status = 'active'
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM dm_permission_exceptions e
+          WHERE e.user_id = $1 AND e.allowed_peer_id = u.id
+        )
+        ${qClause}
+        ${cursorClause}
+      ORDER BY LOWER(u.display_name) ASC, u.id ASC
+      LIMIT $2
+    `;
+
+    const raw = await this.dataSource.query<ExceptionCandidateRawRow[]>(
+      sql,
+      params,
+    );
+    const hasMore = raw.length > limit;
+    const page = hasMore ? raw.slice(0, limit) : raw;
+    const last = page.length > 0 ? page[page.length - 1] : null;
+    const nextCursor =
+      hasMore && last
+        ? { displayName: last.display_name, userId: last.user_id }
+        : null;
+
+    return {
+      rows: page.map((r) => ({
+        userId: r.user_id,
+        displayName: r.display_name,
+        avatarUrl: r.avatar_url,
+      })),
+      nextCursor,
+    };
   }
 
   async listInbox(

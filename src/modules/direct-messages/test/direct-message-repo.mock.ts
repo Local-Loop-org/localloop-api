@@ -13,6 +13,7 @@ export function buildDirectMessageRepoMock(): jest.Mocked<IDirectMessageReposito
     listInbox: jest.fn(),
     listRequests: jest.fn(),
     listExceptions: jest.fn(),
+    listExceptionCandidates: jest.fn(),
     addException: jest.fn(),
     removeException: jest.fn(),
     markRead: jest.fn(),

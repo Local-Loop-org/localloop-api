@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import {
   decodeJsonCursor,
   encodeJsonCursor,
+  parseStringIdCursor,
   parseTimestampIdCursor,
 } from './cursor.utils';
 
@@ -65,5 +66,46 @@ describe('parseTimestampIdCursor', () => {
     expect(() =>
       parseTimestampIdCursor('garbage!!!', TS_FIELD, ID_FIELD),
     ).toThrow(BadRequestException);
+  });
+});
+
+describe('parseStringIdCursor', () => {
+  const F1 = 'displayName';
+  const F2 = 'userId';
+
+  const validCursor = () =>
+    encodeJsonCursor({ [F1]: 'Alice', [F2]: 'user-1' });
+
+  it('returns both string values for a valid cursor', () => {
+    const result = parseStringIdCursor(validCursor(), F1, F2);
+    expect(result.value1).toBe('Alice');
+    expect(result.value2).toBe('user-1');
+  });
+
+  it('throws INVALID_CURSOR when the first field is missing', () => {
+    const cursor = encodeJsonCursor({ [F2]: 'user-1' });
+    expect(() => parseStringIdCursor(cursor, F1, F2)).toThrow(
+      BadRequestException,
+    );
+  });
+
+  it('throws INVALID_CURSOR when the second field is missing', () => {
+    const cursor = encodeJsonCursor({ [F1]: 'Alice' });
+    expect(() => parseStringIdCursor(cursor, F1, F2)).toThrow(
+      BadRequestException,
+    );
+  });
+
+  it('throws INVALID_CURSOR when a field is the wrong type', () => {
+    const cursor = encodeJsonCursor({ [F1]: 'Alice', [F2]: 42 });
+    expect(() => parseStringIdCursor(cursor, F1, F2)).toThrow(
+      BadRequestException,
+    );
+  });
+
+  it('throws INVALID_CURSOR for a completely malformed cursor string', () => {
+    expect(() => parseStringIdCursor('garbage!!!', F1, F2)).toThrow(
+      BadRequestException,
+    );
   });
 });

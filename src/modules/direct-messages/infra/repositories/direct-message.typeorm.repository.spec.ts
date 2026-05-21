@@ -141,3 +141,138 @@ describe('DirectMessageTypeORMRepository — deactivated-peer placeholder substi
     );
   });
 });
+
+describe('DirectMessageTypeORMRepository.listExceptionCandidates', () => {
+  let messagesRepo: jest.Mocked<Repository<DirectMessageOrmEntity>>;
+  let dataSource: jest.Mocked<DataSource>;
+  let repo: DirectMessageTypeORMRepository;
+
+  beforeEach(() => {
+    messagesRepo = {
+      createQueryBuilder: jest.fn(),
+    } as unknown as jest.Mocked<Repository<DirectMessageOrmEntity>>;
+    dataSource = {
+      query: jest.fn(),
+      transaction: jest.fn(),
+    } as unknown as jest.Mocked<DataSource>;
+    repo = new DirectMessageTypeORMRepository(messagesRepo, dataSource);
+  });
+
+  it('base SQL filters active co-members and excludes already-excepted peers', async () => {
+    (dataSource.query as jest.Mock).mockResolvedValueOnce([]);
+
+    await repo.listExceptionCandidates('user-1', undefined, undefined, 20);
+
+    const [sql, params] = (dataSource.query as jest.Mock).mock.calls[0] as [
+      string,
+      unknown[],
+    ];
+    expect(sql).toContain('FROM users u');
+    expect(sql).toContain('u.is_active = true');
+    expect(sql).toContain('u.id <> $1');
+    expect(sql).toContain('FROM group_members gm_self');
+    expect(sql).toContain('JOIN group_members gm_peer');
+    expect(sql).toContain("gm_self.status = 'active'");
+    expect(sql).toContain("gm_peer.status = 'active'");
+    expect(sql).toContain('NOT EXISTS');
+    expect(sql).toContain('FROM dm_permission_exceptions e');
+    expect(sql).toContain('ORDER BY LOWER(u.display_name) ASC, u.id ASC');
+    expect(params).toEqual(['user-1', 21]);
+  });
+
+  it('adds a LOWER LIKE clause and binds q as a wildcard parameter when provided', async () => {
+    (dataSource.query as jest.Mock).mockResolvedValueOnce([]);
+
+    await repo.listExceptionCandidates('user-1', 'Ali', undefined, 20);
+
+    const [sql, params] = (dataSource.query as jest.Mock).mock.calls[0] as [
+      string,
+      unknown[],
+    ];
+    expect(sql).toContain('AND LOWER(u.display_name) LIKE $3');
+    expect(params).toEqual(['user-1', 21, '%ali%']);
+  });
+
+  it('adds a keyset cursor clause comparing LOWER(display_name), id ASC when cursor is provided', async () => {
+    (dataSource.query as jest.Mock).mockResolvedValueOnce([]);
+
+    await repo.listExceptionCandidates(
+      'user-1',
+      undefined,
+      { displayName: 'Mallory', userId: 'peer-9' },
+      20,
+    );
+
+    const [sql, params] = (dataSource.query as jest.Mock).mock.calls[0] as [
+      string,
+      unknown[],
+    ];
+    expect(sql).toContain('AND (LOWER(u.display_name), u.id) > ($3, $4::uuid)');
+    expect(params).toEqual(['user-1', 21, 'mallory', 'peer-9']);
+  });
+
+  it('combines q and cursor parameters in the correct order', async () => {
+    (dataSource.query as jest.Mock).mockResolvedValueOnce([]);
+
+    await repo.listExceptionCandidates(
+      'user-1',
+      'Bob',
+      { displayName: 'Bob', userId: 'peer-2' },
+      10,
+    );
+
+    const [sql, params] = (dataSource.query as jest.Mock).mock.calls[0] as [
+      string,
+      unknown[],
+    ];
+    expect(sql).toContain('AND LOWER(u.display_name) LIKE $3');
+    expect(sql).toContain('AND (LOWER(u.display_name), u.id) > ($4, $5::uuid)');
+    expect(params).toEqual(['user-1', 11, '%bob%', 'bob', 'peer-2']);
+  });
+
+  it('maps rows and returns null nextCursor when result size <= limit', async () => {
+    (dataSource.query as jest.Mock).mockResolvedValueOnce([
+      { user_id: 'peer-1', display_name: 'Alice', avatar_url: 'a.png' },
+      { user_id: 'peer-2', display_name: 'Bob', avatar_url: null },
+    ]);
+
+    const result = await repo.listExceptionCandidates(
+      'user-1',
+      undefined,
+      undefined,
+      20,
+    );
+
+    expect(result.rows).toEqual([
+      { userId: 'peer-1', displayName: 'Alice', avatarUrl: 'a.png' },
+      { userId: 'peer-2', displayName: 'Bob', avatarUrl: null },
+    ]);
+    expect(result.nextCursor).toBeNull();
+  });
+
+  it('returns nextCursor from the last row of the page when result overflows limit', async () => {
+    (dataSource.query as jest.Mock).mockResolvedValueOnce([
+      { user_id: 'peer-1', display_name: 'Alice', avatar_url: null },
+      { user_id: 'peer-2', display_name: 'Bob', avatar_url: null },
+      { user_id: 'peer-3', display_name: 'Carol', avatar_url: null },
+    ]);
+
+    const result = await repo.listExceptionCandidates(
+      'user-1',
+      undefined,
+      undefined,
+      2,
+    );
+
+    expect(result.rows).toHaveLength(2);
+    expect(result.rows[1]).toEqual({
+      userId: 'peer-2',
+      displayName: 'Bob',
+      avatarUrl: null,
+    });
+    expect(result.nextCursor).toEqual({
+      displayName: 'Bob',
+      userId: 'peer-2',
+    });
+  });
+});

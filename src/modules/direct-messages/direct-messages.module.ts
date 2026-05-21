@@ -16,6 +16,7 @@ import { ListDmRequestsUseCase } from './application/use-cases/list-dm-requests/
 import { AcceptDmRequestUseCase } from './application/use-cases/accept-dm-request/accept-dm-request.use-case';
 import { DeclineDmRequestUseCase } from './application/use-cases/decline-dm-request/decline-dm-request.use-case';
 import { ListDmExceptionsUseCase } from './application/use-cases/list-dm-exceptions/list-dm-exceptions.use-case';
+import { ListDmExceptionCandidatesUseCase } from './application/use-cases/list-dm-exception-candidates/list-dm-exception-candidates.use-case';
 import { AddDmExceptionUseCase } from './application/use-cases/add-dm-exception/add-dm-exception.use-case';
 import { RemoveDmExceptionUseCase } from './application/use-cases/remove-dm-exception/remove-dm-exception.use-case';
 import { MarkDmReadUseCase } from './application/use-cases/mark-dm-read/mark-dm-read.use-case';
@@ -41,6 +42,7 @@ import { DmExceptionsController } from './presentation/dm-exceptions.controller'
     AcceptDmRequestUseCase,
     DeclineDmRequestUseCase,
     ListDmExceptionsUseCase,
+    ListDmExceptionCandidatesUseCase,
     AddDmExceptionUseCase,
     RemoveDmExceptionUseCase,
     MarkDmReadUseCase,
@@ -59,6 +61,7 @@ import { DmExceptionsController } from './presentation/dm-exceptions.controller'
     AcceptDmRequestUseCase,
     DeclineDmRequestUseCase,
     ListDmExceptionsUseCase,
+    ListDmExceptionCandidatesUseCase,
     AddDmExceptionUseCase,
     RemoveDmExceptionUseCase,
     MarkDmReadUseCase,

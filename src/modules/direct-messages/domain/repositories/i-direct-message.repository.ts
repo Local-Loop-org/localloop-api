@@ -94,6 +94,17 @@ export interface DmExceptionCursor {
   peerId: string;
 }
 
+export interface DmExceptionCandidateRow {
+  userId: string;
+  displayName: string;
+  avatarUrl: string | null;
+}
+
+export interface DmExceptionCandidateCursor {
+  displayName: string;
+  userId: string;
+}
+
 export interface IDirectMessageRepository {
   /**
    * Direct-delivery write. In one transaction: inserts the message row, writes
@@ -151,6 +162,22 @@ export interface IDirectMessageRepository {
     limit: number,
     cursor?: DmExceptionCursor,
   ): Promise<PaginatedResult<DmExceptionRow, DmExceptionCursor>>;
+  /**
+   * Paginated list of active users who share at least one ACTIVE group
+   * membership with the caller and are not already on the caller's
+   * `dm_permission_exceptions` list. Ordering: lower(display_name) ASC,
+   * user_id ASC. Optional case-insensitive substring filter on display_name
+   * (caller is responsible for trimming `q`; empty/whitespace should be
+   * passed as undefined).
+   */
+  listExceptionCandidates(
+    callerId: string,
+    q: string | undefined,
+    cursor: DmExceptionCandidateCursor | undefined,
+    limit: number,
+  ): Promise<
+    PaginatedResult<DmExceptionCandidateRow, DmExceptionCandidateCursor>
+  >;
   /** Idempotent UPSERT — adding the same pair twice is a no-op. */
   addException(userId: string, peerId: string): Promise<void>;
   /** Idempotent DELETE — removing a non-existent pair succeeds. */

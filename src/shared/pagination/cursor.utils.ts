@@ -44,3 +44,29 @@ export function parseTimestampIdCursor(
   }
   return { timestamp: date, id: d[idField] as string };
 }
+
+/**
+ * Shared helper for the (string, string) cursor pattern — e.g. an ordering
+ * keyed on (lower(display_name), user_id). Decodes the base64url cursor and
+ * validates that both fields are present and string-typed.
+ */
+export function parseStringIdCursor(
+  raw: string,
+  field1: string,
+  field2: string,
+): { value1: string; value2: string } {
+  const decoded = decodeJsonCursor(raw);
+  const d = decoded as Record<string, unknown>;
+  if (
+    !decoded ||
+    typeof decoded !== 'object' ||
+    typeof d[field1] !== 'string' ||
+    typeof d[field2] !== 'string'
+  ) {
+    throw new BadRequestException({
+      error: 'INVALID_CURSOR',
+      message: 'Cursor payload is missing required fields',
+    });
+  }
+  return { value1: d[field1] as string, value2: d[field2] as string };
+}
