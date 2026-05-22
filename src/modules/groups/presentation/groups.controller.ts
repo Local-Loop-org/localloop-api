@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Logger,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -66,6 +67,8 @@ import { User } from '@/modules/auth/domain/entities/user.entity';
 @Controller('groups')
 @UseGuards(AuthGuard('jwt'))
 export class GroupsController {
+  private readonly logger = new Logger(GroupsController.name);
+
   constructor(
     private readonly createGroup: CreateGroupUseCase,
     private readonly discoverNearby: DiscoverNearbyGroupsUseCase,
@@ -99,6 +102,7 @@ export class GroupsController {
     @Request() req: { user: User },
     @Query() query: DiscoverNearbyGroupsQueryDto,
   ): Promise<DiscoverNearbyGroupsResponseDto> {
+    this.logger.log(`nearby userId=${req.user.id} query=${JSON.stringify(query)}`);
     return this.discoverNearby.execute(query, req.user.id);
   }
 
