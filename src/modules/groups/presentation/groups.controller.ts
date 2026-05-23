@@ -102,7 +102,9 @@ export class GroupsController {
     @Request() req: { user: User },
     @Query() query: DiscoverNearbyGroupsQueryDto,
   ): Promise<DiscoverNearbyGroupsResponseDto> {
-    this.logger.log(`nearby userId=${req.user.id} query=${JSON.stringify(query)}`);
+    this.logger.log(
+      `nearby userId=${req.user.id} query=${JSON.stringify(query)}`,
+    );
     return this.discoverNearby.execute(query, req.user.id);
   }
 

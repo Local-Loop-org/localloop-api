@@ -73,8 +73,7 @@ describe('parseStringIdCursor', () => {
   const F1 = 'displayName';
   const F2 = 'userId';
 
-  const validCursor = () =>
-    encodeJsonCursor({ [F1]: 'Alice', [F2]: 'user-1' });
+  const validCursor = () => encodeJsonCursor({ [F1]: 'Alice', [F2]: 'user-1' });
 
   it('returns both string values for a valid cursor', () => {
     const result = parseStringIdCursor(validCursor(), F1, F2);
