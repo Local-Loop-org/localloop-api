@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import type { GroupMessagePushNotificationData } from '@localloop/shared-types';
 import {
   GROUP_REPOSITORY,
   IGroupRepository,
@@ -22,6 +23,7 @@ export interface SendGroupMessagePushNotificationsInput {
   messageId: string;
   senderId: string;
   senderName: string;
+  senderAvatarUrl: string | null;
   content: string | null;
   excludedUserIds: string[];
 }
@@ -64,15 +66,23 @@ export class SendGroupMessagePushNotificationsUseCase {
       return this.emptyResult();
     }
 
+    const conversationKey: GroupMessagePushNotificationData['conversationKey'] = `group:${input.groupId}`;
+    const data = {
+      type: 'group_message',
+      conversationKey,
+      groupId: input.groupId,
+      groupName: group.name,
+      anchorType: group.anchorType,
+      messageId: input.messageId,
+      senderId: input.senderId,
+      senderName: input.senderName,
+      senderAvatarUrl: input.senderAvatarUrl,
+    } satisfies GroupMessagePushNotificationData;
+
     const results = await this.pushProvider.send(tokens, {
       title: group.name,
       body: `${input.senderName}: ${this.preview(input.content)}`,
-      data: {
-        type: 'group_message',
-        groupId: input.groupId,
-        messageId: input.messageId,
-        senderId: input.senderId,
-      },
+      data,
     });
 
     const disabledTokens = [

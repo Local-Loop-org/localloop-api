@@ -617,6 +617,7 @@ export class ChatGateway
       messageId: message.id,
       senderId: message.senderId,
       senderName: message.senderName,
+      senderAvatarUrl: message.senderAvatarUrl,
       content: message.content,
       excludedUserIds: activeUserIds,
     });
@@ -639,6 +640,7 @@ export class ChatGateway
     await this.sendDirectMessagePush.execute({
       senderId: args.callerId,
       senderName: args.message.senderName,
+      senderAvatarUrl: args.message.senderAvatarUrl,
       recipientId: args.recipientId,
       messageId: args.message.id,
       content: args.message.content,

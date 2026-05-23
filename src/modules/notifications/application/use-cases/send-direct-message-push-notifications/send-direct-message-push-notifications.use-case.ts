@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import type { DirectMessagePushNotificationData } from '@localloop/shared-types';
 import {
   IPushDeviceRepository,
   PUSH_DEVICE_REPOSITORY,
@@ -16,6 +17,7 @@ const DEVICE_NOT_REGISTERED = 'DeviceNotRegistered';
 export interface SendDirectMessagePushNotificationsInput {
   senderId: string;
   senderName: string;
+  senderAvatarUrl: string | null;
   recipientId: string;
   messageId: string;
   content: string | null;
@@ -49,14 +51,22 @@ export class SendDirectMessagePushNotificationsUseCase {
       return this.emptyResult();
     }
 
+    const peerName =
+      input.senderName.trim().length > 0 ? input.senderName : 'Alguém';
+    const conversationKey: DirectMessagePushNotificationData['conversationKey'] = `dm:${input.senderId}`;
+    const data = {
+      type: 'direct_message',
+      conversationKey,
+      peerId: input.senderId,
+      peerName,
+      peerAvatarUrl: input.senderAvatarUrl,
+      messageId: input.messageId,
+    } satisfies DirectMessagePushNotificationData;
+
     const results = await this.pushProvider.send(tokens, {
-      title: input.senderName.trim().length > 0 ? input.senderName : 'Alguém',
+      title: peerName,
       body: this.preview(input.content),
-      data: {
-        type: 'direct_message',
-        peerId: input.senderId,
-        messageId: input.messageId,
-      },
+      data,
     });
 
     const disabledTokens = [

@@ -361,6 +361,7 @@ describe('ChatGateway', () => {
         messageId: 'msg-1',
         senderId: 'user-1',
         senderName: 'Alice',
+        senderAvatarUrl: null,
         content: 'hi',
         excludedUserIds: ['user-2'],
       });
@@ -929,6 +930,7 @@ describe('ChatGateway', () => {
         expect(sendDirectMessagePush.execute).toHaveBeenCalledWith({
           senderId: 'user-1',
           senderName: 'Alice',
+          senderAvatarUrl: null,
           recipientId: 'user-2',
           messageId: 'dm-1',
           content: 'hi',

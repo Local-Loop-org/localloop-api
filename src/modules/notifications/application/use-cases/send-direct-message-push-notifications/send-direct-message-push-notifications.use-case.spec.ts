@@ -47,6 +47,7 @@ describe('SendDirectMessagePushNotificationsUseCase', () => {
     const result = await useCase.execute({
       senderId: 'user-1',
       senderName: 'Alice',
+      senderAvatarUrl: 'https://example.com/alice.png',
       recipientId: 'user-2',
       messageId: 'dm-1',
       content: '  hello   local loop  ',
@@ -60,7 +61,10 @@ describe('SendDirectMessagePushNotificationsUseCase', () => {
       body: 'hello local loop',
       data: {
         type: 'direct_message',
+        conversationKey: 'dm:user-1',
         peerId: 'user-1',
+        peerName: 'Alice',
+        peerAvatarUrl: 'https://example.com/alice.png',
         messageId: 'dm-1',
       },
     });
@@ -77,6 +81,7 @@ describe('SendDirectMessagePushNotificationsUseCase', () => {
     const result = await useCase.execute({
       senderId: 'user-1',
       senderName: 'Alice',
+      senderAvatarUrl: null,
       recipientId: 'user-2',
       messageId: 'dm-1',
       content: 'hi',
@@ -99,6 +104,7 @@ describe('SendDirectMessagePushNotificationsUseCase', () => {
     await useCase.execute({
       senderId: 'user-1',
       senderName: 'Alice',
+      senderAvatarUrl: null,
       recipientId: 'user-2',
       messageId: 'dm-1',
       content: 'hi',
@@ -119,6 +125,7 @@ describe('SendDirectMessagePushNotificationsUseCase', () => {
     await useCase.execute({
       senderId: 'user-1',
       senderName: 'Alice',
+      senderAvatarUrl: null,
       recipientId: 'user-2',
       messageId: 'dm-1',
       content: 'hi',
@@ -148,6 +155,7 @@ describe('SendDirectMessagePushNotificationsUseCase', () => {
     const result = await useCase.execute({
       senderId: 'user-1',
       senderName: 'Alice',
+      senderAvatarUrl: null,
       recipientId: 'user-2',
       messageId: 'dm-1',
       content: 'hi',
@@ -172,6 +180,7 @@ describe('SendDirectMessagePushNotificationsUseCase', () => {
     await useCase.execute({
       senderId: 'user-1',
       senderName: 'Alice',
+      senderAvatarUrl: null,
       recipientId: 'user-2',
       messageId: 'dm-1',
       content: 'a'.repeat(150),
@@ -190,6 +199,7 @@ describe('SendDirectMessagePushNotificationsUseCase', () => {
     await useCase.execute({
       senderId: 'user-1',
       senderName: 'Alice',
+      senderAvatarUrl: null,
       recipientId: 'user-2',
       messageId: 'dm-1',
       content: 'a\n\nb',
@@ -209,6 +219,7 @@ describe('SendDirectMessagePushNotificationsUseCase', () => {
     await useCase.execute({
       senderId: 'user-1',
       senderName: 'Alice',
+      senderAvatarUrl: null,
       recipientId: 'user-2',
       messageId: 'dm-1',
       content: null,
@@ -223,6 +234,7 @@ describe('SendDirectMessagePushNotificationsUseCase', () => {
     await useCase.execute({
       senderId: 'user-1',
       senderName: 'Alice',
+      senderAvatarUrl: null,
       recipientId: 'user-2',
       messageId: 'dm-2',
       content: '   ',
@@ -242,6 +254,7 @@ describe('SendDirectMessagePushNotificationsUseCase', () => {
     await useCase.execute({
       senderId: 'user-1',
       senderName: '   ',
+      senderAvatarUrl: null,
       recipientId: 'user-2',
       messageId: 'dm-1',
       content: 'hi',

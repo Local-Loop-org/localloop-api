@@ -81,6 +81,7 @@ describe('SendGroupMessagePushNotificationsUseCase', () => {
       messageId: 'msg-1',
       senderId: 'user-1',
       senderName: 'Alice',
+      senderAvatarUrl: 'https://example.com/alice.png',
       content: '  hello   local loop  ',
       excludedUserIds: ['user-3'],
     });
@@ -94,9 +95,14 @@ describe('SendGroupMessagePushNotificationsUseCase', () => {
       body: 'Alice: hello local loop',
       data: {
         type: 'group_message',
+        conversationKey: 'group:group-1',
         groupId: 'group-1',
+        groupName: 'Morumbi Runners',
+        anchorType: AnchorType.NEIGHBORHOOD,
         messageId: 'msg-1',
         senderId: 'user-1',
+        senderName: 'Alice',
+        senderAvatarUrl: 'https://example.com/alice.png',
       },
     });
     expect(result).toEqual({
@@ -114,6 +120,7 @@ describe('SendGroupMessagePushNotificationsUseCase', () => {
       messageId: 'msg-1',
       senderId: 'user-1',
       senderName: 'Alice',
+      senderAvatarUrl: null,
       content: 'hello',
       excludedUserIds: [],
     });
@@ -133,6 +140,7 @@ describe('SendGroupMessagePushNotificationsUseCase', () => {
       messageId: 'msg-1',
       senderId: 'user-1',
       senderName: 'Alice',
+      senderAvatarUrl: null,
       content: 'hello',
       excludedUserIds: [],
     });
@@ -161,6 +169,7 @@ describe('SendGroupMessagePushNotificationsUseCase', () => {
       messageId: 'msg-1',
       senderId: 'user-1',
       senderName: 'Alice',
+      senderAvatarUrl: null,
       content: 'hello',
       excludedUserIds: [],
     });
@@ -182,6 +191,7 @@ describe('SendGroupMessagePushNotificationsUseCase', () => {
       messageId: 'msg-1',
       senderId: 'user-1',
       senderName: 'Alice',
+      senderAvatarUrl: null,
       content: 'a'.repeat(150),
       excludedUserIds: [],
     });
