@@ -18,6 +18,7 @@ import {
   GroupPrivacy,
   MemberStatus,
   PresenceUpdate,
+  type PushConversationKey,
 } from '@localloop/shared-types';
 
 import { User } from '@/modules/auth/domain/entities/user.entity';
@@ -32,6 +33,7 @@ import {
 } from '@/modules/groups/domain/repositories/i-group.repository';
 import { SendGroupMessagePushNotificationsUseCase } from '@/modules/notifications/application/use-cases/send-group-message-push-notifications/send-group-message-push-notifications.use-case';
 import { SendDirectMessagePushNotificationsUseCase } from '@/modules/notifications/application/use-cases/send-direct-message-push-notifications/send-direct-message-push-notifications.use-case';
+import { ClearChatNotificationDigestUseCase } from '@/modules/notifications/application/use-cases/clear-chat-notification-digest/clear-chat-notification-digest.use-case';
 import { SendDirectMessageUseCase } from '@/modules/direct-messages/application/use-cases/send-direct-message/send-direct-message.use-case';
 import { DirectMessagePayload } from '@/modules/direct-messages/application/use-cases/send-direct-message/send-direct-message.dto';
 import { MarkDmReadUseCase } from '@/modules/direct-messages/application/use-cases/mark-dm-read/mark-dm-read.use-case';
@@ -94,10 +96,13 @@ const presenceRoom = (groupId: string) => `${PRESENCE_ROOM_PREFIX}${groupId}`;
 const groupSummaryRoom = (groupId: string) =>
   `${GROUP_SUMMARY_ROOM_PREFIX}${groupId}`;
 const groupIdFromRoom = (room: string) => room.slice(GROUP_ROOM_PREFIX.length);
+const groupConversationKey = (groupId: string): `group:${string}` =>
+  `group:${groupId}`;
 const dmRoom = (userAId: string, userBId: string): string => {
   const [a, b] = [userAId, userBId].sort();
   return `${DM_ROOM_PREFIX}${a}:${b}`;
 };
+const dmConversationKey = (peerId: string): `dm:${string}` => `dm:${peerId}`;
 const dmInboxRoom = (userId: string) => `${DM_INBOX_ROOM_PREFIX}${userId}`;
 
 @WebSocketGateway({ namespace: '/chat', cors: { origin: '*' } })
@@ -117,6 +122,7 @@ export class ChatGateway
     private readonly sendGroupMessagePush: SendGroupMessagePushNotificationsUseCase,
     private readonly sendDirectMessage: SendDirectMessageUseCase,
     private readonly sendDirectMessagePush: SendDirectMessagePushNotificationsUseCase,
+    private readonly clearChatNotificationDigest: ClearChatNotificationDigestUseCase,
     @Inject(DIRECT_MESSAGE_REPOSITORY)
     private readonly directMessageRepo: IDirectMessageRepository,
     private readonly markDmRead: MarkDmReadUseCase,
@@ -334,6 +340,7 @@ export class ChatGateway
     }
     await socket.join(groupRoom(payload.groupId));
     await this.emitPresence(payload.groupId);
+    await this.clearPushDigest(userId, groupConversationKey(payload.groupId));
     return { ok: true };
   }
 
@@ -414,6 +421,10 @@ export class ChatGateway
     }
 
     await this.emitGroupSummaryToSocket(socket, payload.groupId);
+    await this.clearPushDigest(
+      socket.data.user.id,
+      groupConversationKey(payload.groupId),
+    );
     return { ok: true };
   }
 
@@ -481,6 +492,7 @@ export class ChatGateway
       return { ok: false };
     }
     await socket.join(dmRoom(callerId, payload.userId));
+    await this.clearPushDigest(callerId, dmConversationKey(payload.userId));
     return { ok: true };
   }
 
@@ -588,6 +600,7 @@ export class ChatGateway
     try {
       await this.markDmRead.execute(callerId, payload.peerId);
       await this.emitDmSummary(callerId, payload.peerId);
+      await this.clearPushDigest(callerId, dmConversationKey(payload.peerId));
       return { ok: true };
     } catch (err) {
       const e = err as {
@@ -654,5 +667,21 @@ export class ChatGateway
     const fromQuery = socket.handshake.query?.token;
     if (typeof fromQuery === 'string' && fromQuery.length > 0) return fromQuery;
     return null;
+  }
+
+  private async clearPushDigest(
+    recipientUserId: string,
+    conversationKey: PushConversationKey,
+  ): Promise<void> {
+    try {
+      await this.clearChatNotificationDigest.execute({
+        recipientUserId,
+        conversationKey,
+      });
+    } catch (err) {
+      this.logger.warn(
+        `Chat notification digest cleanup failed: ${(err as Error).message}`,
+      );
+    }
   }
 }

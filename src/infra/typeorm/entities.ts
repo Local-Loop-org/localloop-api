@@ -5,6 +5,7 @@ import { GroupJoinRequestOrmEntity } from '@/modules/groups/infra/repositories/g
 import { MessageOrmEntity } from '@/modules/messages/infra/repositories/message.entity';
 import { DirectMessageOrmEntity } from '@/modules/direct-messages/infra/repositories/direct-message.entity';
 import { PushDeviceOrmEntity } from '@/modules/notifications/infra/repositories/push-device.entity';
+import { ChatNotificationDigestOrmEntity } from '@/modules/notifications/infra/repositories/chat-notification-digest.entity';
 
 export const typeormEntities = [
   UserEntity,
@@ -14,4 +15,5 @@ export const typeormEntities = [
   MessageOrmEntity,
   DirectMessageOrmEntity,
   PushDeviceOrmEntity,
+  ChatNotificationDigestOrmEntity,
 ];

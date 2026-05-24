@@ -24,8 +24,10 @@ export class ExpoPushNotificationProvider implements IPushNotificationProvider {
       to,
       title: payload.title,
       body: payload.body,
-      data: payload.data,
-      sound: 'default',
+      data: payload.data as Record<string, unknown> | undefined,
+      sound: payload.sound === undefined ? 'default' : payload.sound,
+      collapseId: payload.collapseId,
+      tag: payload.tag,
     }));
 
     const chunks = this.expo.chunkPushNotifications(messages);

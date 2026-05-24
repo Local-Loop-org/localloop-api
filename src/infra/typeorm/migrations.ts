@@ -7,6 +7,7 @@ import { AddPushNotifications1716000000000 } from '../migrations/1716000000000-A
 import { AddGroupMemberLastReadAt1716100000000 } from '../migrations/1716100000000-AddGroupMemberLastReadAt';
 import { CreateDirectMessages1717000000000 } from '../migrations/1717000000000-CreateDirectMessages';
 import { AddDmInboxSupport1717100000000 } from '../migrations/1717100000000-AddDmInboxSupport';
+import { AddChatNotificationDigests1717200000000 } from '../migrations/1717200000000-AddChatNotificationDigests';
 
 export const typeormMigrations = [
   InitialSetup1710770000000,
@@ -18,4 +19,5 @@ export const typeormMigrations = [
   AddGroupMemberLastReadAt1716100000000,
   CreateDirectMessages1717000000000,
   AddDmInboxSupport1717100000000,
+  AddChatNotificationDigests1717200000000,
 ];

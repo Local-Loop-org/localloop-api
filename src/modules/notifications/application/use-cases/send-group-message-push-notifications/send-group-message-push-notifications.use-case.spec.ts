@@ -6,16 +6,23 @@ import {
 import { Group } from '@/modules/groups/domain/entities/group.entity';
 import { buildGroupRepoMock } from '@/modules/groups/test/group-repo.mock';
 import {
+  ChatNotificationDigestState,
+  IChatNotificationDigestRepository,
+  RecordChatNotificationDigestInput,
+} from '../../../domain/repositories/i-chat-notification-digest.repository';
+import {
   IPushDeviceRepository,
   PushRecipientDevice,
 } from '../../../domain/repositories/i-push-device.repository';
 import { IPushNotificationProvider } from '../../../domain/repositories/i-push-notification-provider';
+import { RecordChatNotificationDigestUseCase } from '../record-chat-notification-digest/record-chat-notification-digest.use-case';
 import { SendGroupMessagePushNotificationsUseCase } from './send-group-message-push-notifications.use-case';
 
 describe('SendGroupMessagePushNotificationsUseCase', () => {
   let useCase: SendGroupMessagePushNotificationsUseCase;
   let pushDeviceRepo: jest.Mocked<IPushDeviceRepository>;
   let pushProvider: jest.Mocked<IPushNotificationProvider>;
+  let digestRepo: jest.Mocked<IChatNotificationDigestRepository>;
   let groupRepo: ReturnType<typeof buildGroupRepoMock>;
 
   const buildGroup = (): Group =>
@@ -59,11 +66,30 @@ describe('SendGroupMessagePushNotificationsUseCase', () => {
       validateToken: jest.fn(),
       send: jest.fn(),
     };
+    digestRepo = {
+      recordMessage: jest.fn().mockImplementation(
+        async (
+          input: RecordChatNotificationDigestInput,
+        ): Promise<ChatNotificationDigestState> => ({
+          recipientUserId: input.recipientUserId,
+          conversationKey: input.conversationKey,
+          type: input.type,
+          title: input.title,
+          routeData: input.routeData,
+          totalCount: 1,
+          snippets: [input.snippet],
+          lastMessageAt: input.now,
+          isReplacement: false,
+        }),
+      ),
+      clear: jest.fn(),
+    };
     groupRepo = buildGroupRepoMock();
     useCase = new SendGroupMessagePushNotificationsUseCase(
       pushDeviceRepo,
       pushProvider,
       groupRepo,
+      new RecordChatNotificationDigestUseCase(digestRepo),
     );
     groupRepo.findById.mockResolvedValue(buildGroup());
     pushProvider.send.mockResolvedValue([
@@ -104,6 +130,9 @@ describe('SendGroupMessagePushNotificationsUseCase', () => {
         senderName: 'Alice',
         senderAvatarUrl: 'https://example.com/alice.png',
       },
+      collapseId: 'chat:user-2:group:group-1',
+      tag: 'chat:user-2:group:group-1',
+      sound: 'default',
     });
     expect(result).toEqual({
       eligibleDeviceCount: 1,
@@ -129,10 +158,10 @@ describe('SendGroupMessagePushNotificationsUseCase', () => {
     expect(result.sentCount).toBe(0);
   });
 
-  it('deduplicates tokens before sending', async () => {
+  it('deduplicates repeated tokens for the same recipient before sending', async () => {
     pushDeviceRepo.listEnabledGroupMemberDevices.mockResolvedValue([
       buildDevice('ExponentPushToken[one]', 'user-2'),
-      buildDevice('ExponentPushToken[one]', 'user-3'),
+      buildDevice('ExponentPushToken[one]', 'user-2'),
     ]);
 
     await useCase.execute({
@@ -148,6 +177,40 @@ describe('SendGroupMessagePushNotificationsUseCase', () => {
     expect(pushProvider.send).toHaveBeenCalledWith(
       ['ExponentPushToken[one]'],
       expect.any(Object),
+    );
+  });
+
+  it('builds a separate digest per recipient', async () => {
+    pushDeviceRepo.listEnabledGroupMemberDevices.mockResolvedValue([
+      buildDevice('ExponentPushToken[one]', 'user-2'),
+      buildDevice('ExponentPushToken[two]', 'user-3'),
+    ]);
+
+    await useCase.execute({
+      groupId: 'group-1',
+      messageId: 'msg-1',
+      senderId: 'user-1',
+      senderName: 'Alice',
+      senderAvatarUrl: null,
+      content: 'hello',
+      excludedUserIds: [],
+    });
+
+    expect(digestRepo.recordMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ recipientUserId: 'user-2' }),
+    );
+    expect(digestRepo.recordMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ recipientUserId: 'user-3' }),
+    );
+    expect(pushProvider.send).toHaveBeenNthCalledWith(
+      1,
+      ['ExponentPushToken[one]'],
+      expect.objectContaining({ collapseId: 'chat:user-2:group:group-1' }),
+    );
+    expect(pushProvider.send).toHaveBeenNthCalledWith(
+      2,
+      ['ExponentPushToken[two]'],
+      expect.objectContaining({ collapseId: 'chat:user-3:group:group-1' }),
     );
   });
 
