@@ -1,9 +1,15 @@
-import { PushProvider } from '@localloop/shared-types';
+import {
+  type ChatPushNotificationData,
+  PushProvider,
+} from '@localloop/shared-types';
 
 export interface PushNotificationPayload {
   title: string;
   body: string;
-  data?: Record<string, string | number | boolean | null>;
+  data?: ChatPushNotificationData | Record<string, unknown>;
+  collapseId?: string;
+  tag?: string;
+  sound?: 'default' | null;
 }
 
 export interface PushSendResult {

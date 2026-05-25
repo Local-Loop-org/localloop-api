@@ -17,12 +17,13 @@ import { User } from '@/modules/auth/domain/entities/user.entity';
 import { IUserRepository } from '@/modules/auth/domain/repositories/i-user.repository';
 import { SendGroupMessagePushNotificationsUseCase } from '@/modules/notifications/application/use-cases/send-group-message-push-notifications/send-group-message-push-notifications.use-case';
 import { SendDirectMessagePushNotificationsUseCase } from '@/modules/notifications/application/use-cases/send-direct-message-push-notifications/send-direct-message-push-notifications.use-case';
+import { ClearChatNotificationDigestUseCase } from '@/modules/notifications/application/use-cases/clear-chat-notification-digest/clear-chat-notification-digest.use-case';
 import { SendDirectMessageUseCase } from '@/modules/direct-messages/application/use-cases/send-direct-message/send-direct-message.use-case';
 import { MarkDmReadUseCase } from '@/modules/direct-messages/application/use-cases/mark-dm-read/mark-dm-read.use-case';
 import { IDirectMessageRepository } from '@/modules/direct-messages/domain/repositories/i-direct-message.repository';
 import { buildDirectMessageRepoMock } from '@/modules/direct-messages/test/direct-message-repo.mock';
-import { SendMessageUseCase } from '../application/use-cases/send-message/send-message.use-case';
-import { ChatGateway } from './chat.gateway';
+import { SendMessageUseCase } from '@/modules/messages/application/use-cases/send-message/send-message.use-case';
+import { ChatGateway } from '@/modules/messages/presentation/chat.gateway';
 
 type SocketMock = {
   id: string;
@@ -58,6 +59,7 @@ describe('ChatGateway', () => {
   let sendGroupMessagePush: jest.Mocked<SendGroupMessagePushNotificationsUseCase>;
   let sendDirectMessage: jest.Mocked<SendDirectMessageUseCase>;
   let sendDirectMessagePush: jest.Mocked<SendDirectMessagePushNotificationsUseCase>;
+  let clearChatNotificationDigest: jest.Mocked<ClearChatNotificationDigestUseCase>;
   let directMessageRepo: jest.Mocked<IDirectMessageRepository>;
   let markDmRead: jest.Mocked<MarkDmReadUseCase>;
   let server: ServerMock;
@@ -186,6 +188,9 @@ describe('ChatGateway', () => {
         disabledTokenCount: 0,
       }),
     } as unknown as jest.Mocked<SendDirectMessagePushNotificationsUseCase>;
+    clearChatNotificationDigest = {
+      execute: jest.fn(),
+    } as unknown as jest.Mocked<ClearChatNotificationDigestUseCase>;
     directMessageRepo = buildDirectMessageRepoMock();
     markDmRead = {
       execute: jest.fn(),
@@ -211,6 +216,7 @@ describe('ChatGateway', () => {
       sendGroupMessagePush,
       sendDirectMessage,
       sendDirectMessagePush,
+      clearChatNotificationDigest,
       directMessageRepo,
       markDmRead,
     );
@@ -274,6 +280,10 @@ describe('ChatGateway', () => {
       });
 
       expect(socket.join).toHaveBeenCalledWith('group:group-1');
+      expect(clearChatNotificationDigest.execute).toHaveBeenCalledWith({
+        recipientUserId: 'user-1',
+        conversationKey: 'group:group-1',
+      });
       expect(ack).toEqual({ ok: true });
     });
 
@@ -687,6 +697,10 @@ describe('ChatGateway', () => {
         ChatSocketEvents.GROUP_SUMMARY_UPDATE,
         expect.objectContaining({ unreadCount: 0 }),
       );
+      expect(clearChatNotificationDigest.execute).toHaveBeenCalledWith({
+        recipientUserId: 'user-1',
+        conversationKey: 'group:group-1',
+      });
     });
 
     it('emits user-specific summaries to summary watchers after a send', async () => {
@@ -741,6 +755,10 @@ describe('ChatGateway', () => {
         });
 
         expect(socket.join).toHaveBeenCalledWith(dmRoomKey('user-1', 'user-2'));
+        expect(clearChatNotificationDigest.execute).toHaveBeenCalledWith({
+          recipientUserId: 'user-1',
+          conversationKey: 'dm:user-2',
+        });
         expect(ack).toEqual({ ok: true });
       });
 
@@ -1089,6 +1107,10 @@ describe('ChatGateway', () => {
             archived: false,
           }),
         );
+        expect(clearChatNotificationDigest.execute).toHaveBeenCalledWith({
+          recipientUserId: 'user-1',
+          conversationKey: 'dm:user-2',
+        });
         expect(ack).toEqual({ ok: true });
       });
 

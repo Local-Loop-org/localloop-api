@@ -9,9 +9,8 @@ import {
   IPushNotificationProvider,
   PUSH_NOTIFICATION_PROVIDER,
 } from '@/modules/notifications/domain/repositories/i-push-notification-provider';
+import { RecordChatNotificationDigestUseCase } from '@/modules/notifications/application/use-cases/record-chat-notification-digest/record-chat-notification-digest.use-case';
 
-const MAX_PREVIEW_LENGTH = 120;
-const TRUNCATED_PREVIEW_LENGTH = MAX_PREVIEW_LENGTH - 3;
 const DEVICE_NOT_REGISTERED = 'DeviceNotRegistered';
 
 export interface SendDirectMessagePushNotificationsInput {
@@ -36,6 +35,7 @@ export class SendDirectMessagePushNotificationsUseCase {
     private readonly pushDeviceRepo: IPushDeviceRepository,
     @Inject(PUSH_NOTIFICATION_PROVIDER)
     private readonly pushProvider: IPushNotificationProvider,
+    private readonly recordDigest: RecordChatNotificationDigestUseCase,
   ) {}
 
   async execute(
@@ -44,8 +44,7 @@ export class SendDirectMessagePushNotificationsUseCase {
     const devices = await this.pushDeviceRepo.listEnabledDevicesForUser(
       input.recipientId,
     );
-    const eligibleDevices = this.devicesForCurrentProvider(devices);
-    const tokens = [...eligibleDevices.keys()];
+    const tokens = this.tokensForCurrentProvider(devices);
 
     if (tokens.length === 0) {
       return this.emptyResult();
@@ -63,11 +62,26 @@ export class SendDirectMessagePushNotificationsUseCase {
       messageId: input.messageId,
     } satisfies DirectMessagePushNotificationData;
 
-    const results = await this.pushProvider.send(tokens, {
+    const digestPayload = await this.recordDigest.execute({
+      recipientUserId: input.recipientId,
+      conversationKey,
+      type: 'direct_message',
       title: peerName,
-      body: this.preview(input.content),
       data,
+      messageId: input.messageId,
+      senderId: input.senderId,
+      senderName: peerName,
+      content: input.content,
     });
+    const payload = {
+      title: digestPayload.title,
+      body: digestPayload.body,
+      data: digestPayload.data,
+      collapseId: digestPayload.collapseId,
+      tag: digestPayload.tag,
+      sound: digestPayload.sound,
+    };
+    const results = await this.pushProvider.send(tokens, payload);
 
     const disabledTokens = [
       ...new Set(
@@ -93,24 +107,13 @@ export class SendDirectMessagePushNotificationsUseCase {
     };
   }
 
-  private devicesForCurrentProvider(
-    devices: PushRecipientDevice[],
-  ): Map<string, PushRecipientDevice> {
-    const byToken = new Map<string, PushRecipientDevice>();
+  private tokensForCurrentProvider(devices: PushRecipientDevice[]): string[] {
+    const tokens = new Set<string>();
     for (const device of devices) {
       if (device.provider !== this.pushProvider.provider) continue;
-      if (!byToken.has(device.token)) {
-        byToken.set(device.token, device);
-      }
+      tokens.add(device.token);
     }
-    return byToken;
-  }
-
-  private preview(content: string | null): string {
-    const normalized = (content ?? 'Nova mensagem').replace(/\s+/g, ' ').trim();
-    if (!normalized) return 'Nova mensagem';
-    if (normalized.length <= MAX_PREVIEW_LENGTH) return normalized;
-    return `${normalized.slice(0, TRUNCATED_PREVIEW_LENGTH).trimEnd()}...`;
+    return [...tokens];
   }
 
   private emptyResult(): SendDirectMessagePushNotificationsResult {

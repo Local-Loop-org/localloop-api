@@ -1,15 +1,22 @@
 import { PushProvider } from '@localloop/shared-types';
 import {
+  ChatNotificationDigestState,
+  IChatNotificationDigestRepository,
+  RecordChatNotificationDigestInput,
+} from '@/modules/notifications/domain/repositories/i-chat-notification-digest.repository';
+import {
   IPushDeviceRepository,
   PushRecipientDevice,
 } from '@/modules/notifications/domain/repositories/i-push-device.repository';
 import { IPushNotificationProvider } from '@/modules/notifications/domain/repositories/i-push-notification-provider';
-import { SendDirectMessagePushNotificationsUseCase } from './send-direct-message-push-notifications.use-case';
+import { RecordChatNotificationDigestUseCase } from '@/modules/notifications/application/use-cases/record-chat-notification-digest/record-chat-notification-digest.use-case';
+import { SendDirectMessagePushNotificationsUseCase } from '@/modules/notifications/application/use-cases/send-direct-message-push-notifications/send-direct-message-push-notifications.use-case';
 
 describe('SendDirectMessagePushNotificationsUseCase', () => {
   let useCase: SendDirectMessagePushNotificationsUseCase;
   let pushDeviceRepo: jest.Mocked<IPushDeviceRepository>;
   let pushProvider: jest.Mocked<IPushNotificationProvider>;
+  let digestRepo: jest.Mocked<IChatNotificationDigestRepository>;
 
   const buildDevice = (
     token: string,
@@ -33,9 +40,28 @@ describe('SendDirectMessagePushNotificationsUseCase', () => {
         .fn()
         .mockResolvedValue([{ token: 'ExponentPushToken[one]', ok: true }]),
     };
+    digestRepo = {
+      recordMessage: jest.fn().mockImplementation(
+        async (
+          input: RecordChatNotificationDigestInput,
+        ): Promise<ChatNotificationDigestState> => ({
+          recipientUserId: input.recipientUserId,
+          conversationKey: input.conversationKey,
+          type: input.type,
+          title: input.title,
+          routeData: input.routeData,
+          totalCount: 1,
+          snippets: [input.snippet],
+          lastMessageAt: input.now,
+          isReplacement: false,
+        }),
+      ),
+      clear: jest.fn(),
+    };
     useCase = new SendDirectMessagePushNotificationsUseCase(
       pushDeviceRepo,
       pushProvider,
+      new RecordChatNotificationDigestUseCase(digestRepo),
     );
   });
 
@@ -67,6 +93,9 @@ describe('SendDirectMessagePushNotificationsUseCase', () => {
         peerAvatarUrl: 'https://example.com/alice.png',
         messageId: 'dm-1',
       },
+      collapseId: 'chat:user-2:dm:user-1',
+      tag: 'chat:user-2:dm:user-1',
+      sound: 'default',
     });
     expect(result).toEqual({
       eligibleDeviceCount: 1,

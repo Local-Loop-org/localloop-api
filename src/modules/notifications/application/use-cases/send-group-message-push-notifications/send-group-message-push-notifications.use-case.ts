@@ -8,14 +8,14 @@ import {
   IPushDeviceRepository,
   PUSH_DEVICE_REPOSITORY,
   PushRecipientDevice,
-} from '../../../domain/repositories/i-push-device.repository';
+} from '@/modules/notifications/domain/repositories/i-push-device.repository';
 import {
   IPushNotificationProvider,
   PUSH_NOTIFICATION_PROVIDER,
-} from '../../../domain/repositories/i-push-notification-provider';
+  PushSendResult,
+} from '@/modules/notifications/domain/repositories/i-push-notification-provider';
+import { RecordChatNotificationDigestUseCase } from '@/modules/notifications/application/use-cases/record-chat-notification-digest/record-chat-notification-digest.use-case';
 
-const MAX_PREVIEW_LENGTH = 120;
-const TRUNCATED_PREVIEW_LENGTH = MAX_PREVIEW_LENGTH - 3;
 const DEVICE_NOT_REGISTERED = 'DeviceNotRegistered';
 
 export interface SendGroupMessagePushNotificationsInput {
@@ -42,6 +42,7 @@ export class SendGroupMessagePushNotificationsUseCase {
     @Inject(PUSH_NOTIFICATION_PROVIDER)
     private readonly pushProvider: IPushNotificationProvider,
     @Inject(GROUP_REPOSITORY) private readonly groupRepo: IGroupRepository,
+    private readonly recordDigest: RecordChatNotificationDigestUseCase,
   ) {}
 
   async execute(
@@ -59,10 +60,13 @@ export class SendGroupMessagePushNotificationsUseCase {
       input.groupId,
       excludedUserIds,
     );
-    const eligibleDevices = this.devicesForCurrentProvider(devices);
-    const tokens = [...eligibleDevices.keys()];
+    const recipients = this.tokensByRecipientForCurrentProvider(devices);
+    const eligibleDeviceCount = [...recipients.values()].reduce(
+      (sum, tokens) => sum + tokens.length,
+      0,
+    );
 
-    if (tokens.length === 0) {
+    if (eligibleDeviceCount === 0) {
       return this.emptyResult();
     }
 
@@ -79,11 +83,30 @@ export class SendGroupMessagePushNotificationsUseCase {
       senderAvatarUrl: input.senderAvatarUrl,
     } satisfies GroupMessagePushNotificationData;
 
-    const results = await this.pushProvider.send(tokens, {
-      title: group.name,
-      body: `${input.senderName}: ${this.preview(input.content)}`,
-      data,
-    });
+    const results: PushSendResult[] = [];
+    for (const [recipientUserId, tokens] of recipients) {
+      const digestPayload = await this.recordDigest.execute({
+        recipientUserId,
+        conversationKey,
+        type: 'group_message',
+        title: group.name,
+        data,
+        messageId: input.messageId,
+        senderId: input.senderId,
+        senderName: input.senderName,
+        content: input.content,
+      });
+      results.push(
+        ...(await this.pushProvider.send(tokens, {
+          title: digestPayload.title,
+          body: digestPayload.body,
+          data: digestPayload.data,
+          collapseId: digestPayload.collapseId,
+          tag: digestPayload.tag,
+          sound: digestPayload.sound,
+        })),
+      );
+    }
 
     const disabledTokens = [
       ...new Set(
@@ -103,30 +126,30 @@ export class SendGroupMessagePushNotificationsUseCase {
     );
 
     return {
-      eligibleDeviceCount: tokens.length,
+      eligibleDeviceCount,
       sentCount: results.filter((result) => result.ok).length,
       disabledTokenCount: disabledTokens.length,
     };
   }
 
-  private devicesForCurrentProvider(
+  private tokensByRecipientForCurrentProvider(
     devices: PushRecipientDevice[],
-  ): Map<string, PushRecipientDevice> {
-    const byToken = new Map<string, PushRecipientDevice>();
+  ): Map<string, string[]> {
+    const byRecipient = new Map<string, Set<string>>();
     for (const device of devices) {
       if (device.provider !== this.pushProvider.provider) continue;
-      if (!byToken.has(device.token)) {
-        byToken.set(device.token, device);
+      const tokens = byRecipient.get(device.userId) ?? new Set<string>();
+      tokens.add(device.token);
+      byRecipient.set(device.userId, tokens);
+    }
+
+    const result = new Map<string, string[]>();
+    for (const [userId, tokens] of byRecipient) {
+      if (tokens.size > 0) {
+        result.set(userId, [...tokens]);
       }
     }
-    return byToken;
-  }
-
-  private preview(content: string | null): string {
-    const normalized = (content ?? 'Nova mensagem').replace(/\s+/g, ' ').trim();
-    if (!normalized) return 'Nova mensagem';
-    if (normalized.length <= MAX_PREVIEW_LENGTH) return normalized;
-    return `${normalized.slice(0, TRUNCATED_PREVIEW_LENGTH).trimEnd()}...`;
+    return result;
   }
 
   private emptyResult(): SendGroupMessagePushNotificationsResult {

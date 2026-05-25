@@ -5,7 +5,7 @@ import {
   IPushNotificationProvider,
   PushNotificationPayload,
   PushSendResult,
-} from '../../domain/repositories/i-push-notification-provider';
+} from '@/modules/notifications/domain/repositories/i-push-notification-provider';
 
 @Injectable()
 export class ExpoPushNotificationProvider implements IPushNotificationProvider {
@@ -24,8 +24,10 @@ export class ExpoPushNotificationProvider implements IPushNotificationProvider {
       to,
       title: payload.title,
       body: payload.body,
-      data: payload.data,
-      sound: 'default',
+      data: payload.data as Record<string, unknown> | undefined,
+      sound: payload.sound === undefined ? 'default' : payload.sound,
+      collapseId: payload.collapseId,
+      tag: payload.tag,
     }));
 
     const chunks = this.expo.chunkPushNotifications(messages);
