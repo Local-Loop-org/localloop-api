@@ -9,14 +9,14 @@ import {
   ChatNotificationDigestState,
   IChatNotificationDigestRepository,
   RecordChatNotificationDigestInput,
-} from '../../../domain/repositories/i-chat-notification-digest.repository';
+} from '@/modules/notifications/domain/repositories/i-chat-notification-digest.repository';
 import {
   IPushDeviceRepository,
   PushRecipientDevice,
-} from '../../../domain/repositories/i-push-device.repository';
-import { IPushNotificationProvider } from '../../../domain/repositories/i-push-notification-provider';
-import { RecordChatNotificationDigestUseCase } from '../record-chat-notification-digest/record-chat-notification-digest.use-case';
-import { SendGroupMessagePushNotificationsUseCase } from './send-group-message-push-notifications.use-case';
+} from '@/modules/notifications/domain/repositories/i-push-device.repository';
+import { IPushNotificationProvider } from '@/modules/notifications/domain/repositories/i-push-notification-provider';
+import { RecordChatNotificationDigestUseCase } from '@/modules/notifications/application/use-cases/record-chat-notification-digest/record-chat-notification-digest.use-case';
+import { SendGroupMessagePushNotificationsUseCase } from '@/modules/notifications/application/use-cases/send-group-message-push-notifications/send-group-message-push-notifications.use-case';
 
 describe('SendGroupMessagePushNotificationsUseCase', () => {
   let useCase: SendGroupMessagePushNotificationsUseCase;

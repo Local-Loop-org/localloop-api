@@ -5,7 +5,7 @@ import {
   IPushNotificationProvider,
   PushNotificationPayload,
   PushSendResult,
-} from '../../domain/repositories/i-push-notification-provider';
+} from '@/modules/notifications/domain/repositories/i-push-notification-provider';
 
 @Injectable()
 export class ExpoPushNotificationProvider implements IPushNotificationProvider {

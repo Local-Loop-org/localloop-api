@@ -6,8 +6,8 @@ import {
   ChatNotificationDigestState,
   IChatNotificationDigestRepository,
   RecordChatNotificationDigestInput,
-} from '../../domain/repositories/i-chat-notification-digest.repository';
-import { ChatNotificationDigestOrmEntity } from './chat-notification-digest.entity';
+} from '@/modules/notifications/domain/repositories/i-chat-notification-digest.repository';
+import { ChatNotificationDigestOrmEntity } from '@/modules/notifications/infra/repositories/chat-notification-digest.entity';
 
 @Injectable()
 export class ChatNotificationDigestTypeORMRepository implements IChatNotificationDigestRepository {

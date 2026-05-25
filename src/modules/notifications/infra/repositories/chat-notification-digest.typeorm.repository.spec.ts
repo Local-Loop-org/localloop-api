@@ -1,8 +1,8 @@
 import { EntityManager } from 'typeorm';
 import { AnchorType } from '@localloop/shared-types';
-import { RecordChatNotificationDigestInput } from '../../domain/repositories/i-chat-notification-digest.repository';
-import { ChatNotificationDigestOrmEntity } from './chat-notification-digest.entity';
-import { ChatNotificationDigestTypeORMRepository } from './chat-notification-digest.typeorm.repository';
+import { RecordChatNotificationDigestInput } from '@/modules/notifications/domain/repositories/i-chat-notification-digest.repository';
+import { ChatNotificationDigestOrmEntity } from '@/modules/notifications/infra/repositories/chat-notification-digest.entity';
+import { ChatNotificationDigestTypeORMRepository } from '@/modules/notifications/infra/repositories/chat-notification-digest.typeorm.repository';
 
 describe('ChatNotificationDigestTypeORMRepository', () => {
   let manager: {

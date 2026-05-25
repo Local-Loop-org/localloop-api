@@ -14,7 +14,7 @@ jest.mock('expo-server-sdk', () => {
   return { Expo, sendPushNotificationsAsync };
 });
 
-import { ExpoPushNotificationProvider } from './expo-push-notification.provider';
+import { ExpoPushNotificationProvider } from '@/modules/notifications/infra/providers/expo-push-notification.provider';
 
 const { sendPushNotificationsAsync } = jest.requireMock('expo-server-sdk') as {
   sendPushNotificationsAsync: jest.Mock;

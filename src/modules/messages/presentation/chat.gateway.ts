@@ -42,8 +42,8 @@ import {
   DmSummary,
   IDirectMessageRepository,
 } from '@/modules/direct-messages/domain/repositories/i-direct-message.repository';
-import { SendMessageResponseDto } from '../application/use-cases/send-message/send-message.dto';
-import { SendMessageUseCase } from '../application/use-cases/send-message/send-message.use-case';
+import { SendMessageResponseDto } from '@/modules/messages/application/use-cases/send-message/send-message.dto';
+import { SendMessageUseCase } from '@/modules/messages/application/use-cases/send-message/send-message.use-case';
 
 interface JoinGroupPayload {
   groupId: string;

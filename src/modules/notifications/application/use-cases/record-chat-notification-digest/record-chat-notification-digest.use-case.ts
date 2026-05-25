@@ -7,8 +7,8 @@ import {
   CHAT_NOTIFICATION_DIGEST_REPOSITORY,
   ChatNotificationDigestState,
   IChatNotificationDigestRepository,
-} from '../../../domain/repositories/i-chat-notification-digest.repository';
-import { PushNotificationPayload } from '../../../domain/repositories/i-push-notification-provider';
+} from '@/modules/notifications/domain/repositories/i-chat-notification-digest.repository';
+import { PushNotificationPayload } from '@/modules/notifications/domain/repositories/i-push-notification-provider';
 
 export const CHAT_NOTIFICATION_DIGEST_TTL_MS = 30 * 60 * 1000;
 const MAX_SNIPPETS = 4;

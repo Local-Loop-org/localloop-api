@@ -3,8 +3,8 @@ import {
   ChatNotificationDigestState,
   IChatNotificationDigestRepository,
   RecordChatNotificationDigestInput as RepositoryInput,
-} from '../../../domain/repositories/i-chat-notification-digest.repository';
-import { RecordChatNotificationDigestUseCase } from './record-chat-notification-digest.use-case';
+} from '@/modules/notifications/domain/repositories/i-chat-notification-digest.repository';
+import { RecordChatNotificationDigestUseCase } from '@/modules/notifications/application/use-cases/record-chat-notification-digest/record-chat-notification-digest.use-case';
 
 describe('RecordChatNotificationDigestUseCase', () => {
   let useCase: RecordChatNotificationDigestUseCase;

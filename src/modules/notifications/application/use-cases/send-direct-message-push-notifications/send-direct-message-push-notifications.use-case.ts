@@ -9,7 +9,7 @@ import {
   IPushNotificationProvider,
   PUSH_NOTIFICATION_PROVIDER,
 } from '@/modules/notifications/domain/repositories/i-push-notification-provider';
-import { RecordChatNotificationDigestUseCase } from '../record-chat-notification-digest/record-chat-notification-digest.use-case';
+import { RecordChatNotificationDigestUseCase } from '@/modules/notifications/application/use-cases/record-chat-notification-digest/record-chat-notification-digest.use-case';
 
 const DEVICE_NOT_REGISTERED = 'DeviceNotRegistered';
 

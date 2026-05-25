@@ -9,8 +9,8 @@ import {
   PushRecipientDevice,
 } from '@/modules/notifications/domain/repositories/i-push-device.repository';
 import { IPushNotificationProvider } from '@/modules/notifications/domain/repositories/i-push-notification-provider';
-import { RecordChatNotificationDigestUseCase } from '../record-chat-notification-digest/record-chat-notification-digest.use-case';
-import { SendDirectMessagePushNotificationsUseCase } from './send-direct-message-push-notifications.use-case';
+import { RecordChatNotificationDigestUseCase } from '@/modules/notifications/application/use-cases/record-chat-notification-digest/record-chat-notification-digest.use-case';
+import { SendDirectMessagePushNotificationsUseCase } from '@/modules/notifications/application/use-cases/send-direct-message-push-notifications/send-direct-message-push-notifications.use-case';
 
 describe('SendDirectMessagePushNotificationsUseCase', () => {
   let useCase: SendDirectMessagePushNotificationsUseCase;

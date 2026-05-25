@@ -8,13 +8,13 @@ import {
   IPushDeviceRepository,
   PUSH_DEVICE_REPOSITORY,
   PushRecipientDevice,
-} from '../../../domain/repositories/i-push-device.repository';
+} from '@/modules/notifications/domain/repositories/i-push-device.repository';
 import {
   IPushNotificationProvider,
   PUSH_NOTIFICATION_PROVIDER,
   PushSendResult,
-} from '../../../domain/repositories/i-push-notification-provider';
-import { RecordChatNotificationDigestUseCase } from '../record-chat-notification-digest/record-chat-notification-digest.use-case';
+} from '@/modules/notifications/domain/repositories/i-push-notification-provider';
+import { RecordChatNotificationDigestUseCase } from '@/modules/notifications/application/use-cases/record-chat-notification-digest/record-chat-notification-digest.use-case';
 
 const DEVICE_NOT_REGISTERED = 'DeviceNotRegistered';
 

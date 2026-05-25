@@ -11,7 +11,7 @@ import type { ChatPushNotificationData } from '@localloop/shared-types';
 import type {
   ChatNotificationDigestSnippet,
   ChatNotificationDigestType,
-} from '../../domain/repositories/i-chat-notification-digest.repository';
+} from '@/modules/notifications/domain/repositories/i-chat-notification-digest.repository';
 
 @Entity('chat_notification_digests')
 @Unique('uq_chat_notification_digests_recipient_conversation', [
