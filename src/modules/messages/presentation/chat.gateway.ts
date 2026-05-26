@@ -19,6 +19,7 @@ import {
   GroupPrivacy,
   MemberStatus,
   PresenceUpdate,
+  type DmPresenceUpdate,
   type PushConversationKey,
 } from '@localloop/shared-types';
 
@@ -82,6 +83,10 @@ interface SendDmPayload {
   content: string | null;
 }
 
+interface WatchDmPresencePayload {
+  peerId: string;
+}
+
 interface AuthedSocket extends Socket {
   data: { user: User };
 }
@@ -91,6 +96,7 @@ const PRESENCE_ROOM_PREFIX = 'presence:';
 const GROUP_SUMMARY_ROOM_PREFIX = 'group_summary:';
 const DM_ROOM_PREFIX = 'dm:';
 const DM_INBOX_ROOM_PREFIX = 'dm_inbox:user:';
+const DM_PRESENCE_ROOM_PREFIX = 'dm_presence:peer:';
 const MAX_WATCHED_GROUPS = 50;
 const groupRoom = (groupId: string) => `${GROUP_ROOM_PREFIX}${groupId}`;
 const presenceRoom = (groupId: string) => `${PRESENCE_ROOM_PREFIX}${groupId}`;
@@ -105,6 +111,8 @@ const dmRoom = (userAId: string, userBId: string): string => {
 };
 const dmConversationKey = (peerId: string): `dm:${string}` => `dm:${peerId}`;
 const dmInboxRoom = (userId: string) => `${DM_INBOX_ROOM_PREFIX}${userId}`;
+const dmPresenceRoom = (peerId: string) =>
+  `${DM_PRESENCE_ROOM_PREFIX}${peerId}`;
 
 @WebSocketGateway({ namespace: '/chat', cors: { origin: '*' } })
 export class ChatGateway
@@ -157,6 +165,11 @@ export class ChatGateway
   }
 
   handleConnection(socket: Socket): void {
+    const userId = (socket as AuthedSocket).data.user?.id;
+    if (userId) {
+      void this.emitDmPresenceForUser(userId);
+    }
+
     socket.on('disconnecting', () => {
       const groupRooms = [...socket.rooms].filter((r) =>
         r.startsWith(GROUP_ROOM_PREFIX),
@@ -171,6 +184,12 @@ export class ChatGateway
   }
 
   handleDisconnect(socket: Socket): void {
+    const userId = (socket as AuthedSocket).data.user?.id;
+    if (userId) {
+      setImmediate(() => {
+        void this.emitDmPresenceForUser(userId);
+      });
+    }
     this.logger.debug(`Socket ${socket.id} disconnected`);
   }
 
@@ -212,6 +231,37 @@ export class ChatGateway
   ): Promise<boolean> {
     const member = await this.groupRepo.findMember(groupId, userId);
     return member?.status === MemberStatus.ACTIVE;
+  }
+
+  private async canWatchDmPresence(
+    userId: string,
+    peerId: string,
+  ): Promise<boolean> {
+    const readState = await this.directMessageRepo.getConversationReadState(
+      userId,
+      peerId,
+    );
+    if (readState) return true;
+
+    return this.groupRepo.hasSharedActiveGroup(userId, peerId);
+  }
+
+  private async isUserOnline(userId: string): Promise<boolean> {
+    const sockets = await this.server.fetchSockets();
+    return sockets.some((socket) => {
+      const data = (socket as unknown as { data?: { user?: User } }).data;
+      return data?.user?.id === userId;
+    });
+  }
+
+  private async emitDmPresenceForUser(userId: string): Promise<void> {
+    const payload: DmPresenceUpdate = {
+      peerId: userId,
+      online: await this.isUserOnline(userId),
+    };
+    this.server
+      .to(dmPresenceRoom(userId))
+      .emit(ChatSocketEvents.DM_PRESENCE_UPDATE, payload);
   }
 
   private toGroupSummaryUpdate(summary: MyGroupSummary): GroupSummaryUpdate {
@@ -580,6 +630,57 @@ export class ChatGateway
           e.response?.message ?? e.message ?? 'Failed to send direct message',
       });
     }
+  }
+
+  @SubscribeMessage(ChatSocketEvents.WATCH_DM_PRESENCE)
+  async onWatchDmPresence(
+    @ConnectedSocket() socket: AuthedSocket,
+    @MessageBody() payload: WatchDmPresencePayload | undefined,
+  ): Promise<{ ok: boolean }> {
+    const callerId = socket.data.user.id;
+    if (
+      !payload ||
+      typeof payload.peerId !== 'string' ||
+      payload.peerId.length === 0 ||
+      payload.peerId === callerId
+    ) {
+      socket.emit(ChatSocketEvents.ERROR, {
+        code: 'BAD_REQUEST',
+        message: 'Invalid DM peer',
+      });
+      return { ok: false };
+    }
+
+    const allowed = await this.canWatchDmPresence(callerId, payload.peerId);
+    if (!allowed) {
+      socket.emit(ChatSocketEvents.ERROR, {
+        code: 'FORBIDDEN',
+        message: 'Cannot watch DM presence for this peer',
+      });
+      return { ok: false };
+    }
+
+    await socket.join(dmPresenceRoom(payload.peerId));
+    socket.emit(ChatSocketEvents.DM_PRESENCE_UPDATE, {
+      peerId: payload.peerId,
+      online: await this.isUserOnline(payload.peerId),
+    } satisfies DmPresenceUpdate);
+    return { ok: true };
+  }
+
+  @SubscribeMessage(ChatSocketEvents.UNWATCH_DM_PRESENCE)
+  async onUnwatchDmPresence(
+    @ConnectedSocket() socket: AuthedSocket,
+    @MessageBody() payload: WatchDmPresencePayload | undefined,
+  ): Promise<void> {
+    if (
+      !payload ||
+      typeof payload.peerId !== 'string' ||
+      payload.peerId.length === 0
+    ) {
+      return;
+    }
+    await socket.leave(dmPresenceRoom(payload.peerId));
   }
 
   @SubscribeMessage(ChatSocketEvents.WATCH_DM_INBOX)

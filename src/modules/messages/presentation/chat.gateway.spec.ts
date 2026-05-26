@@ -510,9 +510,12 @@ describe('ChatGateway', () => {
       });
     });
 
-    it('does not schedule a presence emit when a socket disconnects with no group rooms', async () => {
+    it('does not schedule a group presence emit when a socket disconnects with no group rooms', async () => {
       const socket = makeSocket();
       gateway.handleConnection(socket as never);
+      await new Promise((resolve) => setImmediate(resolve));
+      server.in.mockClear();
+      roomEmit.mockClear();
 
       socket.fire('disconnecting');
       await new Promise((resolve) => setImmediate(resolve));
@@ -745,6 +748,7 @@ describe('ChatGateway', () => {
   describe('direct messages', () => {
     const dmRoomKey = (a: string, b: string) => `dm:${[a, b].sort().join(':')}`;
     const dmInboxRoomKey = (userId: string) => `dm_inbox:user:${userId}`;
+    const dmPresenceRoomKey = (peerId: string) => `dm_presence:peer:${peerId}`;
 
     describe('join_dm', () => {
       it('joins the sorted-pair room and acks ok', async () => {
@@ -813,6 +817,147 @@ describe('ChatGateway', () => {
         await gateway.onLeaveDm(socket as never, { userId: '' });
 
         expect(socket.leave).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('dm presence', () => {
+      it('lets a caller watch peer presence when a delivered thread exists and emits offline initially', async () => {
+        const socket = makeSocket();
+        socket.data.user = buildUser({ id: 'user-1' });
+        directMessageRepo.getConversationReadState.mockResolvedValue({
+          lastReadAt: null,
+          peerLastReadAt: null,
+        });
+
+        const ack = await gateway.onWatchDmPresence(socket as never, {
+          peerId: 'user-2',
+        });
+
+        expect(ack).toEqual({ ok: true });
+        expect(socket.join).toHaveBeenCalledWith(
+          dmPresenceRoomKey('user-2'),
+        );
+        expect(socket.emit).toHaveBeenCalledWith(
+          ChatSocketEvents.DM_PRESENCE_UPDATE,
+          {
+            peerId: 'user-2',
+            online: false,
+          },
+        );
+      });
+
+      it('lets a caller watch peer presence through a shared active group and emits online initially', async () => {
+        const socket = makeSocket();
+        socket.data.user = buildUser({ id: 'user-1' });
+        const peerSocket = makeSocket();
+        peerSocket.data.user = buildUser({ id: 'user-2' });
+        directMessageRepo.getConversationReadState.mockResolvedValue(null);
+        groupRepo.hasSharedActiveGroup.mockResolvedValue(true);
+
+        const ack = await gateway.onWatchDmPresence(socket as never, {
+          peerId: 'user-2',
+        });
+
+        expect(ack).toEqual({ ok: true });
+        expect(groupRepo.hasSharedActiveGroup).toHaveBeenCalledWith(
+          'user-1',
+          'user-2',
+        );
+        expect(socket.emit).toHaveBeenCalledWith(
+          ChatSocketEvents.DM_PRESENCE_UPDATE,
+          {
+            peerId: 'user-2',
+            online: true,
+          },
+        );
+      });
+
+      it('rejects watching DM presence without a delivered thread or shared active group', async () => {
+        const socket = makeSocket();
+        socket.data.user = buildUser({ id: 'user-1' });
+        directMessageRepo.getConversationReadState.mockResolvedValue(null);
+        groupRepo.hasSharedActiveGroup.mockResolvedValue(false);
+
+        const ack = await gateway.onWatchDmPresence(socket as never, {
+          peerId: 'user-2',
+        });
+
+        expect(ack).toEqual({ ok: false });
+        expect(socket.join).not.toHaveBeenCalledWith(
+          dmPresenceRoomKey('user-2'),
+        );
+        expect(socket.emit).toHaveBeenCalledWith(
+          ChatSocketEvents.ERROR,
+          expect.objectContaining({ code: 'FORBIDDEN' }),
+        );
+      });
+
+      it('rejects watching self presence', async () => {
+        const socket = makeSocket();
+        socket.data.user = buildUser({ id: 'user-1' });
+
+        const ack = await gateway.onWatchDmPresence(socket as never, {
+          peerId: 'user-1',
+        });
+
+        expect(ack).toEqual({ ok: false });
+        expect(socket.join).not.toHaveBeenCalled();
+        expect(socket.emit).toHaveBeenCalledWith(
+          ChatSocketEvents.ERROR,
+          expect.objectContaining({ code: 'BAD_REQUEST' }),
+        );
+      });
+
+      it('broadcasts online and offline updates to peer watchers on connect and disconnect', async () => {
+        const watcher = makeSocket(undefined, 'sock-watcher');
+        watcher.data.user = buildUser({ id: 'user-1' });
+        await watcher.join(dmPresenceRoomKey('user-2'));
+        roomEmit.mockClear();
+        server.to.mockClear();
+
+        const peerSocket = makeSocket(undefined, 'sock-peer');
+        peerSocket.data.user = buildUser({ id: 'user-2' });
+
+        gateway.handleConnection(peerSocket as never);
+        await new Promise((resolve) => setImmediate(resolve));
+
+        expect(server.to).toHaveBeenCalledWith(dmPresenceRoomKey('user-2'));
+        expect(roomEmit).toHaveBeenCalledWith(
+          ChatSocketEvents.DM_PRESENCE_UPDATE,
+          {
+            peerId: 'user-2',
+            online: true,
+          },
+        );
+
+        roomEmit.mockClear();
+        server.to.mockClear();
+        allSockets.delete(peerSocket);
+
+        gateway.handleDisconnect(peerSocket as never);
+        await new Promise((resolve) => setImmediate(resolve));
+
+        expect(server.to).toHaveBeenCalledWith(dmPresenceRoomKey('user-2'));
+        expect(roomEmit).toHaveBeenCalledWith(
+          ChatSocketEvents.DM_PRESENCE_UPDATE,
+          {
+            peerId: 'user-2',
+            online: false,
+          },
+        );
+      });
+
+      it('leaves the DM presence observer room on unwatch', async () => {
+        const socket = makeSocket();
+        socket.data.user = buildUser({ id: 'user-1' });
+
+        await gateway.onUnwatchDmPresence(socket as never, {
+          peerId: 'user-2',
+        });
+
+        expect(socket.leave).toHaveBeenCalledWith(
+          dmPresenceRoomKey('user-2'),
+        );
       });
     });
 
