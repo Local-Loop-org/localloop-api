@@ -52,6 +52,7 @@ export class ListDmConversationsUseCase {
         senderName: row.lastMessageSenderName,
         createdAt: row.lastMessageAt.toISOString(),
       },
+      lastReadAt: row.lastReadAt ? row.lastReadAt.toISOString() : null,
       unreadCount: row.unreadCount,
       archived: row.archived,
     }));

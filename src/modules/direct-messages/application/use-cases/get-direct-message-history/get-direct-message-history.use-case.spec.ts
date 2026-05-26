@@ -19,6 +19,8 @@ describe('GetDirectMessageHistoryUseCase', () => {
 
   const CALLER = 'user-caller';
   const OTHER = 'user-other';
+  const LAST_READ_AT = new Date('2026-05-16T10:02:00Z');
+  const PEER_LAST_READ_AT = new Date('2026-05-16T10:03:00Z');
 
   const buildRow = (
     id: string,
@@ -39,11 +41,19 @@ describe('GetDirectMessageHistoryUseCase', () => {
   beforeEach(() => {
     directMessageRepo = buildDirectMessageRepoMock();
     userRepo = buildUserRepoMock();
+    directMessageRepo.getConversationReadState.mockResolvedValue({
+      lastReadAt: null,
+      peerLastReadAt: null,
+    });
     useCase = new GetDirectMessageHistoryUseCase(directMessageRepo, userRepo);
   });
 
   it('returns paginated history with serialized timestamps', async () => {
     userRepo.findById.mockResolvedValue(buildUser({ id: OTHER }));
+    directMessageRepo.getConversationReadState.mockResolvedValue({
+      lastReadAt: LAST_READ_AT,
+      peerLastReadAt: PEER_LAST_READ_AT,
+    });
     directMessageRepo.listConversation.mockResolvedValue({
       rows: [
         buildRow('dm-2', '2026-05-16T10:01:00Z', OTHER),
@@ -72,7 +82,31 @@ describe('GetDirectMessageHistoryUseCase', () => {
       mediaType: null,
       createdAt: '2026-05-16T10:01:00.000Z',
     });
+    expect(result.lastReadAt).toBe(LAST_READ_AT.toISOString());
+    expect(result.peerLastReadAt).toBe(PEER_LAST_READ_AT.toISOString());
     expect(result.next_cursor).toBe('2026-05-16T09:59:00.000Z');
+  });
+
+  it('returns null read watermarks when no delivered thread state is exposed', async () => {
+    userRepo.findById.mockResolvedValue(buildUser({ id: OTHER }));
+    directMessageRepo.getConversationReadState.mockResolvedValue(null);
+    directMessageRepo.listConversation.mockResolvedValue({
+      rows: [],
+      nextCursor: null,
+    });
+
+    const result = await useCase.execute(CALLER, OTHER);
+
+    expect(directMessageRepo.getConversationReadState).toHaveBeenCalledWith(
+      CALLER,
+      OTHER,
+    );
+    expect(result).toEqual({
+      data: [],
+      lastReadAt: null,
+      peerLastReadAt: null,
+      next_cursor: null,
+    });
   });
 
   it('applies default limit of 50 when unspecified', async () => {

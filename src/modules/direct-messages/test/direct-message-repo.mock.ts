@@ -5,6 +5,7 @@ export function buildDirectMessageRepoMock(): jest.Mocked<IDirectMessageReposito
     createDirectDeliveryAtomic: jest.fn(),
     findByIdWithSender: jest.fn(),
     listConversation: jest.fn(),
+    getConversationReadState: jest.fn(),
     hasPermissionException: jest.fn(),
     createRequest: jest.fn(),
     findRequestById: jest.fn(),

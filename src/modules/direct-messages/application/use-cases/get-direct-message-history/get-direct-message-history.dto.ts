@@ -29,5 +29,7 @@ export class DirectMessageDto {
 
 export class GetDirectMessageHistoryResponseDto {
   data!: DirectMessageDto[];
+  lastReadAt!: string | null;
+  peerLastReadAt!: string | null;
   next_cursor!: string | null;
 }

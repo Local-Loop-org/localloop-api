@@ -8,6 +8,7 @@ import { DirectMessage } from '@/modules/direct-messages/domain/entities/direct-
 import {
   CreateDirectMessageData,
   CreateDmRequestData,
+  DmConversationReadState,
   DirectMessageRow,
   DmConversationRow,
   DmExceptionCandidateCursor,
@@ -59,6 +60,11 @@ interface SummaryRawRow {
   archived: boolean;
   last_read_at: Date | null;
   unread_count: number;
+}
+
+interface ReadStateRawRow {
+  last_read_at: Date | null;
+  peer_last_read_at: Date | null;
 }
 
 interface RequestRawRow {
@@ -169,6 +175,39 @@ export class DirectMessageTypeORMRepository implements IDirectMessageRepository 
     return {
       rows: page.map((row) => this.rowToDm(row)),
       nextCursor,
+    };
+  }
+
+  async getConversationReadState(
+    userId: string,
+    peerId: string,
+  ): Promise<DmConversationReadState | null> {
+    const rows = await this.dataSource.query<ReadStateRawRow[]>(
+      `
+      WITH thread AS (
+        SELECT 1
+        FROM direct_messages m
+        WHERE ((m.sender_id = $1 AND m.recipient_id = $2)
+            OR (m.sender_id = $2 AND m.recipient_id = $1))
+          AND m.is_deleted = false
+        LIMIT 1
+      )
+      SELECT
+        cs.last_read_at AS last_read_at,
+        peer_cs.last_read_at AS peer_last_read_at
+      FROM thread
+      LEFT JOIN dm_conversation_state cs
+        ON cs.user_id = $1 AND cs.peer_id = $2
+      LEFT JOIN dm_conversation_state peer_cs
+        ON peer_cs.user_id = $2 AND peer_cs.peer_id = $1
+      `,
+      [userId, peerId],
+    );
+
+    if (rows.length === 0) return null;
+    return {
+      lastReadAt: rows[0].last_read_at,
+      peerLastReadAt: rows[0].peer_last_read_at,
     };
   }
 

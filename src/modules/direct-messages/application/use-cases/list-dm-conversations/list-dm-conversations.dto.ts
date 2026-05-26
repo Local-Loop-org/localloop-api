@@ -23,6 +23,7 @@ export interface DmConversationDto {
     senderName: string;
     createdAt: string;
   };
+  lastReadAt: string | null;
   unreadCount: number;
   archived: boolean;
 }

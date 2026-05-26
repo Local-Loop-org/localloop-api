@@ -54,6 +54,11 @@ export interface DmSummary {
   archived: boolean;
 }
 
+export interface DmConversationReadState {
+  lastReadAt: Date | null;
+  peerLastReadAt: Date | null;
+}
+
 export interface DmInboxCursor {
   lastMessageAt: Date;
   peerId: string;
@@ -122,6 +127,15 @@ export interface IDirectMessageRepository {
     limit: number,
     before?: string,
   ): Promise<PaginatedResult<DirectMessageRow>>;
+  /**
+   * Caller + peer read watermarks for a delivered DM thread. Returns null when
+   * the pair has no non-deleted direct_messages row; missing state rows surface
+   * as null read timestamps.
+   */
+  getConversationReadState(
+    userId: string,
+    peerId: string,
+  ): Promise<DmConversationReadState | null>;
   hasPermissionException(userId: string, peerId: string): Promise<boolean>;
   createRequest(data: CreateDmRequestData): Promise<{ id: string }>;
   /**

@@ -11,6 +11,7 @@ describe('ListDmConversationsUseCase', () => {
   const USER_ID = 'user-a';
   const PEER_ID = 'user-b';
   const LAST_MSG_AT = new Date('2026-05-17T12:00:00Z');
+  const LAST_READ_AT = new Date('2026-05-17T12:03:00Z');
 
   const buildConversationRow = () => ({
     peerId: PEER_ID,
@@ -19,7 +20,7 @@ describe('ListDmConversationsUseCase', () => {
     lastMessageContent: 'hey',
     lastMessageSenderName: 'Alice',
     lastMessageAt: LAST_MSG_AT,
-    lastReadAt: null,
+    lastReadAt: LAST_READ_AT,
     unreadCount: 2,
     archived: false,
   });
@@ -48,6 +49,7 @@ describe('ListDmConversationsUseCase', () => {
         senderName: 'Alice',
         createdAt: LAST_MSG_AT.toISOString(),
       },
+      lastReadAt: LAST_READ_AT.toISOString(),
       unreadCount: 2,
       archived: false,
     });

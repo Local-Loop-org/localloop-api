@@ -46,12 +46,15 @@ export class GetDirectMessageHistoryUseCase {
       });
     }
 
-    const { rows, nextCursor } = await this.directMessageRepo.listConversation(
-      callerId,
-      otherUserId,
-      limit ?? DEFAULT_LIMIT,
-      before,
-    );
+    const [{ rows, nextCursor }, readState] = await Promise.all([
+      this.directMessageRepo.listConversation(
+        callerId,
+        otherUserId,
+        limit ?? DEFAULT_LIMIT,
+        before,
+      ),
+      this.directMessageRepo.getConversationReadState(callerId, otherUserId),
+    ]);
 
     return {
       data: rows.map((row) => ({
@@ -65,6 +68,12 @@ export class GetDirectMessageHistoryUseCase {
         mediaType: row.mediaType,
         createdAt: row.createdAt.toISOString(),
       })),
+      lastReadAt: readState?.lastReadAt
+        ? readState.lastReadAt.toISOString()
+        : null,
+      peerLastReadAt: readState?.peerLastReadAt
+        ? readState.peerLastReadAt.toISOString()
+        : null,
       next_cursor: nextCursor,
     };
   }

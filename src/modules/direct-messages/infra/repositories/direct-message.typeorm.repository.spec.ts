@@ -276,3 +276,56 @@ describe('DirectMessageTypeORMRepository.listExceptionCandidates', () => {
     });
   });
 });
+
+describe('DirectMessageTypeORMRepository.getConversationReadState', () => {
+  let messagesRepo: jest.Mocked<Repository<DirectMessageOrmEntity>>;
+  let dataSource: jest.Mocked<DataSource>;
+  let repo: DirectMessageTypeORMRepository;
+
+  beforeEach(() => {
+    messagesRepo = {
+      createQueryBuilder: jest.fn(),
+    } as unknown as jest.Mocked<Repository<DirectMessageOrmEntity>>;
+    dataSource = {
+      query: jest.fn(),
+      transaction: jest.fn(),
+    } as unknown as jest.Mocked<DataSource>;
+    repo = new DirectMessageTypeORMRepository(messagesRepo, dataSource);
+  });
+
+  it('reads caller and peer last_read_at only when a delivered thread exists', async () => {
+    const lastReadAt = new Date('2026-05-16T10:02:00Z');
+    const peerLastReadAt = new Date('2026-05-16T10:03:00Z');
+    (dataSource.query as jest.Mock).mockResolvedValueOnce([
+      {
+        last_read_at: lastReadAt,
+        peer_last_read_at: peerLastReadAt,
+      },
+    ]);
+
+    const result = await repo.getConversationReadState('user-1', 'peer-1');
+
+    const [sql, params] = (dataSource.query as jest.Mock).mock.calls[0] as [
+      string,
+      unknown[],
+    ];
+    expect(sql).toContain('WITH thread AS');
+    expect(sql).toContain('FROM direct_messages m');
+    expect(sql).toContain('m.is_deleted = false');
+    expect(sql).toContain('cs.user_id = $1 AND cs.peer_id = $2');
+    expect(sql).toContain('peer_cs.user_id = $2 AND peer_cs.peer_id = $1');
+    expect(params).toEqual(['user-1', 'peer-1']);
+    expect(result).toEqual({
+      lastReadAt,
+      peerLastReadAt,
+    });
+  });
+
+  it('returns null when no non-deleted direct message exists for the pair', async () => {
+    (dataSource.query as jest.Mock).mockResolvedValueOnce([]);
+
+    await expect(
+      repo.getConversationReadState('user-1', 'peer-1'),
+    ).resolves.toBeNull();
+  });
+});
