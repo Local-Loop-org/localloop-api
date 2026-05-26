@@ -41,6 +41,7 @@ import { AcceptDmRequestResponseDto } from '../application/use-cases/accept-dm-r
 import { DeclineDmRequestUseCase } from '../application/use-cases/decline-dm-request/decline-dm-request.use-case';
 import { ArchiveDmConversationUseCase } from '../application/use-cases/archive-dm-conversation/archive-dm-conversation.use-case';
 import { UnarchiveDmConversationUseCase } from '../application/use-cases/unarchive-dm-conversation/unarchive-dm-conversation.use-case';
+import { MarkDmReadUseCase } from '../application/use-cases/mark-dm-read/mark-dm-read.use-case';
 
 @Controller('dm')
 @UseGuards(AuthGuard('jwt'))
@@ -54,6 +55,7 @@ export class DirectMessagesController {
     private readonly declineDmRequest: DeclineDmRequestUseCase,
     private readonly archiveDmConversation: ArchiveDmConversationUseCase,
     private readonly unarchiveDmConversation: UnarchiveDmConversationUseCase,
+    private readonly markDmRead: MarkDmReadUseCase,
     private readonly chatGateway: ChatGateway,
   ) {}
 
@@ -61,7 +63,9 @@ export class DirectMessagesController {
   // @Get(':userId') / @Post(':userId') so NestJS does not treat the literal
   // strings as UUID params. `@Put(':userId/archive')` is a two-segment pattern
   // so it does not conflict with `@Get(':userId')`, but we keep it grouped
-  // with the request routes for readability.
+  // with the request routes for readability. `@Post(':userId/read')` appears
+  // before `@Post(':userId')` so the literal `read` segment is never parsed as
+  // a body-driven send route.
 
   @Get()
   async inbox(
@@ -124,6 +128,20 @@ export class DirectMessagesController {
   ): Promise<void> {
     await this.unarchiveDmConversation.execute(req.user.id, userId);
     await this.chatGateway.emitDmSummary(req.user.id, userId);
+  }
+
+  @Post(':userId/read')
+  @HttpCode(204)
+  async markRead(
+    @Request() req: { user: User },
+    @Param('userId', new ParseUUIDPipe()) userId: string,
+  ): Promise<void> {
+    const result = await this.markDmRead.execute(req.user.id, userId);
+    await this.chatGateway.emitDmReadSideEffects(
+      req.user.id,
+      userId,
+      result.lastReadAt,
+    );
   }
 
   @Get(':userId')

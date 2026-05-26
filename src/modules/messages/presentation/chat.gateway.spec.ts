@@ -8,6 +8,7 @@ import {
   MemberRole,
   MemberStatus,
   Provider,
+  type DmReadReceipt,
 } from '@localloop/shared-types';
 
 import { Group } from '@/modules/groups/domain/entities/group.entity';
@@ -1114,6 +1115,27 @@ describe('ChatGateway', () => {
         expect(ack).toEqual({ ok: true });
       });
 
+      it('emits dm_read_receipt to the sorted DM room after marking read', async () => {
+        const socket = makeSocket();
+        socket.data.user = buildUser({ id: 'user-1' });
+        const lastReadAt = new Date('2026-05-19T10:00:00Z');
+        markDmRead.execute.mockResolvedValue({ lastReadAt });
+        directMessageRepo.getDmSummary.mockResolvedValue(buildSummary());
+
+        await gateway.onMarkDmRead(socket as never, { peerId: 'user-2' });
+
+        const payload: DmReadReceipt = {
+          readerId: 'user-1',
+          peerId: 'user-2',
+          lastReadAt: lastReadAt.toISOString(),
+        };
+        expect(server.to).toHaveBeenCalledWith(dmRoomKey('user-1', 'user-2'));
+        expect(roomEmit).toHaveBeenCalledWith(
+          ChatSocketEvents.DM_READ_RECEIPT,
+          payload,
+        );
+      });
+
       it('rejects self-DM with BAD_REQUEST error', async () => {
         const socket = makeSocket();
         socket.data.user = buildUser({ id: 'user-1' });
@@ -1127,6 +1149,12 @@ describe('ChatGateway', () => {
           ChatSocketEvents.ERROR,
           expect.objectContaining({ code: 'BAD_REQUEST' }),
         );
+        expect(server.to).not.toHaveBeenCalled();
+        expect(roomEmit).not.toHaveBeenCalledWith(
+          ChatSocketEvents.DM_READ_RECEIPT,
+          expect.anything(),
+        );
+        expect(clearChatNotificationDigest.execute).not.toHaveBeenCalled();
         expect(ack).toEqual({ ok: false });
       });
 
@@ -1139,6 +1167,30 @@ describe('ChatGateway', () => {
         });
 
         expect(markDmRead.execute).not.toHaveBeenCalled();
+        expect(server.to).not.toHaveBeenCalled();
+        expect(clearChatNotificationDigest.execute).not.toHaveBeenCalled();
+        expect(ack).toEqual({ ok: false });
+      });
+
+      it('does not emit a read receipt or clear digest when mark-read fails', async () => {
+        const socket = makeSocket();
+        socket.data.user = buildUser({ id: 'user-1' });
+        markDmRead.execute.mockRejectedValue(new Error('write failed'));
+
+        const ack = await gateway.onMarkDmRead(socket as never, {
+          peerId: 'user-2',
+        });
+
+        expect(socket.emit).toHaveBeenCalledWith(
+          ChatSocketEvents.ERROR,
+          expect.objectContaining({ code: 'MARK_DM_READ_FAILED' }),
+        );
+        expect(server.to).not.toHaveBeenCalled();
+        expect(roomEmit).not.toHaveBeenCalledWith(
+          ChatSocketEvents.DM_READ_RECEIPT,
+          expect.anything(),
+        );
+        expect(clearChatNotificationDigest.execute).not.toHaveBeenCalled();
         expect(ack).toEqual({ ok: false });
       });
 

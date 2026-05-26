@@ -13,6 +13,7 @@ import {
 import { Namespace, Socket } from 'socket.io';
 import {
   ChatSocketEvents,
+  DmReadReceipt,
   DmSummaryUpdate,
   GroupSummaryUpdate,
   GroupPrivacy,
@@ -293,6 +294,23 @@ export class ChatGateway
         ChatSocketEvents.DM_SUMMARY_UPDATE,
         this.toDmSummaryUpdate(summary),
       );
+  }
+
+  async emitDmReadSideEffects(
+    readerId: string,
+    peerId: string,
+    lastReadAt: Date,
+  ): Promise<void> {
+    await this.emitDmSummary(readerId, peerId);
+    const payload: DmReadReceipt = {
+      readerId,
+      peerId,
+      lastReadAt: lastReadAt.toISOString(),
+    };
+    this.server
+      .to(dmRoom(readerId, peerId))
+      .emit(ChatSocketEvents.DM_READ_RECEIPT, payload);
+    await this.clearPushDigest(readerId, dmConversationKey(peerId));
   }
 
   private async emitGroupSummary(groupId: string): Promise<void> {
@@ -598,9 +616,12 @@ export class ChatGateway
       return { ok: false };
     }
     try {
-      await this.markDmRead.execute(callerId, payload.peerId);
-      await this.emitDmSummary(callerId, payload.peerId);
-      await this.clearPushDigest(callerId, dmConversationKey(payload.peerId));
+      const result = await this.markDmRead.execute(callerId, payload.peerId);
+      await this.emitDmReadSideEffects(
+        callerId,
+        payload.peerId,
+        result.lastReadAt,
+      );
       return { ok: true };
     } catch (err) {
       const e = err as {
