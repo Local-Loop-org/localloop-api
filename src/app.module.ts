@@ -7,6 +7,7 @@ import { GroupsModule } from './modules/groups/groups.module';
 import { MessagesModule } from './modules/messages/messages.module';
 import { DirectMessagesModule } from './modules/direct-messages/direct-messages.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { RealtimeModule } from './modules/realtime/realtime.module';
 import { typeormEntities } from '@/infra/typeorm/entities';
 import { typeormMigrations } from '@/infra/typeorm/migrations';
 
@@ -54,6 +55,7 @@ class HealthController {
     GroupsModule,
     MessagesModule,
     DirectMessagesModule,
+    RealtimeModule,
     NotificationsModule,
   ],
   controllers: [HealthController],

@@ -1,9 +1,9 @@
-import { forwardRef, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AuthModule } from '@/modules/auth/auth.module';
 import { GroupsModule } from '@/modules/groups/groups.module';
-import { MessagesModule } from '@/modules/messages/messages.module';
+import { RealtimeEventsModule } from '@/modules/realtime-events/realtime-events.module';
 
 import { DIRECT_MESSAGE_REPOSITORY } from './domain/repositories/i-direct-message.repository';
 import { DirectMessageOrmEntity } from './infra/repositories/direct-message.entity';
@@ -30,7 +30,7 @@ import { DmExceptionsController } from './presentation/dm-exceptions.controller'
   imports: [
     AuthModule,
     GroupsModule,
-    forwardRef(() => MessagesModule),
+    RealtimeEventsModule,
     TypeOrmModule.forFeature([DirectMessageOrmEntity]),
   ],
   controllers: [DirectMessagesController, DmExceptionsController],

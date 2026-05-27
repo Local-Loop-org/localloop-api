@@ -24,7 +24,7 @@ import { MarkDmReadUseCase } from '@/modules/direct-messages/application/use-cas
 import { IDirectMessageRepository } from '@/modules/direct-messages/domain/repositories/i-direct-message.repository';
 import { buildDirectMessageRepoMock } from '@/modules/direct-messages/test/direct-message-repo.mock';
 import { SendMessageUseCase } from '@/modules/messages/application/use-cases/send-message/send-message.use-case';
-import { ChatGateway } from '@/modules/messages/presentation/chat.gateway';
+import { ChatGateway } from '@/modules/realtime/presentation/chat.gateway';
 
 type SocketMock = {
   id: string;
