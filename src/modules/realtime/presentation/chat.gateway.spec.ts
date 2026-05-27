@@ -24,6 +24,12 @@ import { MarkDmReadUseCase } from '@/modules/direct-messages/application/use-cas
 import { IDirectMessageRepository } from '@/modules/direct-messages/domain/repositories/i-direct-message.repository';
 import { buildDirectMessageRepoMock } from '@/modules/direct-messages/test/direct-message-repo.mock';
 import { SendMessageUseCase } from '@/modules/messages/application/use-cases/send-message/send-message.use-case';
+import { DmInboxRealtimeService } from '@/modules/realtime/presentation/services/dm-inbox-realtime.service';
+import { DmMessageRealtimeService } from '@/modules/realtime/presentation/services/dm-message-realtime.service';
+import { DmPresenceRealtimeService } from '@/modules/realtime/presentation/services/dm-presence-realtime.service';
+import { GroupMessageRealtimeService } from '@/modules/realtime/presentation/services/group-message-realtime.service';
+import { GroupPresenceRealtimeService } from '@/modules/realtime/presentation/services/group-presence-realtime.service';
+import { GroupSummaryRealtimeService } from '@/modules/realtime/presentation/services/group-summary-realtime.service';
 import { ChatGateway } from '@/modules/realtime/presentation/chat.gateway';
 
 type SocketMock = {
@@ -209,17 +215,42 @@ describe('ChatGateway', () => {
       fetchSockets: jest.fn(() => Promise.resolve(Array.from(allSockets))),
     };
 
-    gateway = new ChatGateway(
-      jwtService,
-      userRepo,
+    const groupPresence = new GroupPresenceRealtimeService(groupRepo);
+    const groupSummary = new GroupSummaryRealtimeService(
+      groupRepo,
+      groupPresence,
+      clearChatNotificationDigest,
+    );
+    const groupMessage = new GroupMessageRealtimeService(
       groupRepo,
       sendMessage,
       sendGroupMessagePush,
+      clearChatNotificationDigest,
+      groupPresence,
+      groupSummary,
+    );
+    const dmInbox = new DmInboxRealtimeService(directMessageRepo);
+    const dmPresence = new DmPresenceRealtimeService(
+      directMessageRepo,
+      groupRepo,
+    );
+    const dmMessage = new DmMessageRealtimeService(
       sendDirectMessage,
       sendDirectMessagePush,
       clearChatNotificationDigest,
-      directMessageRepo,
       markDmRead,
+      dmInbox,
+    );
+
+    gateway = new ChatGateway(
+      jwtService,
+      userRepo,
+      groupPresence,
+      groupSummary,
+      groupMessage,
+      dmPresence,
+      dmInbox,
+      dmMessage,
     );
     (gateway as unknown as { server: ServerMock }).server = server;
   });
@@ -834,9 +865,7 @@ describe('ChatGateway', () => {
         });
 
         expect(ack).toEqual({ ok: true });
-        expect(socket.join).toHaveBeenCalledWith(
-          dmPresenceRoomKey('user-2'),
-        );
+        expect(socket.join).toHaveBeenCalledWith(dmPresenceRoomKey('user-2'));
         expect(socket.emit).toHaveBeenCalledWith(
           ChatSocketEvents.DM_PRESENCE_UPDATE,
           {
@@ -955,9 +984,7 @@ describe('ChatGateway', () => {
           peerId: 'user-2',
         });
 
-        expect(socket.leave).toHaveBeenCalledWith(
-          dmPresenceRoomKey('user-2'),
-        );
+        expect(socket.leave).toHaveBeenCalledWith(dmPresenceRoomKey('user-2'));
       });
     });
 

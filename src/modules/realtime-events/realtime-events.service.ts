@@ -1,9 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-import {
-  RealtimeEvent,
-  RealtimeEventHandler,
-} from './realtime-event.type';
+import { RealtimeEvent, RealtimeEventHandler } from './realtime-event.type';
 
 @Injectable()
 export class RealtimeEventsService {

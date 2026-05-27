@@ -2,7 +2,7 @@ import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
 import { RealtimeEvent } from '@/modules/realtime-events/realtime-event.type';
 import { RealtimeEventsService } from '@/modules/realtime-events/realtime-events.service';
-import { ChatGateway } from '../presentation/chat.gateway';
+import { ChatGateway } from './chat.gateway';
 
 @Injectable()
 export class DirectMessageRealtimeEventHandler

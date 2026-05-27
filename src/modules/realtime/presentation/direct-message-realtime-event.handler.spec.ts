@@ -1,6 +1,6 @@
 import { DirectMessagePayload } from '@/modules/direct-messages/application/use-cases/send-direct-message/send-direct-message.dto';
 import { RealtimeEventsService } from '@/modules/realtime-events/realtime-events.service';
-import { ChatGateway } from '../presentation/chat.gateway';
+import { ChatGateway } from './chat.gateway';
 import { DirectMessageRealtimeEventHandler } from './direct-message-realtime-event.handler';
 
 describe('DirectMessageRealtimeEventHandler', () => {
@@ -35,6 +35,8 @@ describe('DirectMessageRealtimeEventHandler', () => {
       createdAt: '2026-05-26T10:00:00.000Z',
       senderName: 'Alice',
       senderAvatarUrl: null,
+      mediaUrl: null,
+      mediaType: null,
     } as DirectMessagePayload;
 
     realtimeEvents.emit({
