@@ -1,10 +1,8 @@
-import { forwardRef, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AuthModule } from '@/modules/auth/auth.module';
 import { GroupsModule } from '@/modules/groups/groups.module';
-import { NotificationsModule } from '@/modules/notifications/notifications.module';
-import { DirectMessagesModule } from '@/modules/direct-messages/direct-messages.module';
 
 import { MESSAGE_REPOSITORY } from './domain/repositories/i-message.repository';
 import { MessageOrmEntity } from './infra/repositories/message.entity';
@@ -14,26 +12,22 @@ import { SendMessageUseCase } from './application/use-cases/send-message/send-me
 import { GetMessageHistoryUseCase } from './application/use-cases/get-message-history/get-message-history.use-case';
 
 import { MessagesController } from './presentation/messages.controller';
-import { ChatGateway } from './presentation/chat.gateway';
 
 @Module({
   imports: [
     AuthModule,
     GroupsModule,
-    NotificationsModule,
-    forwardRef(() => DirectMessagesModule),
     TypeOrmModule.forFeature([MessageOrmEntity]),
   ],
   controllers: [MessagesController],
   providers: [
     SendMessageUseCase,
     GetMessageHistoryUseCase,
-    ChatGateway,
     {
       provide: MESSAGE_REPOSITORY,
       useClass: MessageTypeORMRepository,
     },
   ],
-  exports: [ChatGateway],
+  exports: [SendMessageUseCase],
 })
 export class MessagesModule {}

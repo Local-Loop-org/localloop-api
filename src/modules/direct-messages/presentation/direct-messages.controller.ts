@@ -15,7 +15,7 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 
 import { User } from '@/modules/auth/domain/entities/user.entity';
-import { ChatGateway } from '@/modules/messages/presentation/chat.gateway';
+import { RealtimeEventsService } from '@/modules/realtime-events/realtime-events.service';
 import { GetDirectMessageHistoryUseCase } from '../application/use-cases/get-direct-message-history/get-direct-message-history.use-case';
 import {
   GetDirectMessageHistoryQueryDto,
@@ -56,7 +56,7 @@ export class DirectMessagesController {
     private readonly archiveDmConversation: ArchiveDmConversationUseCase,
     private readonly unarchiveDmConversation: UnarchiveDmConversationUseCase,
     private readonly markDmRead: MarkDmReadUseCase,
-    private readonly chatGateway: ChatGateway,
+    private readonly realtimeEvents: RealtimeEventsService,
   ) {}
 
   // @Get() and @Get('requests') / @Post('requests/...') MUST appear before
@@ -93,11 +93,21 @@ export class DirectMessagesController {
     @Param('requestId', new ParseUUIDPipe()) requestId: string,
   ): Promise<AcceptDmRequestResponseDto> {
     const payload = await this.acceptDmRequest.execute(req.user.id, requestId);
-    await this.chatGateway.emitDmRequestAccepted(payload.senderId, payload);
-    await Promise.all([
-      this.chatGateway.emitDmSummary(payload.senderId, payload.recipientId),
-      this.chatGateway.emitDmSummary(payload.recipientId, payload.senderId),
-    ]);
+    this.realtimeEvents.emit({
+      type: 'dm_request_accepted',
+      senderId: payload.senderId,
+      payload,
+    });
+    this.realtimeEvents.emit({
+      type: 'dm_summary_requested',
+      userId: payload.senderId,
+      peerId: payload.recipientId,
+    });
+    this.realtimeEvents.emit({
+      type: 'dm_summary_requested',
+      userId: payload.recipientId,
+      peerId: payload.senderId,
+    });
     return payload;
   }
 
@@ -117,7 +127,11 @@ export class DirectMessagesController {
     @Param('userId', new ParseUUIDPipe()) userId: string,
   ): Promise<void> {
     await this.archiveDmConversation.execute(req.user.id, userId);
-    await this.chatGateway.emitDmSummary(req.user.id, userId);
+    this.realtimeEvents.emit({
+      type: 'dm_summary_requested',
+      userId: req.user.id,
+      peerId: userId,
+    });
   }
 
   @Delete(':userId/archive')
@@ -127,7 +141,11 @@ export class DirectMessagesController {
     @Param('userId', new ParseUUIDPipe()) userId: string,
   ): Promise<void> {
     await this.unarchiveDmConversation.execute(req.user.id, userId);
-    await this.chatGateway.emitDmSummary(req.user.id, userId);
+    this.realtimeEvents.emit({
+      type: 'dm_summary_requested',
+      userId: req.user.id,
+      peerId: userId,
+    });
   }
 
   @Post(':userId/read')
@@ -137,11 +155,12 @@ export class DirectMessagesController {
     @Param('userId', new ParseUUIDPipe()) userId: string,
   ): Promise<void> {
     const result = await this.markDmRead.execute(req.user.id, userId);
-    await this.chatGateway.emitDmReadSideEffects(
-      req.user.id,
-      userId,
-      result.lastReadAt,
-    );
+    this.realtimeEvents.emit({
+      type: 'dm_read',
+      readerId: req.user.id,
+      peerId: userId,
+      lastReadAt: result.lastReadAt,
+    });
   }
 
   @Get(':userId')
