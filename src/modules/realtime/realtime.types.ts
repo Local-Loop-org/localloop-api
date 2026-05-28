@@ -27,6 +27,7 @@ export interface SendMessagePayload {
   content: string | null;
   storageKey: string | null;
   mediaType: 'image' | 'video' | null;
+  replyToMessageId?: string;
 }
 
 export interface JoinDmPayload {
@@ -36,6 +37,7 @@ export interface JoinDmPayload {
 export interface SendDmPayload {
   recipientId: string;
   content: string | null;
+  replyToMessageId?: string;
 }
 
 export interface WatchDmPresencePayload {

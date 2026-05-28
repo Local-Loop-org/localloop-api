@@ -75,7 +75,10 @@ export class DmMessageRealtimeService {
       const result = await this.sendDirectMessage.execute(
         callerId,
         payload.recipientId,
-        { content: payload.content ?? null },
+        {
+          content: payload.content ?? null,
+          replyToMessageId: payload.replyToMessageId,
+        },
       );
       if (result.type === 'message') {
         server
