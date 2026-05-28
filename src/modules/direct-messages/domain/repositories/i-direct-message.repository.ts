@@ -217,6 +217,8 @@ export interface IDirectMessageRepository {
    * enough — there must be at least one row in `direct_messages` to surface).
    */
   getDmSummary(userId: string, peerId: string): Promise<DmSummary | null>;
+  /** Idempotent soft delete: flips `is_deleted` to true on a single row. */
+  markAsDeleted(id: string): Promise<void>;
 }
 
 export const DIRECT_MESSAGE_REPOSITORY = Symbol('DIRECT_MESSAGE_REPOSITORY');

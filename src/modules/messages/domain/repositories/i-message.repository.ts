@@ -32,6 +32,7 @@ export interface IMessageRepository {
     limit: number,
     before?: string,
   ): Promise<PaginatedResult<MessageRow>>;
+  markAsDeleted(id: string): Promise<void>;
 }
 
 export const MESSAGE_REPOSITORY = Symbol('MESSAGE_REPOSITORY');

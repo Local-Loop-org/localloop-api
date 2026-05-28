@@ -1,5 +1,9 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { ChatSocketEvents, MemberStatus } from '@localloop/shared-types';
+import {
+  ChatSocketEvents,
+  MemberStatus,
+  MessageDeleted,
+} from '@localloop/shared-types';
 import { Namespace } from 'socket.io';
 
 import {
@@ -100,6 +104,12 @@ export class GroupMessageRealtimeService {
         message: e.response?.message ?? e.message ?? 'Failed to send message',
       });
     }
+  }
+
+  emitMessageDeleted(server: Namespace, payload: MessageDeleted): void {
+    server
+      .to(groupRoom(payload.groupId))
+      .emit(ChatSocketEvents.MESSAGE_DELETED, payload);
   }
 
   private async notifyGroupMessage(

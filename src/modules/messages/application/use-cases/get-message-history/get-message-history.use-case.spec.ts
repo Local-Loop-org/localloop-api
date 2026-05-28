@@ -66,6 +66,7 @@ describe('GetMessageHistoryUseCase', () => {
       findById: jest.fn(),
       findByIdWithSender: jest.fn(),
       listByGroup: jest.fn(),
+      markAsDeleted: jest.fn(),
     };
     groupRepo = buildGroupRepoMock();
     useCase = new GetMessageHistoryUseCase(messageRepo, groupRepo);

@@ -248,5 +248,6 @@ function buildMessageRepoMock(): jest.Mocked<IMessageRepository> {
     findById: jest.fn(),
     findByIdWithSender: jest.fn(),
     listByGroup: jest.fn(),
+    markAsDeleted: jest.fn(),
   };
 }

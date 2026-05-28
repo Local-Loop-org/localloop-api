@@ -16,6 +16,19 @@ export type RealtimeEvent =
       readerId: string;
       peerId: string;
       lastReadAt: Date;
+    }
+  | {
+      type: 'message_deleted';
+      groupId: string;
+      messageId: string;
+      deletedBy: string;
+    }
+  | {
+      type: 'direct_message_deleted';
+      senderId: string;
+      recipientId: string;
+      messageId: string;
+      deletedBy: string;
     };
 
 export type RealtimeEventHandler = (
