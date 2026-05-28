@@ -8,6 +8,7 @@ import { AddGroupMemberLastReadAt1716100000000 } from '@/infra/migrations/171610
 import { CreateDirectMessages1717000000000 } from '@/infra/migrations/1717000000000-CreateDirectMessages';
 import { AddDmInboxSupport1717100000000 } from '@/infra/migrations/1717100000000-AddDmInboxSupport';
 import { AddChatNotificationDigests1717200000000 } from '@/infra/migrations/1717200000000-AddChatNotificationDigests';
+import { AddMessageReplyAndEditedColumns1717300000000 } from '@/infra/migrations/1717300000000-AddMessageReplyAndEditedColumns';
 
 export const typeormMigrations = [
   InitialSetup1710770000000,
@@ -20,4 +21,5 @@ export const typeormMigrations = [
   CreateDirectMessages1717000000000,
   AddDmInboxSupport1717100000000,
   AddChatNotificationDigests1717200000000,
+  AddMessageReplyAndEditedColumns1717300000000,
 ];
