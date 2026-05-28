@@ -1,4 +1,10 @@
-import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import { MediaType } from '@localloop/shared-types';
 
 export class SendMessageDto {
@@ -7,6 +13,10 @@ export class SendMessageDto {
   @MinLength(1)
   @MaxLength(2000)
   content?: string | null;
+
+  @IsOptional()
+  @IsUUID()
+  replyToMessageId?: string;
 }
 
 export class SendMessageResponseDto {

@@ -8,6 +8,7 @@ export interface CreateDirectMessageData {
   content: string | null;
   mediaUrl: string | null;
   mediaType: MediaType | null;
+  replyToMessageId?: string | null;
 }
 
 export interface CreateDmRequestData {
@@ -120,6 +121,8 @@ export interface IDirectMessageRepository {
   createDirectDeliveryAtomic(
     data: CreateDirectMessageData,
   ): Promise<DirectMessage>;
+  /** Lean single-row lookup used for reply-target validation. */
+  findById(id: string): Promise<DirectMessage | null>;
   findByIdWithSender(id: string): Promise<DirectMessageRow | null>;
   listConversation(
     userAId: string,

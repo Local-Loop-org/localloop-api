@@ -36,6 +36,12 @@ export class MessageOrmEntity {
   @Column({ name: 'is_deleted', type: 'boolean', default: false })
   isDeleted!: boolean;
 
+  @Column({ name: 'reply_to_message_id', type: 'uuid', nullable: true })
+  replyToMessageId!: string | null;
+
+  @Column({ name: 'edited_at', type: 'timestamptz', nullable: true })
+  editedAt!: Date | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 }

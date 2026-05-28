@@ -99,6 +99,7 @@ describe('SendMessageUseCase', () => {
       content: 'hello',
       mediaUrl: null,
       mediaType: null,
+      replyToMessageId: null,
     });
     expect(result).toEqual({
       id: 'msg-1',
@@ -154,11 +155,97 @@ describe('SendMessageUseCase', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(messageRepo.create).not.toHaveBeenCalled();
   });
+
+  describe('replyToMessageId', () => {
+    const parentId = 'parent-msg-1';
+
+    const buildParent = (
+      overrides: Partial<{ groupId: string; isDeleted: boolean }> = {},
+    ): Message =>
+      new Message(
+        parentId,
+        overrides.groupId ?? 'group-1',
+        'user-2',
+        'original',
+        null,
+        null,
+        overrides.isDeleted ?? false,
+        new Date('2026-04-24T09:00:00Z'),
+      );
+
+    it('persists the reply and forwards replyToMessageId to the repository', async () => {
+      groupRepo.findById.mockResolvedValue(buildGroup());
+      groupRepo.findMember.mockResolvedValue(buildMember(MemberStatus.ACTIVE));
+      messageRepo.findById.mockResolvedValue(buildParent());
+      messageRepo.create.mockResolvedValue(buildMessage());
+      messageRepo.findByIdWithSender.mockResolvedValue(buildRow());
+
+      await useCase.execute('user-1', 'group-1', {
+        content: 'hi',
+        replyToMessageId: parentId,
+      });
+
+      expect(messageRepo.findById).toHaveBeenCalledWith(parentId);
+      expect(messageRepo.create).toHaveBeenCalledWith({
+        groupId: 'group-1',
+        senderId: 'user-1',
+        content: 'hi',
+        mediaUrl: null,
+        mediaType: null,
+        replyToMessageId: parentId,
+      });
+    });
+
+    it('rejects when the reply target does not exist', async () => {
+      groupRepo.findById.mockResolvedValue(buildGroup());
+      groupRepo.findMember.mockResolvedValue(buildMember(MemberStatus.ACTIVE));
+      messageRepo.findById.mockResolvedValue(null);
+
+      await expect(
+        useCase.execute('user-1', 'group-1', {
+          content: 'hi',
+          replyToMessageId: parentId,
+        }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(messageRepo.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects when the reply target belongs to a different group', async () => {
+      groupRepo.findById.mockResolvedValue(buildGroup());
+      groupRepo.findMember.mockResolvedValue(buildMember(MemberStatus.ACTIVE));
+      messageRepo.findById.mockResolvedValue(
+        buildParent({ groupId: 'other-group' }),
+      );
+
+      await expect(
+        useCase.execute('user-1', 'group-1', {
+          content: 'hi',
+          replyToMessageId: parentId,
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(messageRepo.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects when the reply target is deleted', async () => {
+      groupRepo.findById.mockResolvedValue(buildGroup());
+      groupRepo.findMember.mockResolvedValue(buildMember(MemberStatus.ACTIVE));
+      messageRepo.findById.mockResolvedValue(buildParent({ isDeleted: true }));
+
+      await expect(
+        useCase.execute('user-1', 'group-1', {
+          content: 'hi',
+          replyToMessageId: parentId,
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(messageRepo.create).not.toHaveBeenCalled();
+    });
+  });
 });
 
 function buildMessageRepoMock(): jest.Mocked<IMessageRepository> {
   return {
     create: jest.fn(),
+    findById: jest.fn(),
     findByIdWithSender: jest.fn(),
     listByGroup: jest.fn(),
   };

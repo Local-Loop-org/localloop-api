@@ -8,6 +8,7 @@ export interface CreateMessageData {
   content: string | null;
   mediaUrl: string | null;
   mediaType: MediaType | null;
+  replyToMessageId?: string | null;
 }
 
 export interface MessageRow {
@@ -24,6 +25,7 @@ export interface MessageRow {
 
 export interface IMessageRepository {
   create(data: CreateMessageData): Promise<Message>;
+  findById(id: string): Promise<Message | null>;
   findByIdWithSender(id: string): Promise<MessageRow | null>;
   listByGroup(
     groupId: string,

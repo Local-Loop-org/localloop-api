@@ -89,6 +89,7 @@ describe('SendDirectMessageUseCase', () => {
       content: 'hello',
       mediaUrl: null,
       mediaType: null,
+      replyToMessageId: null,
     });
   });
 
@@ -222,5 +223,106 @@ describe('SendDirectMessageUseCase', () => {
     await useCase.execute(SENDER, RECIPIENT, { content: 'hello' });
 
     expect(groupRepo.hasSharedActiveGroup).not.toHaveBeenCalled();
+  });
+
+  describe('replyToMessageId', () => {
+    const parentId = 'parent-dm-1';
+
+    const buildParent = (
+      overrides: Partial<{
+        senderId: string;
+        recipientId: string;
+        isDeleted: boolean;
+      }> = {},
+    ): DirectMessage =>
+      new DirectMessage(
+        parentId,
+        overrides.senderId ?? RECIPIENT,
+        overrides.recipientId ?? SENDER,
+        'original',
+        null,
+        null,
+        overrides.isDeleted ?? false,
+        new Date('2026-05-16T09:00:00Z'),
+      );
+
+    it('persists the reply when parent is in the same conversation (peer-authored)', async () => {
+      userRepo.findById.mockResolvedValue(
+        buildUser({ id: RECIPIENT, dmPermission: DmPermission.EVERYONE }),
+      );
+      directMessageRepo.findById.mockResolvedValue(buildParent());
+      directMessageRepo.createDirectDeliveryAtomic.mockResolvedValue(buildDm());
+      directMessageRepo.findByIdWithSender.mockResolvedValue(buildRow());
+
+      await useCase.execute(SENDER, RECIPIENT, {
+        content: 'hi',
+        replyToMessageId: parentId,
+      });
+
+      expect(directMessageRepo.findById).toHaveBeenCalledWith(parentId);
+      expect(directMessageRepo.createDirectDeliveryAtomic).toHaveBeenCalledWith({
+        senderId: SENDER,
+        recipientId: RECIPIENT,
+        content: 'hi',
+        mediaUrl: null,
+        mediaType: null,
+        replyToMessageId: parentId,
+      });
+    });
+
+    it('rejects when the reply target does not exist', async () => {
+      userRepo.findById.mockResolvedValue(
+        buildUser({ id: RECIPIENT, dmPermission: DmPermission.EVERYONE }),
+      );
+      directMessageRepo.findById.mockResolvedValue(null);
+
+      await expect(
+        useCase.execute(SENDER, RECIPIENT, {
+          content: 'hi',
+          replyToMessageId: parentId,
+        }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(
+        directMessageRepo.createDirectDeliveryAtomic,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('rejects when the reply target belongs to a different conversation', async () => {
+      userRepo.findById.mockResolvedValue(
+        buildUser({ id: RECIPIENT, dmPermission: DmPermission.EVERYONE }),
+      );
+      directMessageRepo.findById.mockResolvedValue(
+        buildParent({ senderId: 'other-user', recipientId: SENDER }),
+      );
+
+      await expect(
+        useCase.execute(SENDER, RECIPIENT, {
+          content: 'hi',
+          replyToMessageId: parentId,
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(
+        directMessageRepo.createDirectDeliveryAtomic,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('rejects when the reply target is deleted', async () => {
+      userRepo.findById.mockResolvedValue(
+        buildUser({ id: RECIPIENT, dmPermission: DmPermission.EVERYONE }),
+      );
+      directMessageRepo.findById.mockResolvedValue(
+        buildParent({ isDeleted: true }),
+      );
+
+      await expect(
+        useCase.execute(SENDER, RECIPIENT, {
+          content: 'hi',
+          replyToMessageId: parentId,
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(
+        directMessageRepo.createDirectDeliveryAtomic,
+      ).not.toHaveBeenCalled();
+    });
   });
 });
