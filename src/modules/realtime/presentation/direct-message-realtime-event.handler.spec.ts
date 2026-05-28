@@ -14,6 +14,8 @@ describe('DirectMessageRealtimeEventHandler', () => {
       emitDmRequestAccepted: jest.fn(),
       emitDmSummary: jest.fn(),
       emitDmReadSideEffects: jest.fn(),
+      emitMessageDeleted: jest.fn(),
+      emitDirectMessageDeleted: jest.fn(),
     } as unknown as jest.Mocked<ChatGateway>;
     handler = new DirectMessageRealtimeEventHandler(
       realtimeEvents,
@@ -76,6 +78,38 @@ describe('DirectMessageRealtimeEventHandler', () => {
       'user-2',
       lastReadAt,
     );
+  });
+
+  it('routes group message_deleted events to the chat gateway', () => {
+    realtimeEvents.emit({
+      type: 'message_deleted',
+      groupId: 'group-1',
+      messageId: 'msg-1',
+      deletedBy: 'user-1',
+    });
+
+    expect(chatGateway.emitMessageDeleted).toHaveBeenCalledWith({
+      messageId: 'msg-1',
+      groupId: 'group-1',
+      deletedBy: 'user-1',
+    });
+  });
+
+  it('routes direct_message_deleted events to the chat gateway', () => {
+    realtimeEvents.emit({
+      type: 'direct_message_deleted',
+      senderId: 'user-1',
+      recipientId: 'user-2',
+      messageId: 'dm-1',
+      deletedBy: 'user-1',
+    });
+
+    expect(chatGateway.emitDirectMessageDeleted).toHaveBeenCalledWith({
+      messageId: 'dm-1',
+      senderId: 'user-1',
+      recipientId: 'user-2',
+      deletedBy: 'user-1',
+    });
   });
 
   it('unsubscribes on module destroy', () => {

@@ -10,7 +10,11 @@ import {
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
-import { ChatSocketEvents } from '@localloop/shared-types';
+import {
+  ChatSocketEvents,
+  DirectMessageDeleted,
+  MessageDeleted,
+} from '@localloop/shared-types';
 import { Namespace, Socket } from 'socket.io';
 
 import {
@@ -128,6 +132,14 @@ export class ChatGateway
       peerId,
       lastReadAt,
     );
+  }
+
+  emitMessageDeleted(payload: MessageDeleted): void {
+    this.groupMessage.emitMessageDeleted(this.server, payload);
+  }
+
+  emitDirectMessageDeleted(payload: DirectMessageDeleted): void {
+    this.dmMessage.emitDirectMessageDeleted(this.server, payload);
   }
 
   @SubscribeMessage(ChatSocketEvents.JOIN_GROUP)

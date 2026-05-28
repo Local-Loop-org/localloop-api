@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddMessageReplyAndEditedColumns1717300000000
-  implements MigrationInterface
-{
+export class AddMessageReplyAndEditedColumns1717300000000 implements MigrationInterface {
   name = 'AddMessageReplyAndEditedColumns1717300000000';
 
   async up(queryRunner: QueryRunner): Promise<void> {

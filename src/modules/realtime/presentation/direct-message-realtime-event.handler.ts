@@ -42,6 +42,21 @@ export class DirectMessageRealtimeEventHandler
           event.lastReadAt,
         );
         return;
+      case 'message_deleted':
+        this.chatGateway.emitMessageDeleted({
+          messageId: event.messageId,
+          groupId: event.groupId,
+          deletedBy: event.deletedBy,
+        });
+        return;
+      case 'direct_message_deleted':
+        this.chatGateway.emitDirectMessageDeleted({
+          messageId: event.messageId,
+          senderId: event.senderId,
+          recipientId: event.recipientId,
+          deletedBy: event.deletedBy,
+        });
+        return;
     }
   }
 }

@@ -45,6 +45,7 @@ describe('DirectMessagesController', () => {
       archiveDmConversation as never,
       unarchiveDmConversation as never,
       markDmRead,
+      { execute: jest.fn() } as never,
       realtimeEvents as unknown as RealtimeEventsService,
     );
   });

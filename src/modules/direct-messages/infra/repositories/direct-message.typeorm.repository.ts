@@ -144,6 +144,13 @@ export class DirectMessageTypeORMRepository implements IDirectMessageRepository 
     return entity ? DirectMessageMapper.toDomain(entity) : null;
   }
 
+  async markAsDeleted(id: string): Promise<void> {
+    await this.directMessagesRepo.update(
+      { id, isDeleted: false },
+      { isDeleted: true },
+    );
+  }
+
   async findByIdWithSender(id: string): Promise<DirectMessageRow | null> {
     const row = await this.baseQuery()
       .where('m.id = :id', { id })

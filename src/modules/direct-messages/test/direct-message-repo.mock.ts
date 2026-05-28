@@ -21,5 +21,6 @@ export function buildDirectMessageRepoMock(): jest.Mocked<IDirectMessageReposito
     markRead: jest.fn(),
     setArchived: jest.fn(),
     getDmSummary: jest.fn(),
+    markAsDeleted: jest.fn(),
   };
 }

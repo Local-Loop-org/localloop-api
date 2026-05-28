@@ -260,14 +260,16 @@ describe('SendDirectMessageUseCase', () => {
       });
 
       expect(directMessageRepo.findById).toHaveBeenCalledWith(parentId);
-      expect(directMessageRepo.createDirectDeliveryAtomic).toHaveBeenCalledWith({
-        senderId: SENDER,
-        recipientId: RECIPIENT,
-        content: 'hi',
-        mediaUrl: null,
-        mediaType: null,
-        replyToMessageId: parentId,
-      });
+      expect(directMessageRepo.createDirectDeliveryAtomic).toHaveBeenCalledWith(
+        {
+          senderId: SENDER,
+          recipientId: RECIPIENT,
+          content: 'hi',
+          mediaUrl: null,
+          mediaType: null,
+          replyToMessageId: parentId,
+        },
+      );
     });
 
     it('rejects when the reply target does not exist', async () => {

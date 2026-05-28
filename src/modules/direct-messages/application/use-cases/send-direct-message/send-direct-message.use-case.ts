@@ -61,7 +61,9 @@ export class SendDirectMessageUseCase {
     }
 
     if (dto.replyToMessageId) {
-      const parent = await this.directMessageRepo.findById(dto.replyToMessageId);
+      const parent = await this.directMessageRepo.findById(
+        dto.replyToMessageId,
+      );
       if (!parent) {
         throw new NotFoundException({
           error: 'REPLY_TARGET_NOT_FOUND',

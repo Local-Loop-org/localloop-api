@@ -42,6 +42,8 @@ import { DeclineDmRequestUseCase } from '../application/use-cases/decline-dm-req
 import { ArchiveDmConversationUseCase } from '../application/use-cases/archive-dm-conversation/archive-dm-conversation.use-case';
 import { UnarchiveDmConversationUseCase } from '../application/use-cases/unarchive-dm-conversation/unarchive-dm-conversation.use-case';
 import { MarkDmReadUseCase } from '../application/use-cases/mark-dm-read/mark-dm-read.use-case';
+import { DeleteDirectMessageUseCase } from '../application/use-cases/delete-direct-message/delete-direct-message.use-case';
+import { DeleteDirectMessageResponseDto } from '../application/use-cases/delete-direct-message/delete-direct-message.dto';
 
 @Controller('dm')
 @UseGuards(AuthGuard('jwt'))
@@ -56,6 +58,7 @@ export class DirectMessagesController {
     private readonly archiveDmConversation: ArchiveDmConversationUseCase,
     private readonly unarchiveDmConversation: UnarchiveDmConversationUseCase,
     private readonly markDmRead: MarkDmReadUseCase,
+    private readonly deleteDirectMessage: DeleteDirectMessageUseCase,
     private readonly realtimeEvents: RealtimeEventsService,
   ) {}
 
@@ -107,6 +110,25 @@ export class DirectMessagesController {
       type: 'dm_summary_requested',
       userId: payload.recipientId,
       peerId: payload.senderId,
+    });
+    return payload;
+  }
+
+  @Delete('messages/:messageId')
+  async deleteMessage(
+    @Request() req: { user: User },
+    @Param('messageId', new ParseUUIDPipe()) messageId: string,
+  ): Promise<DeleteDirectMessageResponseDto> {
+    const payload = await this.deleteDirectMessage.execute(
+      req.user.id,
+      messageId,
+    );
+    this.realtimeEvents.emit({
+      type: 'direct_message_deleted',
+      senderId: payload.senderId,
+      recipientId: payload.recipientId,
+      messageId: payload.id,
+      deletedBy: payload.deletedBy,
     });
     return payload;
   }
