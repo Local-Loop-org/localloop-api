@@ -60,6 +60,29 @@ export class SendDirectMessageUseCase {
       });
     }
 
+    if (dto.replyToMessageId) {
+      const parent = await this.directMessageRepo.findById(dto.replyToMessageId);
+      if (!parent) {
+        throw new NotFoundException({
+          error: 'REPLY_TARGET_NOT_FOUND',
+          message: 'Reply target message not found',
+        });
+      }
+      const parentPair = new Set([parent.senderId, parent.recipientId]);
+      if (!parentPair.has(senderId) || !parentPair.has(recipientId)) {
+        throw new BadRequestException({
+          error: 'REPLY_TARGET_WRONG_CONVERSATION',
+          message: 'Reply target belongs to a different conversation',
+        });
+      }
+      if (parent.isDeleted) {
+        throw new BadRequestException({
+          error: 'REPLY_TARGET_DELETED',
+          message: 'Reply target has been deleted',
+        });
+      }
+    }
+
     const route = await this.routeDm(
       senderId,
       recipient.id,
@@ -81,6 +104,7 @@ export class SendDirectMessageUseCase {
       content,
       mediaUrl: null,
       mediaType: null,
+      replyToMessageId: dto.replyToMessageId ?? null,
     });
 
     const row = await this.directMessageRepo.findByIdWithSender(created.id);

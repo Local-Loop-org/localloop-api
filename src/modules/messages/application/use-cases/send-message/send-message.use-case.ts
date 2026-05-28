@@ -54,12 +54,35 @@ export class SendMessageUseCase {
       });
     }
 
+    if (dto.replyToMessageId) {
+      const parent = await this.messageRepo.findById(dto.replyToMessageId);
+      if (!parent) {
+        throw new NotFoundException({
+          error: 'REPLY_TARGET_NOT_FOUND',
+          message: 'Reply target message not found',
+        });
+      }
+      if (parent.groupId !== groupId) {
+        throw new BadRequestException({
+          error: 'REPLY_TARGET_WRONG_CONVERSATION',
+          message: 'Reply target belongs to a different conversation',
+        });
+      }
+      if (parent.isDeleted) {
+        throw new BadRequestException({
+          error: 'REPLY_TARGET_DELETED',
+          message: 'Reply target has been deleted',
+        });
+      }
+    }
+
     const message = await this.messageRepo.create({
       groupId,
       senderId: userId,
       content,
       mediaUrl: null,
       mediaType: null,
+      replyToMessageId: dto.replyToMessageId ?? null,
     });
 
     const row = await this.messageRepo.findByIdWithSender(message.id);

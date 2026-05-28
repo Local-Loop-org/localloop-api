@@ -3,6 +3,7 @@ import { IDirectMessageRepository } from '../domain/repositories/i-direct-messag
 export function buildDirectMessageRepoMock(): jest.Mocked<IDirectMessageRepository> {
   return {
     createDirectDeliveryAtomic: jest.fn(),
+    findById: jest.fn(),
     findByIdWithSender: jest.fn(),
     listConversation: jest.fn(),
     getConversationReadState: jest.fn(),

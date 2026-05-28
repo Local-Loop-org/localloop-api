@@ -117,6 +117,7 @@ export class DirectMessageTypeORMRepository implements IDirectMessageRepository 
         mediaUrl: data.mediaUrl,
         mediaType: data.mediaType,
         isDeleted: false,
+        replyToMessageId: data.replyToMessageId ?? null,
       });
       const saved = await messagesRepo.save(entity);
 
@@ -136,6 +137,11 @@ export class DirectMessageTypeORMRepository implements IDirectMessageRepository 
 
       return DirectMessageMapper.toDomain(saved);
     });
+  }
+
+  async findById(id: string): Promise<DirectMessage | null> {
+    const entity = await this.directMessagesRepo.findOne({ where: { id } });
+    return entity ? DirectMessageMapper.toDomain(entity) : null;
   }
 
   async findByIdWithSender(id: string): Promise<DirectMessageRow | null> {

@@ -41,9 +41,15 @@ export class MessageTypeORMRepository implements IMessageRepository {
       mediaUrl: data.mediaUrl,
       mediaType: data.mediaType,
       isDeleted: false,
+      replyToMessageId: data.replyToMessageId ?? null,
     });
     const saved = await this.messagesRepo.save(entity);
     return MessageMapper.toDomain(saved);
+  }
+
+  async findById(id: string): Promise<Message | null> {
+    const entity = await this.messagesRepo.findOne({ where: { id } });
+    return entity ? MessageMapper.toDomain(entity) : null;
   }
 
   async findByIdWithSender(id: string): Promise<MessageRow | null> {

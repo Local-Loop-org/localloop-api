@@ -63,6 +63,7 @@ describe('GetMessageHistoryUseCase', () => {
   beforeEach(() => {
     messageRepo = {
       create: jest.fn(),
+      findById: jest.fn(),
       findByIdWithSender: jest.fn(),
       listByGroup: jest.fn(),
     };
