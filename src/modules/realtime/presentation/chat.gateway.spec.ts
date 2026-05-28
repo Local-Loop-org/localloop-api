@@ -363,12 +363,43 @@ describe('ChatGateway', () => {
 
       expect(sendMessage.execute).toHaveBeenCalledWith('user-1', 'group-1', {
         content: 'hi',
+        replyToMessageId: undefined,
       });
       expect(server.to).toHaveBeenCalledWith('group:group-1');
       expect(roomEmit).toHaveBeenCalledWith(
         ChatSocketEvents.NEW_MESSAGE,
         broadcast,
       );
+    });
+
+    it('forwards replyToMessageId to the send-message use case', async () => {
+      const socket = makeSocket();
+      socket.data.user = buildUser();
+      const broadcast = {
+        id: 'msg-2',
+        groupId: 'group-1',
+        senderId: 'user-1',
+        senderName: 'Alice',
+        senderAvatarUrl: null,
+        content: 'reply',
+        mediaUrl: null,
+        mediaType: null,
+        createdAt: new Date().toISOString(),
+      };
+      sendMessage.execute.mockResolvedValue(broadcast);
+
+      await gateway.onSendMessage(socket as never, {
+        groupId: 'group-1',
+        content: 'reply',
+        storageKey: null,
+        mediaType: null,
+        replyToMessageId: 'parent-message-id',
+      });
+
+      expect(sendMessage.execute).toHaveBeenCalledWith('user-1', 'group-1', {
+        content: 'reply',
+        replyToMessageId: 'parent-message-id',
+      });
     });
 
     it('notifies offline group members after a successful send', async () => {
@@ -1014,7 +1045,7 @@ describe('ChatGateway', () => {
         expect(sendDirectMessage.execute).toHaveBeenCalledWith(
           'user-1',
           'user-2',
-          { content: 'hi' },
+          { content: 'hi', replyToMessageId: undefined },
         );
         expect(server.to).toHaveBeenCalledWith(dmRoomKey('user-1', 'user-2'));
         expect(roomEmit).toHaveBeenCalledWith(
@@ -1024,6 +1055,36 @@ describe('ChatGateway', () => {
         expect(socket.emit).not.toHaveBeenCalledWith(
           ChatSocketEvents.DM_REQUEST_SENT,
           expect.anything(),
+        );
+      });
+
+      it('forwards replyToMessageId to the send-direct-message use case', async () => {
+        const socket = makeSocket();
+        socket.data.user = buildUser({ id: 'user-1' });
+        const broadcast = {
+          type: 'message' as const,
+          id: 'dm-2',
+          senderId: 'user-1',
+          senderName: 'Alice',
+          senderAvatarUrl: null,
+          recipientId: 'user-2',
+          content: 'reply',
+          mediaUrl: null,
+          mediaType: null,
+          createdAt: new Date().toISOString(),
+        };
+        sendDirectMessage.execute.mockResolvedValue(broadcast);
+
+        await gateway.onSendDm(socket as never, {
+          recipientId: 'user-2',
+          content: 'reply',
+          replyToMessageId: 'parent-dm-id',
+        });
+
+        expect(sendDirectMessage.execute).toHaveBeenCalledWith(
+          'user-1',
+          'user-2',
+          { content: 'reply', replyToMessageId: 'parent-dm-id' },
         );
       });
 

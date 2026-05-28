@@ -77,7 +77,10 @@ export class GroupMessageRealtimeService {
       const result = await this.sendMessage.execute(
         socket.data.user.id,
         payload.groupId,
-        { content: payload.content ?? null },
+        {
+          content: payload.content ?? null,
+          replyToMessageId: payload.replyToMessageId,
+        },
       );
       server
         .to(groupRoom(payload.groupId))
