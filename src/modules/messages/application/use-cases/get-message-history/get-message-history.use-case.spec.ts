@@ -96,6 +96,7 @@ describe('GetMessageHistoryUseCase', () => {
     expect(result.data).toHaveLength(2);
     expect(result.data[0]).toEqual({
       id: 'm2',
+      clientMessageId: null,
       senderId: 'user-1',
       senderName: 'Alice',
       senderAvatarUrl: null,

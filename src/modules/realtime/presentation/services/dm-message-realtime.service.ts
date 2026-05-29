@@ -78,6 +78,7 @@ export class DmMessageRealtimeService {
         {
           content: payload.content ?? null,
           replyToMessageId: payload.replyToMessageId,
+          clientMessageId: payload.clientMessageId,
         },
       );
       if (result.type === 'message') {

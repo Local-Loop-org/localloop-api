@@ -29,6 +29,7 @@ export class AcceptDmRequestUseCase {
 
     return {
       id: row.id,
+      clientMessageId: null,
       senderId: row.senderId,
       senderName: row.senderName,
       senderAvatarUrl: row.senderAvatarUrl,

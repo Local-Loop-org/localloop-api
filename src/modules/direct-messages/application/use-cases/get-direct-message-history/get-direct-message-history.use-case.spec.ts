@@ -78,6 +78,7 @@ describe('GetDirectMessageHistoryUseCase', () => {
     expect(result.data).toHaveLength(2);
     expect(result.data[0]).toEqual({
       id: 'dm-2',
+      clientMessageId: null,
       senderId: OTHER,
       senderName: 'Bob',
       senderAvatarUrl: null,

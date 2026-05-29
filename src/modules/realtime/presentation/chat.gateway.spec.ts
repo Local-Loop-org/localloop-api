@@ -343,6 +343,7 @@ describe('ChatGateway', () => {
       socket.data.user = buildUser();
       const broadcast = {
         id: 'msg-1',
+        clientMessageId: null,
         groupId: 'group-1',
         senderId: 'user-1',
         senderName: 'Alice',
@@ -367,6 +368,7 @@ describe('ChatGateway', () => {
       expect(sendMessage.execute).toHaveBeenCalledWith('user-1', 'group-1', {
         content: 'hi',
         replyToMessageId: undefined,
+        clientMessageId: undefined,
       });
       expect(server.to).toHaveBeenCalledWith('group:group-1');
       expect(roomEmit).toHaveBeenCalledWith(
@@ -380,6 +382,7 @@ describe('ChatGateway', () => {
       socket.data.user = buildUser();
       const broadcast = {
         id: 'msg-2',
+        clientMessageId: null,
         groupId: 'group-1',
         senderId: 'user-1',
         senderName: 'Alice',
@@ -405,7 +408,47 @@ describe('ChatGateway', () => {
       expect(sendMessage.execute).toHaveBeenCalledWith('user-1', 'group-1', {
         content: 'reply',
         replyToMessageId: 'parent-message-id',
+        clientMessageId: undefined,
       });
+    });
+
+    it('forwards clientMessageId to the send-message use case and echoes it on the broadcast', async () => {
+      const socket = makeSocket();
+      socket.data.user = buildUser();
+      const broadcast = {
+        id: 'msg-3',
+        clientMessageId: 'temp-1717000000000-abc123',
+        groupId: 'group-1',
+        senderId: 'user-1',
+        senderName: 'Alice',
+        senderAvatarUrl: null,
+        content: 'hi',
+        mediaUrl: null,
+        mediaType: null,
+        isDeleted: false,
+        editedAt: null,
+        replyTo: null,
+        createdAt: new Date().toISOString(),
+      };
+      sendMessage.execute.mockResolvedValue(broadcast);
+
+      await gateway.onSendMessage(socket as never, {
+        groupId: 'group-1',
+        content: 'hi',
+        storageKey: null,
+        mediaType: null,
+        clientMessageId: 'temp-1717000000000-abc123',
+      });
+
+      expect(sendMessage.execute).toHaveBeenCalledWith('user-1', 'group-1', {
+        content: 'hi',
+        replyToMessageId: undefined,
+        clientMessageId: 'temp-1717000000000-abc123',
+      });
+      expect(roomEmit).toHaveBeenCalledWith(
+        ChatSocketEvents.NEW_MESSAGE,
+        broadcast,
+      );
     });
 
     it('notifies offline group members after a successful send', async () => {
@@ -416,6 +459,7 @@ describe('ChatGateway', () => {
       await onlinePeer.join('group:group-1');
       const broadcast = {
         id: 'msg-1',
+        clientMessageId: null,
         groupId: 'group-1',
         senderId: 'user-1',
         senderName: 'Alice',
@@ -454,6 +498,7 @@ describe('ChatGateway', () => {
       socket.data.user = buildUser();
       const broadcast = {
         id: 'msg-1',
+        clientMessageId: null,
         groupId: 'group-1',
         senderId: 'user-1',
         senderName: 'Alice',
@@ -789,6 +834,7 @@ describe('ChatGateway', () => {
       await watcher.join('group_summary:group-1');
       const broadcast = {
         id: 'msg-1',
+        clientMessageId: null,
         groupId: 'group-1',
         senderId: 'user-1',
         senderName: 'Alice',
@@ -1041,6 +1087,7 @@ describe('ChatGateway', () => {
         const broadcast = {
           type: 'message' as const,
           id: 'dm-1',
+          clientMessageId: null,
           senderId: 'user-1',
           senderName: 'Alice',
           senderAvatarUrl: null,
@@ -1063,7 +1110,11 @@ describe('ChatGateway', () => {
         expect(sendDirectMessage.execute).toHaveBeenCalledWith(
           'user-1',
           'user-2',
-          { content: 'hi', replyToMessageId: undefined },
+          {
+            content: 'hi',
+            replyToMessageId: undefined,
+            clientMessageId: undefined,
+          },
         );
         expect(server.to).toHaveBeenCalledWith(dmRoomKey('user-1', 'user-2'));
         expect(roomEmit).toHaveBeenCalledWith(
@@ -1082,6 +1133,7 @@ describe('ChatGateway', () => {
         const broadcast = {
           type: 'message' as const,
           id: 'dm-2',
+          clientMessageId: null,
           senderId: 'user-1',
           senderName: 'Alice',
           senderAvatarUrl: null,
@@ -1105,7 +1157,53 @@ describe('ChatGateway', () => {
         expect(sendDirectMessage.execute).toHaveBeenCalledWith(
           'user-1',
           'user-2',
-          { content: 'reply', replyToMessageId: 'parent-dm-id' },
+          {
+            content: 'reply',
+            replyToMessageId: 'parent-dm-id',
+            clientMessageId: undefined,
+          },
+        );
+      });
+
+      it('forwards clientMessageId to the send-direct-message use case and echoes it on the broadcast', async () => {
+        const socket = makeSocket();
+        socket.data.user = buildUser({ id: 'user-1' });
+        const broadcast = {
+          type: 'message' as const,
+          id: 'dm-3',
+          clientMessageId: 'temp-1717000000000-abc123',
+          senderId: 'user-1',
+          senderName: 'Alice',
+          senderAvatarUrl: null,
+          recipientId: 'user-2',
+          content: 'hi',
+          mediaUrl: null,
+          mediaType: null,
+          isDeleted: false,
+          editedAt: null,
+          replyTo: null,
+          createdAt: new Date().toISOString(),
+        };
+        sendDirectMessage.execute.mockResolvedValue(broadcast);
+
+        await gateway.onSendDm(socket as never, {
+          recipientId: 'user-2',
+          content: 'hi',
+          clientMessageId: 'temp-1717000000000-abc123',
+        });
+
+        expect(sendDirectMessage.execute).toHaveBeenCalledWith(
+          'user-1',
+          'user-2',
+          {
+            content: 'hi',
+            replyToMessageId: undefined,
+            clientMessageId: 'temp-1717000000000-abc123',
+          },
+        );
+        expect(roomEmit).toHaveBeenCalledWith(
+          ChatSocketEvents.NEW_DIRECT_MESSAGE,
+          broadcast,
         );
       });
 
@@ -1179,6 +1277,7 @@ describe('ChatGateway', () => {
       const buildDmBroadcast = () => ({
         type: 'message' as const,
         id: 'dm-1',
+        clientMessageId: null,
         senderId: 'user-1',
         senderName: 'Alice',
         senderAvatarUrl: null,
@@ -1487,6 +1586,7 @@ describe('ChatGateway', () => {
         sendDirectMessage.execute.mockResolvedValue({
           type: 'message',
           id: 'dm-1',
+          clientMessageId: null,
           senderId: 'user-1',
           senderName: 'Alice',
           senderAvatarUrl: null,
@@ -1593,6 +1693,7 @@ describe('ChatGateway', () => {
     describe('emitDmRequestAccepted', () => {
       const buildPayload = () => ({
         id: 'dm-9',
+        clientMessageId: null,
         senderId: 'user-1',
         senderName: 'Alice',
         senderAvatarUrl: null,

@@ -57,6 +57,7 @@ describe('AcceptDmRequestUseCase', () => {
     );
     expect(result).toEqual({
       id: 'dm-9',
+      clientMessageId: null,
       senderId: SENDER,
       senderName: 'Alice',
       senderAvatarUrl: null,

@@ -94,6 +94,7 @@ export class SendMessageUseCase {
 
     return {
       id: row.id,
+      clientMessageId: dto.clientMessageId ?? null,
       groupId: row.groupId,
       senderId: row.senderId,
       senderName: row.senderName,
