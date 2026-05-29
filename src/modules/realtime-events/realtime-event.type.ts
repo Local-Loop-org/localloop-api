@@ -29,6 +29,23 @@ export type RealtimeEvent =
       recipientId: string;
       messageId: string;
       deletedBy: string;
+    }
+  | {
+      type: 'message_edited';
+      groupId: string;
+      messageId: string;
+      content: string;
+      editedAt: Date;
+      editedBy: string;
+    }
+  | {
+      type: 'direct_message_edited';
+      senderId: string;
+      recipientId: string;
+      messageId: string;
+      content: string;
+      editedAt: Date;
+      editedBy: string;
     };
 
 export type RealtimeEventHandler = (

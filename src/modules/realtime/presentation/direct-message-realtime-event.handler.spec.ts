@@ -16,6 +16,8 @@ describe('DirectMessageRealtimeEventHandler', () => {
       emitDmReadSideEffects: jest.fn(),
       emitMessageDeleted: jest.fn(),
       emitDirectMessageDeleted: jest.fn(),
+      emitMessageEdited: jest.fn(),
+      emitDirectMessageEdited: jest.fn(),
     } as unknown as jest.Mocked<ChatGateway>;
     handler = new DirectMessageRealtimeEventHandler(
       realtimeEvents,
@@ -109,6 +111,50 @@ describe('DirectMessageRealtimeEventHandler', () => {
       senderId: 'user-1',
       recipientId: 'user-2',
       deletedBy: 'user-1',
+    });
+  });
+
+  it('routes group message_edited events to the chat gateway', () => {
+    const editedAt = new Date('2026-05-29T10:00:00Z');
+
+    realtimeEvents.emit({
+      type: 'message_edited',
+      groupId: 'group-1',
+      messageId: 'msg-1',
+      content: 'edited content',
+      editedAt,
+      editedBy: 'user-1',
+    });
+
+    expect(chatGateway.emitMessageEdited).toHaveBeenCalledWith({
+      messageId: 'msg-1',
+      groupId: 'group-1',
+      content: 'edited content',
+      editedAt,
+      editedBy: 'user-1',
+    });
+  });
+
+  it('routes direct_message_edited events to the chat gateway', () => {
+    const editedAt = new Date('2026-05-29T10:00:00Z');
+
+    realtimeEvents.emit({
+      type: 'direct_message_edited',
+      senderId: 'user-1',
+      recipientId: 'user-2',
+      messageId: 'dm-1',
+      content: 'edited content',
+      editedAt,
+      editedBy: 'user-1',
+    });
+
+    expect(chatGateway.emitDirectMessageEdited).toHaveBeenCalledWith({
+      messageId: 'dm-1',
+      senderId: 'user-1',
+      recipientId: 'user-2',
+      content: 'edited content',
+      editedAt,
+      editedBy: 'user-1',
     });
   });
 
