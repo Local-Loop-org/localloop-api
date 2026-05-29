@@ -119,6 +119,7 @@ export class SendDirectMessageUseCase {
     return {
       type: 'message',
       id: row.id,
+      clientMessageId: dto.clientMessageId ?? null,
       senderId: row.senderId,
       senderName: row.senderName,
       senderAvatarUrl: row.senderAvatarUrl,

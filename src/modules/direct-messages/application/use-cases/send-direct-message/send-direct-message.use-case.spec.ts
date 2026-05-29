@@ -102,6 +102,39 @@ describe('SendDirectMessageUseCase', () => {
       mediaType: null,
       replyToMessageId: null,
     });
+    expect(result).toMatchObject({ clientMessageId: null });
+  });
+
+  it('echoes clientMessageId back on the message-branch response when provided', async () => {
+    userRepo.findById.mockResolvedValue(
+      buildUser({ id: RECIPIENT, dmPermission: DmPermission.EVERYONE }),
+    );
+    directMessageRepo.createDirectDeliveryAtomic.mockResolvedValue(buildDm());
+    directMessageRepo.findByIdWithSender.mockResolvedValue(buildRow());
+
+    const result = await useCase.execute(SENDER, RECIPIENT, {
+      content: 'hello',
+      clientMessageId: 'temp-1717000000000-abc123',
+    });
+
+    expect(result).toMatchObject({
+      type: 'message',
+      clientMessageId: 'temp-1717000000000-abc123',
+    });
+  });
+
+  it('does not surface clientMessageId on the request-branch response', async () => {
+    userRepo.findById.mockResolvedValue(
+      buildUser({ id: RECIPIENT, dmPermission: DmPermission.NOBODY }),
+    );
+    directMessageRepo.createRequest.mockResolvedValue({ id: 'req-1' });
+
+    const result = await useCase.execute(SENDER, RECIPIENT, {
+      content: 'hi',
+      clientMessageId: 'temp-1717000000000-abc123',
+    });
+
+    expect(result).toEqual({ type: 'request', requestId: 'req-1' });
   });
 
   it('rejects sending DM to self', async () => {

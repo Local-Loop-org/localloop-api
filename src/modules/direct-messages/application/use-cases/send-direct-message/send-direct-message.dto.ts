@@ -17,10 +17,20 @@ export class SendDirectMessageDto {
   @IsOptional()
   @IsUUID()
   replyToMessageId?: string;
+
+  // Opaque echo token sourced from the mobile temp-id format
+  // (temp-<epoch>-<random6>). Not @IsUUID() because the value is
+  // shaped by the client, not the server.
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(64)
+  clientMessageId?: string;
 }
 
 export interface DirectMessagePayload {
   id: string;
+  clientMessageId: string | null;
   senderId: string;
   senderName: string;
   senderAvatarUrl: string | null;

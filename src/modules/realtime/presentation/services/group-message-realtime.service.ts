@@ -80,6 +80,7 @@ export class GroupMessageRealtimeService {
         {
           content: payload.content ?? null,
           replyToMessageId: payload.replyToMessageId,
+          clientMessageId: payload.clientMessageId,
         },
       );
       server

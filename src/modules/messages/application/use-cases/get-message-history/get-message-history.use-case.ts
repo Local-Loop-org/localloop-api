@@ -57,6 +57,7 @@ export class GetMessageHistoryUseCase {
     return {
       data: rows.map((row) => ({
         id: row.id,
+        clientMessageId: null,
         senderId: row.senderId,
         senderName: row.senderName,
         senderAvatarUrl: row.senderAvatarUrl,

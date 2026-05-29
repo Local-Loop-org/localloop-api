@@ -110,6 +110,7 @@ describe('SendMessageUseCase', () => {
     });
     expect(result).toEqual({
       id: 'msg-1',
+      clientMessageId: null,
       groupId: 'group-1',
       senderId: 'user-1',
       senderName: 'Alice',
@@ -122,6 +123,20 @@ describe('SendMessageUseCase', () => {
       replyTo: null,
       createdAt: '2026-04-24T10:00:00.000Z',
     });
+  });
+
+  it('echoes clientMessageId back on the response when provided', async () => {
+    groupRepo.findById.mockResolvedValue(buildGroup());
+    groupRepo.findMember.mockResolvedValue(buildMember(MemberStatus.ACTIVE));
+    messageRepo.create.mockResolvedValue(buildMessage());
+    messageRepo.findByIdWithSender.mockResolvedValue(buildRow());
+
+    const result = await useCase.execute('user-1', 'group-1', {
+      content: 'hello',
+      clientMessageId: 'temp-1717000000000-abc123',
+    });
+
+    expect(result.clientMessageId).toBe('temp-1717000000000-abc123');
   });
 
   it('trims whitespace-only content and rejects as empty', async () => {
