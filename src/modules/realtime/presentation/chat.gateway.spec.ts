@@ -350,6 +350,9 @@ describe('ChatGateway', () => {
         content: 'hi',
         mediaUrl: null,
         mediaType: null,
+        isDeleted: false,
+        editedAt: null,
+        replyTo: null,
         createdAt: new Date().toISOString(),
       };
       sendMessage.execute.mockResolvedValue(broadcast);
@@ -384,6 +387,9 @@ describe('ChatGateway', () => {
         content: 'reply',
         mediaUrl: null,
         mediaType: null,
+        isDeleted: false,
+        editedAt: null,
+        replyTo: null,
         createdAt: new Date().toISOString(),
       };
       sendMessage.execute.mockResolvedValue(broadcast);
@@ -417,6 +423,9 @@ describe('ChatGateway', () => {
         content: 'hi',
         mediaUrl: null,
         mediaType: null,
+        isDeleted: false,
+        editedAt: null,
+        replyTo: null,
         createdAt: new Date().toISOString(),
       };
       sendMessage.execute.mockResolvedValue(broadcast);
@@ -452,6 +461,9 @@ describe('ChatGateway', () => {
         content: 'hi',
         mediaUrl: null,
         mediaType: null,
+        isDeleted: false,
+        editedAt: null,
+        replyTo: null,
         createdAt: new Date().toISOString(),
       };
       sendMessage.execute.mockResolvedValue(broadcast);
@@ -784,6 +796,9 @@ describe('ChatGateway', () => {
         content: 'hi',
         mediaUrl: null,
         mediaType: null,
+        isDeleted: false,
+        editedAt: null,
+        replyTo: null,
         createdAt: '2026-05-14T10:00:00.000Z',
       };
       sendMessage.execute.mockResolvedValue(broadcast);
@@ -1033,6 +1048,9 @@ describe('ChatGateway', () => {
           content: 'hi',
           mediaUrl: null,
           mediaType: null,
+          isDeleted: false,
+          editedAt: null,
+          replyTo: null,
           createdAt: new Date().toISOString(),
         };
         sendDirectMessage.execute.mockResolvedValue(broadcast);
@@ -1071,6 +1089,9 @@ describe('ChatGateway', () => {
           content: 'reply',
           mediaUrl: null,
           mediaType: null,
+          isDeleted: false,
+          editedAt: null,
+          replyTo: null,
           createdAt: new Date().toISOString(),
         };
         sendDirectMessage.execute.mockResolvedValue(broadcast);
@@ -1165,6 +1186,9 @@ describe('ChatGateway', () => {
         content: 'hi',
         mediaUrl: null,
         mediaType: null,
+        isDeleted: false,
+        editedAt: null,
+        replyTo: null,
         createdAt: new Date().toISOString(),
       });
 
@@ -1470,6 +1494,9 @@ describe('ChatGateway', () => {
           content: 'hi',
           mediaUrl: null,
           mediaType: null,
+          isDeleted: false,
+          editedAt: null,
+          replyTo: null,
           createdAt: new Date('2026-05-19T10:00:00Z').toISOString(),
         });
         directMessageRepo.getDmSummary.mockImplementation(
@@ -1573,6 +1600,9 @@ describe('ChatGateway', () => {
         content: 'hello',
         mediaUrl: null,
         mediaType: null,
+        isDeleted: false,
+        editedAt: null,
+        replyTo: null,
         createdAt: new Date('2026-05-19T10:00:00Z').toISOString(),
       });
 

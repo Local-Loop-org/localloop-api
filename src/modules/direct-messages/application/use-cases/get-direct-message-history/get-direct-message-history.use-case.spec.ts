@@ -26,6 +26,7 @@ describe('GetDirectMessageHistoryUseCase', () => {
     id: string,
     at: string,
     senderId = CALLER,
+    overrides: Partial<DirectMessageRow> = {},
   ): DirectMessageRow => ({
     id,
     senderId,
@@ -35,7 +36,11 @@ describe('GetDirectMessageHistoryUseCase', () => {
     content: 'hello',
     mediaUrl: null,
     mediaType: null,
+    isDeleted: false,
+    editedAt: null,
+    replyTo: null,
     createdAt: new Date(at),
+    ...overrides,
   });
 
   beforeEach(() => {
@@ -80,6 +85,9 @@ describe('GetDirectMessageHistoryUseCase', () => {
       content: 'hello',
       mediaUrl: null,
       mediaType: null,
+      isDeleted: false,
+      editedAt: null,
+      replyTo: null,
       createdAt: '2026-05-16T10:01:00.000Z',
     });
     expect(result.lastReadAt).toBe(LAST_READ_AT.toISOString());

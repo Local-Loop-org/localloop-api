@@ -11,6 +11,13 @@ export interface CreateMessageData {
   replyToMessageId?: string | null;
 }
 
+export interface MessageRowReplyTo {
+  id: string;
+  authorId: string;
+  snippet: string | null;
+  isDeleted: boolean;
+}
+
 export interface MessageRow {
   id: string;
   groupId: string;
@@ -20,6 +27,9 @@ export interface MessageRow {
   content: string | null;
   mediaUrl: string | null;
   mediaType: MediaType | null;
+  isDeleted: boolean;
+  editedAt: Date | null;
+  replyTo: MessageRowReplyTo | null;
   createdAt: Date;
 }
 

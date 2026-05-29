@@ -54,18 +54,20 @@ describe('SendMessageUseCase', () => {
     );
 
   const buildMessage = (): Message =>
-    new Message(
-      'msg-1',
-      'group-1',
-      'user-1',
-      'hello',
-      null,
-      null,
-      false,
-      new Date('2026-04-24T10:00:00Z'),
-    );
+    new Message({
+      id: 'msg-1',
+      groupId: 'group-1',
+      senderId: 'user-1',
+      content: 'hello',
+      mediaUrl: null,
+      mediaType: null,
+      isDeleted: false,
+      replyToMessageId: null,
+      editedAt: null,
+      createdAt: new Date('2026-04-24T10:00:00Z'),
+    });
 
-  const buildRow = (): MessageRow => ({
+  const buildRow = (overrides: Partial<MessageRow> = {}): MessageRow => ({
     id: 'msg-1',
     groupId: 'group-1',
     senderId: 'user-1',
@@ -74,7 +76,11 @@ describe('SendMessageUseCase', () => {
     content: 'hello',
     mediaUrl: null,
     mediaType: null,
+    isDeleted: false,
+    editedAt: null,
+    replyTo: null,
     createdAt: new Date('2026-04-24T10:00:00Z'),
+    ...overrides,
   });
 
   beforeEach(() => {
@@ -110,6 +116,9 @@ describe('SendMessageUseCase', () => {
       content: 'hello',
       mediaUrl: null,
       mediaType: null,
+      isDeleted: false,
+      editedAt: null,
+      replyTo: null,
       createdAt: '2026-04-24T10:00:00.000Z',
     });
   });
@@ -162,16 +171,18 @@ describe('SendMessageUseCase', () => {
     const buildParent = (
       overrides: Partial<{ groupId: string; isDeleted: boolean }> = {},
     ): Message =>
-      new Message(
-        parentId,
-        overrides.groupId ?? 'group-1',
-        'user-2',
-        'original',
-        null,
-        null,
-        overrides.isDeleted ?? false,
-        new Date('2026-04-24T09:00:00Z'),
-      );
+      new Message({
+        id: parentId,
+        groupId: overrides.groupId ?? 'group-1',
+        senderId: 'user-2',
+        content: 'original',
+        mediaUrl: null,
+        mediaType: null,
+        isDeleted: overrides.isDeleted ?? false,
+        replyToMessageId: null,
+        editedAt: null,
+        createdAt: new Date('2026-04-24T09:00:00Z'),
+      });
 
     it('persists the reply and forwards replyToMessageId to the repository', async () => {
       groupRepo.findById.mockResolvedValue(buildGroup());
@@ -193,6 +204,35 @@ describe('SendMessageUseCase', () => {
         mediaUrl: null,
         mediaType: null,
         replyToMessageId: parentId,
+      });
+    });
+
+    it('forwards the denormalised replyTo from the row into the response', async () => {
+      groupRepo.findById.mockResolvedValue(buildGroup());
+      groupRepo.findMember.mockResolvedValue(buildMember(MemberStatus.ACTIVE));
+      messageRepo.findById.mockResolvedValue(buildParent());
+      messageRepo.create.mockResolvedValue(buildMessage());
+      messageRepo.findByIdWithSender.mockResolvedValue(
+        buildRow({
+          replyTo: {
+            id: parentId,
+            authorId: 'user-2',
+            snippet: 'original',
+            isDeleted: false,
+          },
+        }),
+      );
+
+      const result = await useCase.execute('user-1', 'group-1', {
+        content: 'hi',
+        replyToMessageId: parentId,
+      });
+
+      expect(result.replyTo).toEqual({
+        id: parentId,
+        authorId: 'user-2',
+        snippet: 'original',
+        isDeleted: false,
       });
     });
 

@@ -17,6 +17,13 @@ export interface CreateDmRequestData {
   content: string | null;
 }
 
+export interface DirectMessageRowReplyTo {
+  id: string;
+  authorId: string;
+  snippet: string | null;
+  isDeleted: boolean;
+}
+
 export interface DirectMessageRow {
   id: string;
   senderId: string;
@@ -26,6 +33,9 @@ export interface DirectMessageRow {
   content: string | null;
   mediaUrl: string | null;
   mediaType: MediaType | null;
+  isDeleted: boolean;
+  editedAt: Date | null;
+  replyTo: DirectMessageRowReplyTo | null;
   createdAt: Date;
 }
 

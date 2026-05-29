@@ -126,6 +126,9 @@ export class SendDirectMessageUseCase {
       content: row.content,
       mediaUrl: row.mediaUrl,
       mediaType: row.mediaType,
+      isDeleted: row.isDeleted,
+      editedAt: row.editedAt ? row.editedAt.toISOString() : null,
+      replyTo: row.replyTo,
       createdAt: row.createdAt.toISOString(),
     };
   }

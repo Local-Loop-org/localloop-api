@@ -28,6 +28,17 @@ import { DirectMessageOrmEntity } from './direct-message.entity';
 
 export const DEACTIVATED_PEER_NAME = 'Conta desativada';
 
+const REPLY_SNIPPET_MAX_LENGTH = 120;
+const REPLY_SNIPPET_TRUNCATED_LENGTH = REPLY_SNIPPET_MAX_LENGTH - 3;
+
+function truncateReplySnippet(content: string | null): string | null {
+  if (content === null) return null;
+  const normalized = content.replace(/\s+/g, ' ').trim();
+  if (!normalized) return null;
+  if (normalized.length <= REPLY_SNIPPET_MAX_LENGTH) return normalized;
+  return `${normalized.slice(0, REPLY_SNIPPET_TRUNCATED_LENGTH).trimEnd()}...`;
+}
+
 interface DirectMessageJoinRow {
   m_id: string;
   m_sender_id: string;
@@ -35,9 +46,15 @@ interface DirectMessageJoinRow {
   m_content: string | null;
   m_media_url: string | null;
   m_media_type: MediaType | null;
+  m_is_deleted: boolean;
+  m_edited_at: Date | null;
+  m_reply_to_message_id: string | null;
   m_created_at: Date;
   u_display_name: string;
   u_avatar_url: string | null;
+  reply_sender_id: string | null;
+  reply_content: string | null;
+  reply_is_deleted: boolean | null;
 }
 
 interface InboxRawRow {
@@ -311,17 +328,24 @@ export class DirectMessageTypeORMRepository implements IDirectMessageRepository 
 
       const joined = await manager.query<DirectMessageJoinRow[]>(
         `SELECT
-           m.id           AS m_id,
-           m.sender_id    AS m_sender_id,
-           m.recipient_id AS m_recipient_id,
-           m.content      AS m_content,
-           m.media_url    AS m_media_url,
-           m.media_type   AS m_media_type,
-           m.created_at   AS m_created_at,
+           m.id                  AS m_id,
+           m.sender_id           AS m_sender_id,
+           m.recipient_id        AS m_recipient_id,
+           m.content             AS m_content,
+           m.media_url           AS m_media_url,
+           m.media_type          AS m_media_type,
+           m.is_deleted          AS m_is_deleted,
+           m.edited_at           AS m_edited_at,
+           m.reply_to_message_id AS m_reply_to_message_id,
+           m.created_at          AS m_created_at,
            CASE WHEN u.is_active = false THEN '${DEACTIVATED_PEER_NAME}' ELSE u.display_name END AS u_display_name,
-           CASE WHEN u.is_active = false THEN NULL ELSE u.avatar_url END AS u_avatar_url
+           CASE WHEN u.is_active = false THEN NULL ELSE u.avatar_url END AS u_avatar_url,
+           reply.sender_id       AS reply_sender_id,
+           reply.content         AS reply_content,
+           reply.is_deleted      AS reply_is_deleted
          FROM direct_messages m
          JOIN users u ON u.id = m.sender_id
+         LEFT JOIN direct_messages reply ON reply.id = m.reply_to_message_id
          WHERE m.id = $1`,
         [newId],
       );
@@ -689,6 +713,11 @@ export class DirectMessageTypeORMRepository implements IDirectMessageRepository 
     return this.directMessagesRepo
       .createQueryBuilder('m')
       .innerJoin(UserEntity, 'u', 'u.id = m.sender_id')
+      .leftJoin(
+        DirectMessageOrmEntity,
+        'reply',
+        'reply.id = m.reply_to_message_id',
+      )
       .select([
         'm.id AS m_id',
         'm.sender_id AS m_sender_id',
@@ -696,13 +725,31 @@ export class DirectMessageTypeORMRepository implements IDirectMessageRepository 
         'm.content AS m_content',
         'm.media_url AS m_media_url',
         'm.media_type AS m_media_type',
+        'm.is_deleted AS m_is_deleted',
+        'm.edited_at AS m_edited_at',
+        'm.reply_to_message_id AS m_reply_to_message_id',
         'm.created_at AS m_created_at',
         `CASE WHEN u.is_active = false THEN '${DEACTIVATED_PEER_NAME}' ELSE u.display_name END AS u_display_name`,
         'CASE WHEN u.is_active = false THEN NULL ELSE u.avatar_url END AS u_avatar_url',
+        'reply.sender_id AS reply_sender_id',
+        'reply.content AS reply_content',
+        'reply.is_deleted AS reply_is_deleted',
       ]);
   }
 
   private rowToDm(row: DirectMessageJoinRow): DirectMessageRow {
+    const replyTo: DirectMessageRow['replyTo'] =
+      row.m_reply_to_message_id && row.reply_sender_id
+        ? {
+            id: row.m_reply_to_message_id,
+            authorId: row.reply_sender_id,
+            snippet: row.reply_is_deleted
+              ? null
+              : truncateReplySnippet(row.reply_content),
+            isDeleted: row.reply_is_deleted ?? false,
+          }
+        : null;
+
     return {
       id: row.m_id,
       senderId: row.m_sender_id,
@@ -712,6 +759,9 @@ export class DirectMessageTypeORMRepository implements IDirectMessageRepository 
       content: row.m_content,
       mediaUrl: row.m_media_url,
       mediaType: row.m_media_type,
+      isDeleted: row.m_is_deleted,
+      editedAt: row.m_edited_at,
+      replyTo,
       createdAt: row.m_created_at,
     };
   }

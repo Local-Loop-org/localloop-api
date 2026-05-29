@@ -48,7 +48,11 @@ describe('GetMessageHistoryUseCase', () => {
       new Date(),
     );
 
-  const buildRow = (id: string, at: string): MessageRow => ({
+  const buildRow = (
+    id: string,
+    at: string,
+    overrides: Partial<MessageRow> = {},
+  ): MessageRow => ({
     id,
     groupId: 'group-1',
     senderId: 'user-1',
@@ -57,7 +61,11 @@ describe('GetMessageHistoryUseCase', () => {
     content: `hello-${id}`,
     mediaUrl: null,
     mediaType: null,
+    isDeleted: false,
+    editedAt: null,
+    replyTo: null,
     createdAt: new Date(at),
+    ...overrides,
   });
 
   beforeEach(() => {
@@ -99,6 +107,9 @@ describe('GetMessageHistoryUseCase', () => {
       content: 'hello-m2',
       mediaUrl: null,
       mediaType: null,
+      isDeleted: false,
+      editedAt: null,
+      replyTo: null,
       createdAt: '2026-04-24T10:05:00.000Z',
     });
     expect(result.next_cursor).toBe('2026-04-24T10:00:00.000Z');

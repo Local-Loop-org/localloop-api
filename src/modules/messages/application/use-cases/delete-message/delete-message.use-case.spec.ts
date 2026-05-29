@@ -21,16 +21,18 @@ describe('DeleteMessageUseCase', () => {
   const buildMessage = (
     overrides: Partial<{ senderId: string; isDeleted: boolean }> = {},
   ): Message =>
-    new Message(
-      'msg-1',
-      'group-1',
-      overrides.senderId ?? 'caller-1',
-      'hello',
-      null,
-      null,
-      overrides.isDeleted ?? false,
-      new Date('2026-04-24T10:00:00Z'),
-    );
+    new Message({
+      id: 'msg-1',
+      groupId: 'group-1',
+      senderId: overrides.senderId ?? 'caller-1',
+      content: 'hello',
+      mediaUrl: null,
+      mediaType: null,
+      isDeleted: overrides.isDeleted ?? false,
+      replyToMessageId: null,
+      editedAt: null,
+      createdAt: new Date('2026-04-24T10:00:00Z'),
+    });
 
   beforeEach(() => {
     messageRepo = buildMessageRepoMock();

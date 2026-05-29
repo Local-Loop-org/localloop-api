@@ -1,6 +1,6 @@
 import { Type } from 'class-transformer';
 import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
-import { MediaType } from '@localloop/shared-types';
+import { ChatMessageReplyTo, MediaType } from '@localloop/shared-types';
 
 export class GetMessageHistoryQueryDto {
   @IsOptional()
@@ -23,6 +23,9 @@ export class MessageDto {
   content!: string | null;
   mediaUrl!: string | null;
   mediaType!: MediaType | null;
+  isDeleted!: boolean;
+  editedAt!: string | null;
+  replyTo!: ChatMessageReplyTo | null;
   createdAt!: string;
 }
 

@@ -66,6 +66,7 @@ describe('DirectMessageTypeORMRepository — deactivated-peer placeholder substi
   it('baseQuery (findByIdWithSender / listConversation) selects substituted sender columns', async () => {
     const qb = {
       innerJoin: jest.fn().mockReturnThis(),
+      leftJoin: jest.fn().mockReturnThis(),
       select: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
       getRawOne: jest.fn().mockResolvedValue(null),

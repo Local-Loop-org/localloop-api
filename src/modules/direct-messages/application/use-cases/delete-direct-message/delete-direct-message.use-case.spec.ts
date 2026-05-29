@@ -11,16 +11,18 @@ describe('DeleteDirectMessageUseCase', () => {
   const buildDm = (
     overrides: Partial<{ senderId: string; isDeleted: boolean }> = {},
   ): DirectMessage =>
-    new DirectMessage(
-      'dm-1',
-      overrides.senderId ?? 'caller-1',
-      'peer-1',
-      'hello',
-      null,
-      null,
-      overrides.isDeleted ?? false,
-      new Date('2026-04-24T10:00:00Z'),
-    );
+    new DirectMessage({
+      id: 'dm-1',
+      senderId: overrides.senderId ?? 'caller-1',
+      recipientId: 'peer-1',
+      content: 'hello',
+      mediaUrl: null,
+      mediaType: null,
+      isDeleted: overrides.isDeleted ?? false,
+      replyToMessageId: null,
+      editedAt: null,
+      createdAt: new Date('2026-04-24T10:00:00Z'),
+    });
 
   beforeEach(() => {
     directMessageRepo = buildDirectMessageRepoMock();

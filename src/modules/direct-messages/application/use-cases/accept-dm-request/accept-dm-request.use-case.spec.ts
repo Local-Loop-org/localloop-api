@@ -35,6 +35,9 @@ describe('AcceptDmRequestUseCase', () => {
     content: 'hello',
     mediaUrl: null,
     mediaType: null,
+    isDeleted: false,
+    editedAt: null,
+    replyTo: null,
     createdAt: REQUEST_CREATED_AT,
   });
 
@@ -61,6 +64,9 @@ describe('AcceptDmRequestUseCase', () => {
       content: 'hello',
       mediaUrl: null,
       mediaType: null,
+      isDeleted: false,
+      editedAt: null,
+      replyTo: null,
       createdAt: REQUEST_CREATED_AT.toISOString(),
     });
   });

@@ -14,6 +14,17 @@ import { UserEntity } from '@/modules/auth/infra/repositories/user.entity';
 import { MessageMapper } from '../mappers/message.mapper';
 import { MessageOrmEntity } from './message.entity';
 
+const REPLY_SNIPPET_MAX_LENGTH = 120;
+const REPLY_SNIPPET_TRUNCATED_LENGTH = REPLY_SNIPPET_MAX_LENGTH - 3;
+
+function truncateReplySnippet(content: string | null): string | null {
+  if (content === null) return null;
+  const normalized = content.replace(/\s+/g, ' ').trim();
+  if (!normalized) return null;
+  if (normalized.length <= REPLY_SNIPPET_MAX_LENGTH) return normalized;
+  return `${normalized.slice(0, REPLY_SNIPPET_TRUNCATED_LENGTH).trimEnd()}...`;
+}
+
 interface MessageJoinRow {
   m_id: string;
   m_group_id: string;
@@ -21,9 +32,15 @@ interface MessageJoinRow {
   m_content: string | null;
   m_media_url: string | null;
   m_media_type: MediaType | null;
+  m_is_deleted: boolean;
+  m_edited_at: Date | null;
+  m_reply_to_message_id: string | null;
   m_created_at: Date;
   u_display_name: string;
   u_avatar_url: string | null;
+  reply_sender_id: string | null;
+  reply_content: string | null;
+  reply_is_deleted: boolean | null;
 }
 
 @Injectable()
@@ -99,6 +116,7 @@ export class MessageTypeORMRepository implements IMessageRepository {
     return this.messagesRepo
       .createQueryBuilder('m')
       .innerJoin(UserEntity, 'u', 'u.id = m.sender_id')
+      .leftJoin(MessageOrmEntity, 'reply', 'reply.id = m.reply_to_message_id')
       .select([
         'm.id AS m_id',
         'm.group_id AS m_group_id',
@@ -106,13 +124,31 @@ export class MessageTypeORMRepository implements IMessageRepository {
         'm.content AS m_content',
         'm.media_url AS m_media_url',
         'm.media_type AS m_media_type',
+        'm.is_deleted AS m_is_deleted',
+        'm.edited_at AS m_edited_at',
+        'm.reply_to_message_id AS m_reply_to_message_id',
         'm.created_at AS m_created_at',
         'u.display_name AS u_display_name',
         'u.avatar_url AS u_avatar_url',
+        'reply.sender_id AS reply_sender_id',
+        'reply.content AS reply_content',
+        'reply.is_deleted AS reply_is_deleted',
       ]);
   }
 
   private rowToMessage(row: MessageJoinRow): MessageRow {
+    const replyTo: MessageRow['replyTo'] =
+      row.m_reply_to_message_id && row.reply_sender_id
+        ? {
+            id: row.m_reply_to_message_id,
+            authorId: row.reply_sender_id,
+            snippet: row.reply_is_deleted
+              ? null
+              : truncateReplySnippet(row.reply_content),
+            isDeleted: row.reply_is_deleted ?? false,
+          }
+        : null;
+
     return {
       id: row.m_id,
       groupId: row.m_group_id,
@@ -122,6 +158,9 @@ export class MessageTypeORMRepository implements IMessageRepository {
       content: row.m_content,
       mediaUrl: row.m_media_url,
       mediaType: row.m_media_type,
+      isDeleted: row.m_is_deleted,
+      editedAt: row.m_edited_at,
+      replyTo,
       createdAt: row.m_created_at,
     };
   }

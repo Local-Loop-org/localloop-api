@@ -25,18 +25,22 @@ describe('SendDirectMessageUseCase', () => {
   const RECIPIENT = 'user-recipient';
 
   const buildDm = (): DirectMessage =>
-    new DirectMessage(
-      'dm-1',
-      SENDER,
-      RECIPIENT,
-      'hello',
-      null,
-      null,
-      false,
-      new Date('2026-05-16T10:00:00Z'),
-    );
+    new DirectMessage({
+      id: 'dm-1',
+      senderId: SENDER,
+      recipientId: RECIPIENT,
+      content: 'hello',
+      mediaUrl: null,
+      mediaType: null,
+      isDeleted: false,
+      replyToMessageId: null,
+      editedAt: null,
+      createdAt: new Date('2026-05-16T10:00:00Z'),
+    });
 
-  const buildRow = (): DirectMessageRow => ({
+  const buildRow = (
+    overrides: Partial<DirectMessageRow> = {},
+  ): DirectMessageRow => ({
     id: 'dm-1',
     senderId: SENDER,
     senderName: 'Alice',
@@ -45,7 +49,11 @@ describe('SendDirectMessageUseCase', () => {
     content: 'hello',
     mediaUrl: null,
     mediaType: null,
+    isDeleted: false,
+    editedAt: null,
+    replyTo: null,
     createdAt: new Date('2026-05-16T10:00:00Z'),
+    ...overrides,
   });
 
   beforeEach(() => {
@@ -81,6 +89,9 @@ describe('SendDirectMessageUseCase', () => {
       content: 'hello',
       mediaUrl: null,
       mediaType: null,
+      isDeleted: false,
+      editedAt: null,
+      replyTo: null,
       createdAt: '2026-05-16T10:00:00.000Z',
     });
     expect(directMessageRepo.createDirectDeliveryAtomic).toHaveBeenCalledWith({
@@ -235,16 +246,49 @@ describe('SendDirectMessageUseCase', () => {
         isDeleted: boolean;
       }> = {},
     ): DirectMessage =>
-      new DirectMessage(
-        parentId,
-        overrides.senderId ?? RECIPIENT,
-        overrides.recipientId ?? SENDER,
-        'original',
-        null,
-        null,
-        overrides.isDeleted ?? false,
-        new Date('2026-05-16T09:00:00Z'),
+      new DirectMessage({
+        id: parentId,
+        senderId: overrides.senderId ?? RECIPIENT,
+        recipientId: overrides.recipientId ?? SENDER,
+        content: 'original',
+        mediaUrl: null,
+        mediaType: null,
+        isDeleted: overrides.isDeleted ?? false,
+        replyToMessageId: null,
+        editedAt: null,
+        createdAt: new Date('2026-05-16T09:00:00Z'),
+      });
+
+    it('forwards the denormalised replyTo from the row into the response (deleted parent ⇒ snippet null, isDeleted true)', async () => {
+      userRepo.findById.mockResolvedValue(
+        buildUser({ id: RECIPIENT, dmPermission: DmPermission.EVERYONE }),
       );
+      directMessageRepo.findById.mockResolvedValue(buildParent());
+      directMessageRepo.createDirectDeliveryAtomic.mockResolvedValue(buildDm());
+      directMessageRepo.findByIdWithSender.mockResolvedValue(
+        buildRow({
+          replyTo: {
+            id: parentId,
+            authorId: RECIPIENT,
+            snippet: null,
+            isDeleted: true,
+          },
+        }),
+      );
+
+      const result = await useCase.execute(SENDER, RECIPIENT, {
+        content: 'hi',
+        replyToMessageId: parentId,
+      });
+
+      if (result.type !== 'message') throw new Error('expected message');
+      expect(result.replyTo).toEqual({
+        id: parentId,
+        authorId: RECIPIENT,
+        snippet: null,
+        isDeleted: true,
+      });
+    });
 
     it('persists the reply when parent is in the same conversation (peer-authored)', async () => {
       userRepo.findById.mockResolvedValue(
