@@ -142,6 +142,27 @@ export class ChatGateway
     this.dmMessage.emitDirectMessageDeleted(this.server, payload);
   }
 
+  emitMessageEdited(payload: {
+    messageId: string;
+    groupId: string;
+    content: string;
+    editedAt: Date;
+    editedBy: string;
+  }): void {
+    this.groupMessage.emitMessageEdited(this.server, payload);
+  }
+
+  emitDirectMessageEdited(payload: {
+    messageId: string;
+    senderId: string;
+    recipientId: string;
+    content: string;
+    editedAt: Date;
+    editedBy: string;
+  }): void {
+    this.dmMessage.emitDirectMessageEdited(this.server, payload);
+  }
+
   @SubscribeMessage(ChatSocketEvents.JOIN_GROUP)
   async onJoinGroup(
     @ConnectedSocket() socket: AuthedSocket,

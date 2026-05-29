@@ -6,6 +6,7 @@ import {
   HttpCode,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Put,
   Query,
@@ -44,6 +45,11 @@ import { UnarchiveDmConversationUseCase } from '../application/use-cases/unarchi
 import { MarkDmReadUseCase } from '../application/use-cases/mark-dm-read/mark-dm-read.use-case';
 import { DeleteDirectMessageUseCase } from '../application/use-cases/delete-direct-message/delete-direct-message.use-case';
 import { DeleteDirectMessageResponseDto } from '../application/use-cases/delete-direct-message/delete-direct-message.dto';
+import { EditDirectMessageUseCase } from '../application/use-cases/edit-direct-message/edit-direct-message.use-case';
+import {
+  EditDirectMessageDto,
+  EditDirectMessageResponseDto,
+} from '../application/use-cases/edit-direct-message/edit-direct-message.dto';
 
 @Controller('dm')
 @UseGuards(AuthGuard('jwt'))
@@ -59,6 +65,7 @@ export class DirectMessagesController {
     private readonly unarchiveDmConversation: UnarchiveDmConversationUseCase,
     private readonly markDmRead: MarkDmReadUseCase,
     private readonly deleteDirectMessage: DeleteDirectMessageUseCase,
+    private readonly editDirectMessage: EditDirectMessageUseCase,
     private readonly realtimeEvents: RealtimeEventsService,
   ) {}
 
@@ -129,6 +136,29 @@ export class DirectMessagesController {
       recipientId: payload.recipientId,
       messageId: payload.id,
       deletedBy: payload.deletedBy,
+    });
+    return payload;
+  }
+
+  @Patch('messages/:messageId')
+  async editMessage(
+    @Request() req: { user: User },
+    @Param('messageId', new ParseUUIDPipe()) messageId: string,
+    @Body() dto: EditDirectMessageDto,
+  ): Promise<EditDirectMessageResponseDto> {
+    const payload = await this.editDirectMessage.execute(
+      req.user.id,
+      messageId,
+      dto,
+    );
+    this.realtimeEvents.emit({
+      type: 'direct_message_edited',
+      senderId: payload.senderId,
+      recipientId: payload.recipientId,
+      messageId: payload.id,
+      content: payload.content,
+      editedAt: payload.editedAt,
+      editedBy: payload.editedBy,
     });
     return payload;
   }

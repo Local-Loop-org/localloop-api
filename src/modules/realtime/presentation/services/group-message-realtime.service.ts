@@ -3,6 +3,7 @@ import {
   ChatSocketEvents,
   MemberStatus,
   MessageDeleted,
+  MessageEdited,
 } from '@localloop/shared-types';
 import { Namespace } from 'socket.io';
 
@@ -114,6 +115,28 @@ export class GroupMessageRealtimeService {
     server
       .to(groupRoom(payload.groupId))
       .emit(ChatSocketEvents.MESSAGE_DELETED, payload);
+  }
+
+  emitMessageEdited(
+    server: Namespace,
+    payload: {
+      messageId: string;
+      groupId: string;
+      content: string;
+      editedAt: Date;
+      editedBy: string;
+    },
+  ): void {
+    const wsPayload: MessageEdited = {
+      messageId: payload.messageId,
+      groupId: payload.groupId,
+      content: payload.content,
+      editedAt: payload.editedAt.toISOString(),
+      editedBy: payload.editedBy,
+    };
+    server
+      .to(groupRoom(payload.groupId))
+      .emit(ChatSocketEvents.MESSAGE_EDITED, wsPayload);
   }
 
   private async notifyGroupMessage(

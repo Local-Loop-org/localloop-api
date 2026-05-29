@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import {
   ChatSocketEvents,
   DirectMessageDeleted,
+  DirectMessageEdited,
   DmReadReceipt,
 } from '@localloop/shared-types';
 import { Namespace } from 'socket.io';
@@ -194,6 +195,30 @@ export class DmMessageRealtimeService {
     server
       .to(dmRoom(payload.senderId, payload.recipientId))
       .emit(ChatSocketEvents.DIRECT_MESSAGE_DELETED, payload);
+  }
+
+  emitDirectMessageEdited(
+    server: Namespace,
+    payload: {
+      messageId: string;
+      senderId: string;
+      recipientId: string;
+      content: string;
+      editedAt: Date;
+      editedBy: string;
+    },
+  ): void {
+    const wsPayload: DirectMessageEdited = {
+      messageId: payload.messageId,
+      senderId: payload.senderId,
+      recipientId: payload.recipientId,
+      content: payload.content,
+      editedAt: payload.editedAt.toISOString(),
+      editedBy: payload.editedBy,
+    };
+    server
+      .to(dmRoom(payload.senderId, payload.recipientId))
+      .emit(ChatSocketEvents.DIRECT_MESSAGE_EDITED, wsPayload);
   }
 
   private async notifyDirectMessage(

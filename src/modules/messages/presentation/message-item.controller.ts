@@ -1,8 +1,10 @@
 import {
+  Body,
   Controller,
   Delete,
   Param,
   ParseUUIDPipe,
+  Patch,
   Request,
   UseGuards,
 } from '@nestjs/common';
@@ -12,12 +14,18 @@ import { User } from '@/modules/auth/domain/entities/user.entity';
 import { RealtimeEventsService } from '@/modules/realtime-events/realtime-events.service';
 import { DeleteMessageUseCase } from '../application/use-cases/delete-message/delete-message.use-case';
 import { DeleteMessageResponseDto } from '../application/use-cases/delete-message/delete-message.dto';
+import { EditMessageUseCase } from '../application/use-cases/edit-message/edit-message.use-case';
+import {
+  EditMessageDto,
+  EditMessageResponseDto,
+} from '../application/use-cases/edit-message/edit-message.dto';
 
 @Controller('messages')
 @UseGuards(AuthGuard('jwt'))
 export class MessageItemController {
   constructor(
     private readonly deleteMessage: DeleteMessageUseCase,
+    private readonly editMessage: EditMessageUseCase,
     private readonly realtimeEvents: RealtimeEventsService,
   ) {}
 
@@ -32,6 +40,24 @@ export class MessageItemController {
       groupId: payload.groupId,
       messageId: payload.id,
       deletedBy: payload.deletedBy,
+    });
+    return payload;
+  }
+
+  @Patch(':messageId')
+  async update(
+    @Request() req: { user: User },
+    @Param('messageId', new ParseUUIDPipe()) messageId: string,
+    @Body() dto: EditMessageDto,
+  ): Promise<EditMessageResponseDto> {
+    const payload = await this.editMessage.execute(req.user.id, messageId, dto);
+    this.realtimeEvents.emit({
+      type: 'message_edited',
+      groupId: payload.groupId,
+      messageId: payload.id,
+      content: payload.content,
+      editedAt: payload.editedAt,
+      editedBy: payload.editedBy,
     });
     return payload;
   }

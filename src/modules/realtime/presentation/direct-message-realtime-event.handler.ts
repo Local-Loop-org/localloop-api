@@ -57,6 +57,25 @@ export class DirectMessageRealtimeEventHandler
           deletedBy: event.deletedBy,
         });
         return;
+      case 'message_edited':
+        this.chatGateway.emitMessageEdited({
+          messageId: event.messageId,
+          groupId: event.groupId,
+          content: event.content,
+          editedAt: event.editedAt,
+          editedBy: event.editedBy,
+        });
+        return;
+      case 'direct_message_edited':
+        this.chatGateway.emitDirectMessageEdited({
+          messageId: event.messageId,
+          senderId: event.senderId,
+          recipientId: event.recipientId,
+          content: event.content,
+          editedAt: event.editedAt,
+          editedBy: event.editedBy,
+        });
+        return;
     }
   }
 }
