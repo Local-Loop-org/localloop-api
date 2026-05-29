@@ -19,6 +19,7 @@ import {
 } from '@/modules/messages/domain/repositories/i-message.repository';
 import { SendMessageUseCase } from './send-message.use-case';
 import { buildGroupRepoMock } from '@/modules/groups/test/group-repo.mock';
+import { buildMessageRepoMock } from '@/modules/messages/test/message-repo.mock';
 
 describe('SendMessageUseCase', () => {
   let useCase: SendMessageUseCase;
@@ -281,13 +282,3 @@ describe('SendMessageUseCase', () => {
     });
   });
 });
-
-function buildMessageRepoMock(): jest.Mocked<IMessageRepository> {
-  return {
-    create: jest.fn(),
-    findById: jest.fn(),
-    findByIdWithSender: jest.fn(),
-    listByGroup: jest.fn(),
-    markAsDeleted: jest.fn(),
-  };
-}

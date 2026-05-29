@@ -14,6 +14,7 @@ import {
 } from '@/modules/messages/domain/repositories/i-message.repository';
 import { GetMessageHistoryUseCase } from './get-message-history.use-case';
 import { buildGroupRepoMock } from '@/modules/groups/test/group-repo.mock';
+import { buildMessageRepoMock } from '@/modules/messages/test/message-repo.mock';
 
 describe('GetMessageHistoryUseCase', () => {
   let useCase: GetMessageHistoryUseCase;
@@ -69,13 +70,7 @@ describe('GetMessageHistoryUseCase', () => {
   });
 
   beforeEach(() => {
-    messageRepo = {
-      create: jest.fn(),
-      findById: jest.fn(),
-      findByIdWithSender: jest.fn(),
-      listByGroup: jest.fn(),
-      markAsDeleted: jest.fn(),
-    };
+    messageRepo = buildMessageRepoMock();
     groupRepo = buildGroupRepoMock();
     useCase = new GetMessageHistoryUseCase(messageRepo, groupRepo);
   });

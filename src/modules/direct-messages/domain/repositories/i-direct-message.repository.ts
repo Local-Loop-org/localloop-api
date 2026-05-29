@@ -229,6 +229,11 @@ export interface IDirectMessageRepository {
   getDmSummary(userId: string, peerId: string): Promise<DmSummary | null>;
   /** Idempotent soft delete: flips `is_deleted` to true on a single row. */
   markAsDeleted(id: string): Promise<void>;
+  /**
+   * Idempotent edit: updates `content` + `edited_at` only while `is_deleted = false`.
+   * No-op against a soft-deleted row.
+   */
+  markAsEdited(id: string, content: string, editedAt: Date): Promise<void>;
 }
 
 export const DIRECT_MESSAGE_REPOSITORY = Symbol('DIRECT_MESSAGE_REPOSITORY');

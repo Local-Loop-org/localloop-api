@@ -168,6 +168,17 @@ export class DirectMessageTypeORMRepository implements IDirectMessageRepository 
     );
   }
 
+  async markAsEdited(
+    id: string,
+    content: string,
+    editedAt: Date,
+  ): Promise<void> {
+    await this.directMessagesRepo.update(
+      { id, isDeleted: false },
+      { content, editedAt },
+    );
+  }
+
   async findByIdWithSender(id: string): Promise<DirectMessageRow | null> {
     const row = await this.baseQuery()
       .where('m.id = :id', { id })

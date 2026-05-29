@@ -5,6 +5,7 @@ import { GroupMember } from '@/modules/groups/domain/entities/group-member.entit
 import { Message } from '@/modules/messages/domain/entities/message.entity';
 import { IMessageRepository } from '@/modules/messages/domain/repositories/i-message.repository';
 import { buildGroupRepoMock } from '@/modules/groups/test/group-repo.mock';
+import { buildMessageRepoMock } from '@/modules/messages/test/message-repo.mock';
 import { DeleteMessageUseCase } from './delete-message.use-case';
 
 describe('DeleteMessageUseCase', () => {
@@ -125,13 +126,3 @@ describe('DeleteMessageUseCase', () => {
     expect(messageRepo.markAsDeleted).not.toHaveBeenCalled();
   });
 });
-
-function buildMessageRepoMock(): jest.Mocked<IMessageRepository> {
-  return {
-    create: jest.fn(),
-    findById: jest.fn(),
-    findByIdWithSender: jest.fn(),
-    listByGroup: jest.fn(),
-    markAsDeleted: jest.fn(),
-  };
-}

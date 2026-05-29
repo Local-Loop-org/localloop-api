@@ -76,6 +76,17 @@ export class MessageTypeORMRepository implements IMessageRepository {
     );
   }
 
+  async markAsEdited(
+    id: string,
+    content: string,
+    editedAt: Date,
+  ): Promise<void> {
+    await this.messagesRepo.update(
+      { id, isDeleted: false },
+      { content, editedAt },
+    );
+  }
+
   async findByIdWithSender(id: string): Promise<MessageRow | null> {
     const row = await this.baseQuery()
       .where('m.id = :id', { id })

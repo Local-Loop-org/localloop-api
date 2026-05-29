@@ -12,6 +12,7 @@ import { MessageTypeORMRepository } from './infra/repositories/message.typeorm.r
 import { SendMessageUseCase } from './application/use-cases/send-message/send-message.use-case';
 import { GetMessageHistoryUseCase } from './application/use-cases/get-message-history/get-message-history.use-case';
 import { DeleteMessageUseCase } from './application/use-cases/delete-message/delete-message.use-case';
+import { EditMessageUseCase } from './application/use-cases/edit-message/edit-message.use-case';
 
 import { MessagesController } from './presentation/messages.controller';
 import { MessageItemController } from './presentation/message-item.controller';
@@ -28,6 +29,7 @@ import { MessageItemController } from './presentation/message-item.controller';
     SendMessageUseCase,
     GetMessageHistoryUseCase,
     DeleteMessageUseCase,
+    EditMessageUseCase,
     {
       provide: MESSAGE_REPOSITORY,
       useClass: MessageTypeORMRepository,
