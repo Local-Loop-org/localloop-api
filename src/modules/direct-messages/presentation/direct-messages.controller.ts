@@ -17,39 +17,39 @@ import { AuthGuard } from '@nestjs/passport';
 
 import { User } from '@/modules/auth/domain/entities/user.entity';
 import { RealtimeEventsService } from '@/modules/realtime-events/realtime-events.service';
-import { GetDirectMessageHistoryUseCase } from '../application/use-cases/get-direct-message-history/get-direct-message-history.use-case';
+import { GetDirectMessageHistoryUseCase } from '@/modules/direct-messages/application/use-cases/get-direct-message-history/get-direct-message-history.use-case';
 import {
   GetDirectMessageHistoryQueryDto,
   GetDirectMessageHistoryResponseDto,
-} from '../application/use-cases/get-direct-message-history/get-direct-message-history.dto';
-import { SendDirectMessageUseCase } from '../application/use-cases/send-direct-message/send-direct-message.use-case';
+} from '@/modules/direct-messages/application/use-cases/get-direct-message-history/get-direct-message-history.dto';
+import { SendDirectMessageUseCase } from '@/modules/direct-messages/application/use-cases/send-direct-message/send-direct-message.use-case';
 import {
   SendDirectMessageDto,
   SendDirectMessageResponseDto,
-} from '../application/use-cases/send-direct-message/send-direct-message.dto';
-import { ListDmConversationsUseCase } from '../application/use-cases/list-dm-conversations/list-dm-conversations.use-case';
+} from '@/modules/direct-messages/application/use-cases/send-direct-message/send-direct-message.dto';
+import { ListDmConversationsUseCase } from '@/modules/direct-messages/application/use-cases/list-dm-conversations/list-dm-conversations.use-case';
 import {
   ListDmConversationsQueryDto,
   ListDmConversationsResponseDto,
-} from '../application/use-cases/list-dm-conversations/list-dm-conversations.dto';
-import { ListDmRequestsUseCase } from '../application/use-cases/list-dm-requests/list-dm-requests.use-case';
+} from '@/modules/direct-messages/application/use-cases/list-dm-conversations/list-dm-conversations.dto';
+import { ListDmRequestsUseCase } from '@/modules/direct-messages/application/use-cases/list-dm-requests/list-dm-requests.use-case';
 import {
   ListDmRequestsQueryDto,
   ListDmRequestsResponseDto,
-} from '../application/use-cases/list-dm-requests/list-dm-requests.dto';
-import { AcceptDmRequestUseCase } from '../application/use-cases/accept-dm-request/accept-dm-request.use-case';
-import { AcceptDmRequestResponseDto } from '../application/use-cases/accept-dm-request/accept-dm-request.dto';
-import { DeclineDmRequestUseCase } from '../application/use-cases/decline-dm-request/decline-dm-request.use-case';
-import { ArchiveDmConversationUseCase } from '../application/use-cases/archive-dm-conversation/archive-dm-conversation.use-case';
-import { UnarchiveDmConversationUseCase } from '../application/use-cases/unarchive-dm-conversation/unarchive-dm-conversation.use-case';
-import { MarkDmReadUseCase } from '../application/use-cases/mark-dm-read/mark-dm-read.use-case';
-import { DeleteDirectMessageUseCase } from '../application/use-cases/delete-direct-message/delete-direct-message.use-case';
-import { DeleteDirectMessageResponseDto } from '../application/use-cases/delete-direct-message/delete-direct-message.dto';
-import { EditDirectMessageUseCase } from '../application/use-cases/edit-direct-message/edit-direct-message.use-case';
+} from '@/modules/direct-messages/application/use-cases/list-dm-requests/list-dm-requests.dto';
+import { AcceptDmRequestUseCase } from '@/modules/direct-messages/application/use-cases/accept-dm-request/accept-dm-request.use-case';
+import { AcceptDmRequestResponseDto } from '@/modules/direct-messages/application/use-cases/accept-dm-request/accept-dm-request.dto';
+import { DeclineDmRequestUseCase } from '@/modules/direct-messages/application/use-cases/decline-dm-request/decline-dm-request.use-case';
+import { ArchiveDmConversationUseCase } from '@/modules/direct-messages/application/use-cases/archive-dm-conversation/archive-dm-conversation.use-case';
+import { UnarchiveDmConversationUseCase } from '@/modules/direct-messages/application/use-cases/unarchive-dm-conversation/unarchive-dm-conversation.use-case';
+import { MarkDmReadUseCase } from '@/modules/direct-messages/application/use-cases/mark-dm-read/mark-dm-read.use-case';
+import { DeleteDirectMessageUseCase } from '@/modules/direct-messages/application/use-cases/delete-direct-message/delete-direct-message.use-case';
+import { DeleteDirectMessageResponseDto } from '@/modules/direct-messages/application/use-cases/delete-direct-message/delete-direct-message.dto';
+import { EditDirectMessageUseCase } from '@/modules/direct-messages/application/use-cases/edit-direct-message/edit-direct-message.use-case';
 import {
   EditDirectMessageDto,
   EditDirectMessageResponseDto,
-} from '../application/use-cases/edit-direct-message/edit-direct-message.dto';
+} from '@/modules/direct-messages/application/use-cases/edit-direct-message/edit-direct-message.dto';
 
 @Controller('dm')
 @UseGuards(AuthGuard('jwt'))

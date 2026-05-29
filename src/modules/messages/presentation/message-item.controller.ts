@@ -12,13 +12,13 @@ import { AuthGuard } from '@nestjs/passport';
 
 import { User } from '@/modules/auth/domain/entities/user.entity';
 import { RealtimeEventsService } from '@/modules/realtime-events/realtime-events.service';
-import { DeleteMessageUseCase } from '../application/use-cases/delete-message/delete-message.use-case';
-import { DeleteMessageResponseDto } from '../application/use-cases/delete-message/delete-message.dto';
-import { EditMessageUseCase } from '../application/use-cases/edit-message/edit-message.use-case';
+import { DeleteMessageUseCase } from '@/modules/messages/application/use-cases/delete-message/delete-message.use-case';
+import { DeleteMessageResponseDto } from '@/modules/messages/application/use-cases/delete-message/delete-message.dto';
+import { EditMessageUseCase } from '@/modules/messages/application/use-cases/edit-message/edit-message.use-case';
 import {
   EditMessageDto,
   EditMessageResponseDto,
-} from '../application/use-cases/edit-message/edit-message.dto';
+} from '@/modules/messages/application/use-cases/edit-message/edit-message.dto';
 
 @Controller('messages')
 @UseGuards(AuthGuard('jwt'))
