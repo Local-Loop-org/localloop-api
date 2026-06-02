@@ -330,3 +330,57 @@ describe('DirectMessageTypeORMRepository.getConversationReadState', () => {
     ).resolves.toBeNull();
   });
 });
+
+describe('DirectMessageTypeORMRepository — tombstone mapping (C10 history)', () => {
+  let messagesRepo: jest.Mocked<Repository<DirectMessageOrmEntity>>;
+  let dataSource: jest.Mocked<DataSource>;
+  let repo: DirectMessageTypeORMRepository;
+
+  beforeEach(() => {
+    messagesRepo = {
+      createQueryBuilder: jest.fn(),
+    } as unknown as jest.Mocked<Repository<DirectMessageOrmEntity>>;
+    dataSource = {
+      query: jest.fn(),
+      transaction: jest.fn(),
+    } as unknown as jest.Mocked<DataSource>;
+    repo = new DirectMessageTypeORMRepository(messagesRepo, dataSource);
+  });
+
+  it('maps a soft-deleted row to a tombstone, stripping content + media', async () => {
+    const qb = {
+      innerJoin: jest.fn().mockReturnThis(),
+      leftJoin: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      getRawOne: jest.fn().mockResolvedValue({
+        m_id: 'dm-deleted',
+        m_sender_id: 'sender-1',
+        m_recipient_id: 'recipient-1',
+        m_content: 'secret content',
+        m_media_url: 'https://cdn/secret.jpg',
+        m_media_type: 'IMAGE',
+        m_is_deleted: true,
+        m_edited_at: null,
+        m_reply_to_message_id: null,
+        m_created_at: new Date('2026-05-20T00:00:00Z'),
+        u_display_name: 'Alice',
+        u_avatar_url: null,
+        reply_sender_id: null,
+        reply_content: null,
+        reply_is_deleted: null,
+      }),
+    };
+    (messagesRepo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+
+    const row = await repo.findByIdWithSender('dm-deleted');
+
+    expect(row).toMatchObject({
+      id: 'dm-deleted',
+      isDeleted: true,
+      content: null,
+      mediaUrl: null,
+      mediaType: null,
+    });
+  });
+});
