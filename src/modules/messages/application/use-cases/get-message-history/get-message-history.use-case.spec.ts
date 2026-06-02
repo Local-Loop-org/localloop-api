@@ -111,6 +111,34 @@ describe('GetMessageHistoryUseCase', () => {
     expect(result.next_cursor).toBe('2026-04-24T10:00:00.000Z');
   });
 
+  it('forwards soft-deleted rows as tombstones (isDeleted true, content null)', async () => {
+    groupRepo.findById.mockResolvedValue(buildGroup());
+    groupRepo.findMember.mockResolvedValue(buildMember(MemberStatus.ACTIVE));
+    messageRepo.listByGroup.mockResolvedValue({
+      rows: [
+        buildRow('deleted-1', '2026-04-24T10:05:00Z', {
+          isDeleted: true,
+          content: null,
+          mediaUrl: null,
+          mediaType: null,
+        }),
+        buildRow('m1', '2026-04-24T10:00:00Z'),
+      ],
+      nextCursor: null,
+    });
+
+    const result = await useCase.execute('user-1', 'group-1');
+
+    expect(result.data).toHaveLength(2);
+    expect(result.data[0]).toMatchObject({
+      id: 'deleted-1',
+      isDeleted: true,
+      content: null,
+      mediaUrl: null,
+      mediaType: null,
+    });
+  });
+
   it('applies default limit of 50 when not provided', async () => {
     groupRepo.findById.mockResolvedValue(buildGroup());
     groupRepo.findMember.mockResolvedValue(buildMember(MemberStatus.ACTIVE));

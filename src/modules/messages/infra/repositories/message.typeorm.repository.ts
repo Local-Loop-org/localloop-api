@@ -99,9 +99,11 @@ export class MessageTypeORMRepository implements IMessageRepository {
     limit: number,
     before?: string,
   ): Promise<PaginatedResult<MessageRow>> {
-    const qb = this.baseQuery()
-      .where('m.group_id = :groupId', { groupId })
-      .andWhere('m.is_deleted = false');
+    // Soft-deleted rows are intentionally NOT filtered out: history must keep
+    // returning them as tombstones so the mobile client can render the "deleted
+    // message" bubble after a reload or while paginating. Their content/media is
+    // stripped in rowToMessage so nothing deleted goes over the wire.
+    const qb = this.baseQuery().where('m.group_id = :groupId', { groupId });
 
     if (before) {
       qb.andWhere('m.created_at < :before', { before });
@@ -166,9 +168,11 @@ export class MessageTypeORMRepository implements IMessageRepository {
       senderId: row.m_sender_id,
       senderName: row.u_display_name,
       senderAvatarUrl: row.u_avatar_url,
-      content: row.m_content,
-      mediaUrl: row.m_media_url,
-      mediaType: row.m_media_type,
+      // Tombstone: never ship deleted content/media, mirroring the deleted
+      // reply-parent snippet handling above.
+      content: row.m_is_deleted ? null : row.m_content,
+      mediaUrl: row.m_is_deleted ? null : row.m_media_url,
+      mediaType: row.m_is_deleted ? null : row.m_media_type,
       isDeleted: row.m_is_deleted,
       editedAt: row.m_edited_at,
       replyTo,

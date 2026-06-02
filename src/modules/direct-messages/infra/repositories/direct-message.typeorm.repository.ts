@@ -192,12 +192,14 @@ export class DirectMessageTypeORMRepository implements IDirectMessageRepository 
     limit: number,
     before?: string,
   ): Promise<PaginatedResult<DirectMessageRow>> {
-    const qb = this.baseQuery()
-      .where(
-        '((m.sender_id = :a AND m.recipient_id = :b) OR (m.sender_id = :b AND m.recipient_id = :a))',
-        { a: userAId, b: userBId },
-      )
-      .andWhere('m.is_deleted = false');
+    // Soft-deleted rows are intentionally NOT filtered out: history must keep
+    // returning them as tombstones so the mobile client can render the "deleted
+    // message" bubble after a reload or while paginating. Their content/media is
+    // stripped in rowToDm so nothing deleted goes over the wire.
+    const qb = this.baseQuery().where(
+      '((m.sender_id = :a AND m.recipient_id = :b) OR (m.sender_id = :b AND m.recipient_id = :a))',
+      { a: userAId, b: userBId },
+    );
 
     if (before) {
       qb.andWhere('m.created_at < :before', { before });
@@ -767,9 +769,11 @@ export class DirectMessageTypeORMRepository implements IDirectMessageRepository 
       senderName: row.u_display_name,
       senderAvatarUrl: row.u_avatar_url,
       recipientId: row.m_recipient_id,
-      content: row.m_content,
-      mediaUrl: row.m_media_url,
-      mediaType: row.m_media_type,
+      // Tombstone: never ship deleted content/media, mirroring the deleted
+      // reply-parent snippet handling above.
+      content: row.m_is_deleted ? null : row.m_content,
+      mediaUrl: row.m_is_deleted ? null : row.m_media_url,
+      mediaType: row.m_is_deleted ? null : row.m_media_type,
       isDeleted: row.m_is_deleted,
       editedAt: row.m_edited_at,
       replyTo,

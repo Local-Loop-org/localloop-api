@@ -96,6 +96,33 @@ describe('GetDirectMessageHistoryUseCase', () => {
     expect(result.next_cursor).toBe('2026-05-16T09:59:00.000Z');
   });
 
+  it('forwards soft-deleted rows as tombstones (isDeleted true, content null)', async () => {
+    userRepo.findById.mockResolvedValue(buildUser({ id: OTHER }));
+    directMessageRepo.listConversation.mockResolvedValue({
+      rows: [
+        buildRow('dm-deleted', '2026-05-16T10:01:00Z', OTHER, {
+          isDeleted: true,
+          content: null,
+          mediaUrl: null,
+          mediaType: null,
+        }),
+        buildRow('dm-1', '2026-05-16T10:00:00Z', CALLER),
+      ],
+      nextCursor: null,
+    });
+
+    const result = await useCase.execute(CALLER, OTHER);
+
+    expect(result.data).toHaveLength(2);
+    expect(result.data[0]).toMatchObject({
+      id: 'dm-deleted',
+      isDeleted: true,
+      content: null,
+      mediaUrl: null,
+      mediaType: null,
+    });
+  });
+
   it('returns null read watermarks when no delivered thread state is exposed', async () => {
     userRepo.findById.mockResolvedValue(buildUser({ id: OTHER }));
     directMessageRepo.getConversationReadState.mockResolvedValue(null);
