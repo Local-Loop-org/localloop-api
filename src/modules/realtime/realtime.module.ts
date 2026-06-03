@@ -10,6 +10,7 @@ import { DirectMessageRealtimeEventHandler } from './presentation/direct-message
 import { DmInboxRealtimeService } from './presentation/services/dm-inbox-realtime.service';
 import { DmMessageRealtimeService } from './presentation/services/dm-message-realtime.service';
 import { DmPresenceRealtimeService } from './presentation/services/dm-presence-realtime.service';
+import { DmTypingRealtimeService } from './presentation/services/dm-typing-realtime.service';
 import { GroupMessageRealtimeService } from './presentation/services/group-message-realtime.service';
 import { GroupPresenceRealtimeService } from './presentation/services/group-presence-realtime.service';
 import { GroupSummaryRealtimeService } from './presentation/services/group-summary-realtime.service';
@@ -33,6 +34,7 @@ import { ChatGateway } from './presentation/chat.gateway';
     DmPresenceRealtimeService,
     DmInboxRealtimeService,
     DmMessageRealtimeService,
+    DmTypingRealtimeService,
   ],
 })
 export class RealtimeModule {}

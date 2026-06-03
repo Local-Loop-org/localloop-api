@@ -46,6 +46,11 @@ export interface WatchDmPresencePayload {
   peerId: string;
 }
 
+export interface DmTypingPayload {
+  recipientId: string;
+  isTyping: boolean;
+}
+
 export interface AuthedSocket extends Socket {
   data: { user: User };
 }
