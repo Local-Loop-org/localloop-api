@@ -25,6 +25,7 @@ import { DirectMessagePayload } from '@/modules/direct-messages/application/use-
 import { DmInboxRealtimeService } from '@/modules/realtime/presentation/services/dm-inbox-realtime.service';
 import { DmMessageRealtimeService } from '@/modules/realtime/presentation/services/dm-message-realtime.service';
 import { DmPresenceRealtimeService } from '@/modules/realtime/presentation/services/dm-presence-realtime.service';
+import { DmTypingRealtimeService } from '@/modules/realtime/presentation/services/dm-typing-realtime.service';
 import { GroupMessageRealtimeService } from '@/modules/realtime/presentation/services/group-message-realtime.service';
 import { GroupPresenceRealtimeService } from '@/modules/realtime/presentation/services/group-presence-realtime.service';
 import { GroupSummaryRealtimeService } from '@/modules/realtime/presentation/services/group-summary-realtime.service';
@@ -32,6 +33,7 @@ import {
   AuthedSocket,
   JoinDmPayload,
   JoinGroupPayload,
+  DmTypingPayload,
   MarkDmReadPayload,
   MarkGroupReadPayload,
   SendDmPayload,
@@ -59,6 +61,7 @@ export class ChatGateway
     private readonly dmPresence: DmPresenceRealtimeService,
     private readonly dmInbox: DmInboxRealtimeService,
     private readonly dmMessage: DmMessageRealtimeService,
+    private readonly dmTyping: DmTypingRealtimeService,
   ) {}
 
   afterInit(server: Namespace): void {
@@ -265,6 +268,14 @@ export class ChatGateway
     @MessageBody() payload: WatchDmPresencePayload | undefined,
   ): Promise<void> {
     await this.dmPresence.unwatchDmPresence(socket, payload);
+  }
+
+  @SubscribeMessage(ChatSocketEvents.DM_TYPING)
+  onDmTyping(
+    @ConnectedSocket() socket: AuthedSocket,
+    @MessageBody() payload: DmTypingPayload | undefined,
+  ): void {
+    this.dmTyping.emitDmTyping(this.server, socket, payload);
   }
 
   @SubscribeMessage(ChatSocketEvents.WATCH_DM_INBOX)

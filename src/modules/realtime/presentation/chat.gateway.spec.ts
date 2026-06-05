@@ -27,6 +27,7 @@ import { SendMessageUseCase } from '@/modules/messages/application/use-cases/sen
 import { DmInboxRealtimeService } from '@/modules/realtime/presentation/services/dm-inbox-realtime.service';
 import { DmMessageRealtimeService } from '@/modules/realtime/presentation/services/dm-message-realtime.service';
 import { DmPresenceRealtimeService } from '@/modules/realtime/presentation/services/dm-presence-realtime.service';
+import { DmTypingRealtimeService } from '@/modules/realtime/presentation/services/dm-typing-realtime.service';
 import { GroupMessageRealtimeService } from '@/modules/realtime/presentation/services/group-message-realtime.service';
 import { GroupPresenceRealtimeService } from '@/modules/realtime/presentation/services/group-presence-realtime.service';
 import { GroupSummaryRealtimeService } from '@/modules/realtime/presentation/services/group-summary-realtime.service';
@@ -241,6 +242,7 @@ describe('ChatGateway', () => {
       markDmRead,
       dmInbox,
     );
+    const dmTyping = new DmTypingRealtimeService();
 
     gateway = new ChatGateway(
       jwtService,
@@ -251,6 +253,7 @@ describe('ChatGateway', () => {
       dmPresence,
       dmInbox,
       dmMessage,
+      dmTyping,
     );
     (gateway as unknown as { server: ServerMock }).server = server;
   });
@@ -1077,6 +1080,71 @@ describe('ChatGateway', () => {
         });
 
         expect(socket.leave).toHaveBeenCalledWith(dmPresenceRoomKey('user-2'));
+      });
+    });
+
+    describe('dm typing', () => {
+      it('broadcasts dm_typing_update to the sorted-pair room with the caller as peer', () => {
+        const socket = makeSocket();
+        socket.data.user = buildUser({ id: 'user-1' });
+
+        gateway.onDmTyping(socket as never, {
+          recipientId: 'user-2',
+          isTyping: true,
+        });
+
+        expect(server.to).toHaveBeenCalledWith(dmRoomKey('user-1', 'user-2'));
+        expect(roomEmit).toHaveBeenCalledWith(
+          ChatSocketEvents.DM_TYPING_UPDATE,
+          { peerId: 'user-1', isTyping: true },
+        );
+      });
+
+      it('relays a stop-typing update', () => {
+        const socket = makeSocket();
+        socket.data.user = buildUser({ id: 'user-1' });
+
+        gateway.onDmTyping(socket as never, {
+          recipientId: 'user-2',
+          isTyping: false,
+        });
+
+        expect(roomEmit).toHaveBeenCalledWith(
+          ChatSocketEvents.DM_TYPING_UPDATE,
+          { peerId: 'user-1', isTyping: false },
+        );
+      });
+
+      it('rejects typing to self with BAD_REQUEST and no broadcast', () => {
+        const socket = makeSocket();
+        socket.data.user = buildUser({ id: 'user-1' });
+
+        gateway.onDmTyping(socket as never, {
+          recipientId: 'user-1',
+          isTyping: true,
+        });
+
+        expect(server.to).not.toHaveBeenCalled();
+        expect(socket.emit).toHaveBeenCalledWith(
+          ChatSocketEvents.ERROR,
+          expect.objectContaining({ code: 'BAD_REQUEST' }),
+        );
+      });
+
+      it('rejects an empty recipient with BAD_REQUEST', () => {
+        const socket = makeSocket();
+        socket.data.user = buildUser({ id: 'user-1' });
+
+        gateway.onDmTyping(socket as never, {
+          recipientId: '',
+          isTyping: true,
+        });
+
+        expect(server.to).not.toHaveBeenCalled();
+        expect(socket.emit).toHaveBeenCalledWith(
+          ChatSocketEvents.ERROR,
+          expect.objectContaining({ code: 'BAD_REQUEST' }),
+        );
       });
     });
 
