@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Provider, DmPermission } from '@localloop/shared-types';
 import { User } from '@/modules/auth/domain/entities/user.entity';
 import { IUserRepository } from '@/modules/auth/domain/repositories/i-user.repository';
+import { buildUserRepoMock } from '@/modules/auth/test/user-repo.mock';
 import { RefreshTokenUseCase } from './refresh-token.use-case';
 
 describe('RefreshTokenUseCase', () => {
@@ -28,13 +29,7 @@ describe('RefreshTokenUseCase', () => {
   };
 
   beforeEach(() => {
-    userRepo = {
-      save: jest.fn(),
-      findById: jest.fn(),
-      findByProvider: jest.fn(),
-      updateLastSeen: jest.fn(),
-      updateGeohash: jest.fn(),
-    };
+    userRepo = buildUserRepoMock();
 
     jwtService = {
       verify: jest.fn(),

@@ -8,7 +8,7 @@ import { IUserRepository } from '@/modules/auth/domain/repositories/i-user.repos
 import {
   buildUser,
   buildUserRepoMock,
-} from '@/modules/direct-messages/test/user-repo.mock';
+} from '@/modules/auth/test/user-repo.mock';
 import { buildDirectMessageRepoMock } from '@/modules/direct-messages/test/direct-message-repo.mock';
 import { GetDirectMessageHistoryUseCase } from './get-direct-message-history.use-case';
 
