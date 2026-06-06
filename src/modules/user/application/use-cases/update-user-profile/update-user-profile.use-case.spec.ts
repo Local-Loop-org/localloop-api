@@ -2,6 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 import { DmPermission, Provider } from '@localloop/shared-types';
 import { User } from '@/modules/auth/domain/entities/user.entity';
 import { IUserRepository } from '@/modules/auth/domain/repositories/i-user.repository';
+import { buildUserRepoMock } from '@/modules/auth/test/user-repo.mock';
 import { UpdateUserProfileUseCase } from './update-user-profile.use-case';
 
 describe('UpdateUserProfileUseCase', () => {
@@ -26,13 +27,8 @@ describe('UpdateUserProfileUseCase', () => {
   };
 
   beforeEach(() => {
-    userRepo = {
-      save: jest.fn().mockImplementation(async (u: User) => u),
-      findById: jest.fn(),
-      findByProvider: jest.fn(),
-      updateLastSeen: jest.fn(),
-      updateGeohash: jest.fn(),
-    };
+    userRepo = buildUserRepoMock();
+    userRepo.save.mockImplementation(async (u: User) => u);
 
     useCase = new UpdateUserProfileUseCase(userRepo);
   });

@@ -1,5 +1,6 @@
 import { coordinatesToGeohash } from '@localloop/geo-utils';
 import { IUserRepository } from '@/modules/auth/domain/repositories/i-user.repository';
+import { buildUserRepoMock } from '@/modules/auth/test/user-repo.mock';
 import { UpdateUserLocationUseCase } from './update-user-location.use-case';
 
 describe('UpdateUserLocationUseCase', () => {
@@ -7,13 +8,7 @@ describe('UpdateUserLocationUseCase', () => {
   let userRepo: jest.Mocked<IUserRepository>;
 
   beforeEach(() => {
-    userRepo = {
-      save: jest.fn(),
-      findById: jest.fn(),
-      findByProvider: jest.fn(),
-      updateLastSeen: jest.fn(),
-      updateGeohash: jest.fn(),
-    };
+    userRepo = buildUserRepoMock();
 
     useCase = new UpdateUserLocationUseCase(userRepo);
   });

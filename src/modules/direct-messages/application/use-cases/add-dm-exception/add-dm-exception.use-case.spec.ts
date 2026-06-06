@@ -6,7 +6,7 @@ import { buildDirectMessageRepoMock } from '@/modules/direct-messages/test/direc
 import {
   buildUser,
   buildUserRepoMock,
-} from '@/modules/direct-messages/test/user-repo.mock';
+} from '@/modules/auth/test/user-repo.mock';
 import { AddDmExceptionUseCase } from './add-dm-exception.use-case';
 
 describe('AddDmExceptionUseCase', () => {

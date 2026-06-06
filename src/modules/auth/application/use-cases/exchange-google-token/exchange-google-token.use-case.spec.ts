@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Provider, DmPermission } from '@localloop/shared-types';
 import { User } from '@/modules/auth/domain/entities/user.entity';
 import { IUserRepository } from '@/modules/auth/domain/repositories/i-user.repository';
+import { buildUserRepoMock } from '@/modules/auth/test/user-repo.mock';
 import { SupabaseService } from '@/shared/supabase/supabase.service';
 import { ExchangeGoogleTokenUseCase } from './exchange-google-token.use-case';
 
@@ -47,13 +48,8 @@ describe('ExchangeGoogleTokenUseCase', () => {
   });
 
   beforeEach(() => {
-    userRepo = {
-      save: jest.fn().mockImplementation(async (u: User) => u),
-      findById: jest.fn(),
-      findByProvider: jest.fn(),
-      updateLastSeen: jest.fn(),
-      updateGeohash: jest.fn(),
-    };
+    userRepo = buildUserRepoMock();
+    userRepo.save.mockImplementation(async (u: User) => u);
 
     supabaseService = {
       verifyGoogleToken: jest.fn(),

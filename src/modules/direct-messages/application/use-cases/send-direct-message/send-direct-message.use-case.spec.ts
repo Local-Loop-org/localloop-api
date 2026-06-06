@@ -11,7 +11,7 @@ import { buildGroupRepoMock } from '@/modules/groups/test/group-repo.mock';
 import {
   buildUser,
   buildUserRepoMock,
-} from '@/modules/direct-messages/test/user-repo.mock';
+} from '@/modules/auth/test/user-repo.mock';
 import { buildDirectMessageRepoMock } from '@/modules/direct-messages/test/direct-message-repo.mock';
 import { SendDirectMessageUseCase } from './send-direct-message.use-case';
 
