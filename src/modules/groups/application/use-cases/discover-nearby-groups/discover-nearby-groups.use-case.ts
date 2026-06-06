@@ -54,6 +54,8 @@ export class DiscoverNearbyGroupsUseCase {
         anchorType: row.group.anchorType,
         anchorLabel: row.group.anchorLabel,
         distanceMeters: distance,
+        anchorLat: row.group.anchorLat,
+        anchorLng: row.group.anchorLng,
         privacy: row.group.privacy,
         memberCount: row.group.memberCount,
         radiusKm: row.group.radiusKm,

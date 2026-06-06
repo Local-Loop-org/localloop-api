@@ -70,6 +70,8 @@ describe('DiscoverNearbyGroupsUseCase', () => {
     expect(dto.description).toBe('Weekly runs');
     expect(dto.anchorType).toBe(AnchorType.NEIGHBORHOOD);
     expect(dto.anchorLabel).toBe('Morumbi');
+    expect(dto.anchorLat).toBe(userLat);
+    expect(dto.anchorLng).toBe(userLng);
     expect(dto.privacy).toBe(GroupPrivacy.OPEN);
     expect(dto.memberCount).toBe(5);
     expect(dto.radiusKm).toBe(5);
