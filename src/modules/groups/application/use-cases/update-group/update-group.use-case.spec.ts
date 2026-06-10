@@ -1,4 +1,5 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { coordinatesToGeohash } from '@localloop/geo-utils';
 import {
   AnchorType,
   GroupPrivacy,
@@ -133,6 +134,48 @@ describe('UpdateGroupUseCase', () => {
     expect(result.radiusKm).toBe(5);
   });
 
+  it('allows OWNER to relocate the group anchor', async () => {
+    const lat = -25.4284;
+    const lng = -49.2733;
+    const anchorGeohash = coordinatesToGeohash(lat, lng);
+    const updatedGroup = new Group(
+      'group-1',
+      'Original Name',
+      'Original description',
+      AnchorType.ESTABLISHMENT,
+      anchorGeohash,
+      lat,
+      lng,
+      'Original Label',
+      GroupPrivacy.OPEN,
+      5,
+      'owner-1',
+      10,
+      true,
+      new Date('2026-01-01T00:00:00Z'),
+    );
+    groupRepo.findById.mockResolvedValueOnce(group);
+    groupRepo.findMember.mockResolvedValueOnce(
+      buildMember('owner-1', MemberRole.OWNER),
+    );
+    groupRepo.updateGroup.mockResolvedValueOnce(updatedGroup);
+
+    const result = await useCase.execute('owner-1', 'group-1', { lat, lng });
+
+    expect(groupRepo.updateGroup).toHaveBeenCalledWith('group-1', {
+      name: undefined,
+      description: undefined,
+      anchorLabel: undefined,
+      privacy: undefined,
+      radiusKm: undefined,
+      anchorLat: lat,
+      anchorLng: lng,
+      anchorGeohash,
+    });
+    expect(result.anchorLat).toBe(lat);
+    expect(result.anchorLng).toBe(lng);
+  });
+
   it('allows MODERATOR to update and returns updated GroupDetailDto', async () => {
     const updatedGroup = new Group(
       'group-1',
@@ -171,6 +214,43 @@ describe('UpdateGroupUseCase', () => {
     expect(result.privacy).toBe(GroupPrivacy.APPROVAL_REQUIRED);
     expect(result.description).toBeNull();
     expect(result.myRole).toBe(MemberRole.MODERATOR);
+  });
+
+  it('allows a privileged member to clear the anchor label', async () => {
+    const updatedGroup = new Group(
+      'group-1',
+      'Original Name',
+      'Original description',
+      AnchorType.ESTABLISHMENT,
+      'abc123',
+      -23.55,
+      -46.63,
+      null,
+      GroupPrivacy.OPEN,
+      5,
+      'owner-1',
+      10,
+      true,
+      new Date('2026-01-01T00:00:00Z'),
+    );
+    groupRepo.findById.mockResolvedValueOnce(group);
+    groupRepo.findMember.mockResolvedValueOnce(
+      buildMember('owner-1', MemberRole.OWNER),
+    );
+    groupRepo.updateGroup.mockResolvedValueOnce(updatedGroup);
+
+    const result = await useCase.execute('owner-1', 'group-1', {
+      anchorLabel: null,
+    });
+
+    expect(groupRepo.updateGroup).toHaveBeenCalledWith('group-1', {
+      name: undefined,
+      description: undefined,
+      anchorLabel: null,
+      privacy: undefined,
+      radiusKm: undefined,
+    });
+    expect(result.anchorLabel).toBeNull();
   });
 
   it('passes only the provided fields to updateGroup', async () => {

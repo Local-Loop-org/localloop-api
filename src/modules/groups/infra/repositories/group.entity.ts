@@ -49,8 +49,8 @@ export class GroupOrmEntity {
   })
   anchorLng!: number;
 
-  @Column({ name: 'anchor_label', type: 'varchar', length: 100 })
-  anchorLabel!: string;
+  @Column({ name: 'anchor_label', type: 'varchar', length: 100, nullable: true })
+  anchorLabel!: string | null;
 
   @Column({
     type: 'enum',

@@ -26,10 +26,10 @@ export class CreateGroupDto {
   @IsEnum(AnchorType)
   anchorType!: AnchorType;
 
+  @IsOptional()
   @IsString()
-  @MinLength(1)
   @MaxLength(100)
-  anchorLabel!: string;
+  anchorLabel?: string | null;
 
   @IsNumber()
   @Min(-90)
@@ -56,7 +56,7 @@ export class CreateGroupResponseDto {
   id!: string;
   name!: string;
   anchorType!: AnchorType;
-  anchorLabel!: string;
+  anchorLabel!: string | null;
   privacy!: GroupPrivacy;
   radiusKm!: number;
   memberCount!: number;

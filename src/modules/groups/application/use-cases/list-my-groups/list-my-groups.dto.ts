@@ -25,7 +25,7 @@ export class MyGroupDto {
   id!: string;
   name!: string;
   anchorType!: AnchorType;
-  anchorLabel!: string;
+  anchorLabel!: string | null;
   memberCount!: number;
   myRole!: MemberRole;
   lastActivityAt!: string;

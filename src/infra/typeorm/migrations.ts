@@ -9,6 +9,7 @@ import { CreateDirectMessages1717000000000 } from '@/infra/migrations/1717000000
 import { AddDmInboxSupport1717100000000 } from '@/infra/migrations/1717100000000-AddDmInboxSupport';
 import { AddChatNotificationDigests1717200000000 } from '@/infra/migrations/1717200000000-AddChatNotificationDigests';
 import { AddMessageReplyAndEditedColumns1717300000000 } from '@/infra/migrations/1717300000000-AddMessageReplyAndEditedColumns';
+import { MakeGroupAnchorLabelNullable1717400000000 } from '@/infra/migrations/1717400000000-MakeGroupAnchorLabelNullable';
 
 export const typeormMigrations = [
   InitialSetup1710770000000,
@@ -22,4 +23,5 @@ export const typeormMigrations = [
   AddDmInboxSupport1717100000000,
   AddChatNotificationDigests1717200000000,
   AddMessageReplyAndEditedColumns1717300000000,
+  MakeGroupAnchorLabelNullable1717400000000,
 ];

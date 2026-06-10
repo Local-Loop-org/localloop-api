@@ -17,7 +17,7 @@ export interface CreateGroupData {
   anchorGeohash: string;
   anchorLat: number;
   anchorLng: number;
-  anchorLabel: string;
+  anchorLabel: string | null;
   privacy: GroupPrivacy;
   radiusKm: number;
   ownerId: string;
@@ -27,7 +27,10 @@ export interface CreateGroupData {
 export interface UpdateGroupData {
   name?: string;
   description?: string | null;
-  anchorLabel?: string;
+  anchorLabel?: string | null;
+  anchorGeohash?: string;
+  anchorLat?: number;
+  anchorLng?: number;
   privacy?: GroupPrivacy;
   radiusKm?: number;
 }
@@ -49,7 +52,7 @@ export interface MyGroupRow {
   id: string;
   name: string;
   anchorType: AnchorType;
-  anchorLabel: string;
+  anchorLabel: string | null;
   memberCount: number;
   myRole: MemberRole;
   lastActivityAt: Date;

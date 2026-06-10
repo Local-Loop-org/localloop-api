@@ -9,7 +9,7 @@ export class Group {
     public anchorGeohash: string,
     public anchorLat: number,
     public anchorLng: number,
-    public anchorLabel: string,
+    public anchorLabel: string | null,
     public privacy: GroupPrivacy,
     public radiusKm: number,
     public readonly ownerId: string,

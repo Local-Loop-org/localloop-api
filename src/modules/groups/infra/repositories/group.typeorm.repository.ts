@@ -42,7 +42,7 @@ interface MyGroupListRawRow extends MyGroupSummaryColumns {
   g_id: string;
   g_name: string;
   g_anchor_type: AnchorType;
-  g_anchor_label: string;
+  g_anchor_label: string | null;
   g_member_count: number | string;
   gm_role: MemberRole;
   gm_joined_at: Date;

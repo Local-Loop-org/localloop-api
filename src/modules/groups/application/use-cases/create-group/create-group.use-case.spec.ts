@@ -134,4 +134,24 @@ describe('CreateGroupUseCase', () => {
       null,
     );
   });
+
+  it('stores null when anchorLabel is omitted', async () => {
+    const dto = buildDto();
+    delete dto.anchorLabel;
+    groupRepo.createGroupWithOwner.mockResolvedValue(
+      buildGroup({ anchorLabel: null }),
+    );
+
+    await useCase.execute('user-1', dto);
+
+    expect(groupRepo.createGroupWithOwner.mock.calls[0][0].anchorLabel).toBeNull();
+  });
+
+  it('stores null when anchorLabel is blank', async () => {
+    groupRepo.createGroupWithOwner.mockResolvedValue(buildGroup({ anchorLabel: null }));
+
+    await useCase.execute('user-1', buildDto({ anchorLabel: '   ' }));
+
+    expect(groupRepo.createGroupWithOwner.mock.calls[0][0].anchorLabel).toBeNull();
+  });
 });

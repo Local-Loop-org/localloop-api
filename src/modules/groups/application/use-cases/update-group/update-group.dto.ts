@@ -1,5 +1,6 @@
 import {
   IsEnum,
+  IsDefined,
   IsNumber,
   IsOptional,
   IsString,
@@ -7,10 +8,14 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { GroupPrivacy } from '@localloop/shared-types';
 import { RADIUS_KM_MAX, RADIUS_KM_MIN } from '@domain/anchor-radius-defaults';
+
+const hasCoordinate = (dto: UpdateGroupDto) =>
+  dto.lat !== undefined || dto.lng !== undefined;
 
 export class UpdateGroupDto {
   @IsOptional()
@@ -26,9 +31,8 @@ export class UpdateGroupDto {
 
   @IsOptional()
   @IsString()
-  @MinLength(1)
   @MaxLength(100)
-  anchorLabel?: string;
+  anchorLabel?: string | null;
 
   @IsOptional()
   @IsEnum(GroupPrivacy)
@@ -40,4 +44,20 @@ export class UpdateGroupDto {
   @Min(RADIUS_KM_MIN)
   @Max(RADIUS_KM_MAX)
   radiusKm?: number;
+
+  @ValidateIf(hasCoordinate)
+  @IsDefined()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  lat?: number;
+
+  @ValidateIf(hasCoordinate)
+  @IsDefined()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  lng?: number;
 }

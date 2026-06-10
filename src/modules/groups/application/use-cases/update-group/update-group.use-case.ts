@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { coordinatesToGeohash } from '@localloop/geo-utils';
 import { MemberRole, MemberStatus } from '@localloop/shared-types';
 import {
   GROUP_REPOSITORY,
@@ -45,12 +46,24 @@ export class UpdateGroupUseCase {
       });
     }
 
+    const anchorUpdate =
+      dto.lat !== undefined && dto.lng !== undefined
+        ? {
+            anchorLat: dto.lat,
+            anchorLng: dto.lng,
+            anchorGeohash: coordinatesToGeohash(dto.lat, dto.lng),
+          }
+        : {};
+    const anchorLabel =
+      dto.anchorLabel === undefined ? undefined : dto.anchorLabel?.trim() || null;
+
     const updated = await this.groupRepo.updateGroup(groupId, {
       name: dto.name,
       description: dto.description,
-      anchorLabel: dto.anchorLabel,
+      anchorLabel,
       privacy: dto.privacy,
       radiusKm: dto.radiusKm,
+      ...anchorUpdate,
     });
 
     return {
