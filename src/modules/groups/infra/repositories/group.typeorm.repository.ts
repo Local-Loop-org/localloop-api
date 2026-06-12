@@ -106,6 +106,8 @@ export class GroupTypeORMRepository implements IGroupRepository {
         radiusKm: data.radiusKm,
         ownerId: data.ownerId,
         memberCount: data.memberCount,
+        sendTextPerm: data.sendTextPerm,
+        sendMediaPerm: data.sendMediaPerm,
         isActive: true,
       });
       const savedGroup = await manager.save(group);

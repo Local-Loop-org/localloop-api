@@ -5,8 +5,19 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { MemberStatus } from '@localloop/shared-types';
+import {
+  MemberRole,
+  MemberStatus,
+  MessagePermission,
+} from '@localloop/shared-types';
+import { getNeighborCells } from '@localloop/geo-utils';
 
+import {
+  IUserRepository,
+  USER_REPOSITORY,
+} from '@/modules/auth/domain/repositories/i-user.repository';
+import { Group } from '@/modules/groups/domain/entities/group.entity';
+import { GroupMember } from '@/modules/groups/domain/entities/group-member.entity';
 import {
   GROUP_REPOSITORY,
   IGroupRepository,
@@ -23,6 +34,7 @@ export class SendMessageUseCase {
     @Inject(MESSAGE_REPOSITORY)
     private readonly messageRepo: IMessageRepository,
     @Inject(GROUP_REPOSITORY) private readonly groupRepo: IGroupRepository,
+    @Inject(USER_REPOSITORY) private readonly userRepo: IUserRepository,
   ) {}
 
   async execute(
@@ -53,6 +65,8 @@ export class SendMessageUseCase {
         message: 'Only active members can send messages',
       });
     }
+
+    await this.assertSendTextAllowed(group, member);
 
     if (dto.replyToMessageId) {
       const parent = await this.messageRepo.findById(dto.replyToMessageId);
@@ -107,5 +121,53 @@ export class SendMessageUseCase {
       replyTo: row.replyTo,
       createdAt: row.createdAt.toISOString(),
     };
+  }
+
+  private async assertSendTextAllowed(
+    group: Group,
+    member: GroupMember,
+  ): Promise<void> {
+    switch (group.sendTextPerm) {
+      case MessagePermission.ALL_MEMBERS:
+        return;
+
+      case MessagePermission.ADMIN_ONLY: {
+        const isPrivileged =
+          member.role === MemberRole.OWNER ||
+          member.role === MemberRole.MODERATOR;
+        if (!isPrivileged) {
+          throw new ForbiddenException({
+            error: 'SEND_PERMISSION_DENIED',
+            message:
+              'Only owners or moderators can send messages in this group',
+          });
+        }
+        return;
+      }
+
+      case MessagePermission.MEMBERS_IN_RADIUS: {
+        const sender = await this.userRepo.findById(member.userId);
+        const senderCell = sender?.geohash ?? null;
+        if (!senderCell) {
+          throw new ForbiddenException({
+            error: 'SEND_PERMISSION_DENIED',
+            message:
+              'Your location is unknown; update it to send messages in this group',
+          });
+        }
+        const allowedCells = [
+          group.anchorGeohash,
+          ...getNeighborCells(group.anchorGeohash),
+        ];
+        if (!allowedCells.includes(senderCell)) {
+          throw new ForbiddenException({
+            error: 'SEND_PERMISSION_DENIED',
+            message:
+              'You must be near the group anchor to send messages in this group',
+          });
+        }
+        return;
+      }
+    }
   }
 }

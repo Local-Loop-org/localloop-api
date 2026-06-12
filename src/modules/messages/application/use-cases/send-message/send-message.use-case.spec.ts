@@ -8,7 +8,9 @@ import {
   GroupPrivacy,
   MemberRole,
   MemberStatus,
+  MessagePermission,
 } from '@localloop/shared-types';
+import { getNeighborCells } from '@localloop/geo-utils';
 
 import { Group } from '@/modules/groups/domain/entities/group.entity';
 import { GroupMember } from '@/modules/groups/domain/entities/group-member.entity';
@@ -20,14 +22,19 @@ import {
 import { SendMessageUseCase } from './send-message.use-case';
 import { buildGroupRepoMock } from '@/modules/groups/test/group-repo.mock';
 import { buildMessageRepoMock } from '@/modules/messages/test/message-repo.mock';
+import {
+  buildUser,
+  buildUserRepoMock,
+} from '@/modules/auth/test/user-repo.mock';
 
 describe('SendMessageUseCase', () => {
   let useCase: SendMessageUseCase;
   let messageRepo: jest.Mocked<IMessageRepository>;
   let groupRepo: ReturnType<typeof buildGroupRepoMock>;
+  let userRepo: ReturnType<typeof buildUserRepoMock>;
 
-  const buildGroup = (): Group =>
-    new Group(
+  const buildGroup = (overrides: Partial<Group> = {}): Group => {
+    const g = new Group(
       'group-1',
       'Morumbi Runners',
       null,
@@ -43,16 +50,15 @@ describe('SendMessageUseCase', () => {
       true,
       new Date('2026-04-23T00:00:00Z'),
     );
+    Object.assign(g, overrides);
+    return g;
+  };
 
-  const buildMember = (status: MemberStatus): GroupMember =>
-    new GroupMember(
-      'mem-1',
-      'group-1',
-      'user-1',
-      MemberRole.MEMBER,
-      status,
-      new Date(),
-    );
+  const buildMember = (
+    status: MemberStatus,
+    role: MemberRole = MemberRole.MEMBER,
+  ): GroupMember =>
+    new GroupMember('mem-1', 'group-1', 'user-1', role, status, new Date());
 
   const buildMessage = (): Message =>
     new Message({
@@ -87,7 +93,8 @@ describe('SendMessageUseCase', () => {
   beforeEach(() => {
     messageRepo = buildMessageRepoMock();
     groupRepo = buildGroupRepoMock();
-    useCase = new SendMessageUseCase(messageRepo, groupRepo);
+    userRepo = buildUserRepoMock();
+    useCase = new SendMessageUseCase(messageRepo, groupRepo, userRepo);
   });
 
   it('persists the message and returns it enriched with sender info', async () => {
@@ -179,6 +186,122 @@ describe('SendMessageUseCase', () => {
       useCase.execute('user-1', 'group-1', { content: 'hi' }),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(messageRepo.create).not.toHaveBeenCalled();
+  });
+
+  describe('sendTextPerm policy', () => {
+    const happyPathMocks = () => {
+      messageRepo.create.mockResolvedValue(buildMessage());
+      messageRepo.findByIdWithSender.mockResolvedValue(buildRow());
+    };
+
+    it('skips the sender lookup entirely under ALL_MEMBERS', async () => {
+      groupRepo.findById.mockResolvedValue(buildGroup());
+      groupRepo.findMember.mockResolvedValue(buildMember(MemberStatus.ACTIVE));
+      happyPathMocks();
+
+      await useCase.execute('user-1', 'group-1', { content: 'hi' });
+
+      expect(userRepo.findById).not.toHaveBeenCalled();
+    });
+
+    describe('ADMIN_ONLY', () => {
+      const adminOnlyGroup = () =>
+        buildGroup({ sendTextPerm: MessagePermission.ADMIN_ONLY });
+
+      it('rejects plain members', async () => {
+        groupRepo.findById.mockResolvedValue(adminOnlyGroup());
+        groupRepo.findMember.mockResolvedValue(
+          buildMember(MemberStatus.ACTIVE, MemberRole.MEMBER),
+        );
+
+        await expect(
+          useCase.execute('user-1', 'group-1', { content: 'hi' }),
+        ).rejects.toBeInstanceOf(ForbiddenException);
+        expect(messageRepo.create).not.toHaveBeenCalled();
+      });
+
+      it.each([MemberRole.OWNER, MemberRole.MODERATOR])(
+        'allows %s senders',
+        async (role) => {
+          groupRepo.findById.mockResolvedValue(adminOnlyGroup());
+          groupRepo.findMember.mockResolvedValue(
+            buildMember(MemberStatus.ACTIVE, role),
+          );
+          happyPathMocks();
+
+          await useCase.execute('user-1', 'group-1', { content: 'hi' });
+
+          expect(messageRepo.create).toHaveBeenCalled();
+        },
+      );
+    });
+
+    describe('MEMBERS_IN_RADIUS', () => {
+      const anchorCell = '6gyf4';
+      const radiusGroup = () =>
+        buildGroup({ sendTextPerm: MessagePermission.MEMBERS_IN_RADIUS });
+
+      it('allows a sender whose geohash equals the anchor cell', async () => {
+        groupRepo.findById.mockResolvedValue(radiusGroup());
+        groupRepo.findMember.mockResolvedValue(
+          buildMember(MemberStatus.ACTIVE),
+        );
+        userRepo.findById.mockResolvedValue(
+          buildUser({ id: 'user-1', geohash: anchorCell }),
+        );
+        happyPathMocks();
+
+        await useCase.execute('user-1', 'group-1', { content: 'hi' });
+
+        expect(userRepo.findById).toHaveBeenCalledWith('user-1');
+        expect(messageRepo.create).toHaveBeenCalled();
+      });
+
+      it('allows a sender located in a neighbor cell of the anchor', async () => {
+        groupRepo.findById.mockResolvedValue(radiusGroup());
+        groupRepo.findMember.mockResolvedValue(
+          buildMember(MemberStatus.ACTIVE),
+        );
+        userRepo.findById.mockResolvedValue(
+          buildUser({ id: 'user-1', geohash: getNeighborCells(anchorCell)[0] }),
+        );
+        happyPathMocks();
+
+        await useCase.execute('user-1', 'group-1', { content: 'hi' });
+
+        expect(messageRepo.create).toHaveBeenCalled();
+      });
+
+      it('rejects a sender outside the anchor neighborhood', async () => {
+        groupRepo.findById.mockResolvedValue(radiusGroup());
+        groupRepo.findMember.mockResolvedValue(
+          buildMember(MemberStatus.ACTIVE),
+        );
+        userRepo.findById.mockResolvedValue(
+          buildUser({ id: 'user-1', geohash: 'dr5ru7' }),
+        );
+
+        await expect(
+          useCase.execute('user-1', 'group-1', { content: 'hi' }),
+        ).rejects.toBeInstanceOf(ForbiddenException);
+        expect(messageRepo.create).not.toHaveBeenCalled();
+      });
+
+      it('rejects a sender with no known geohash', async () => {
+        groupRepo.findById.mockResolvedValue(radiusGroup());
+        groupRepo.findMember.mockResolvedValue(
+          buildMember(MemberStatus.ACTIVE),
+        );
+        userRepo.findById.mockResolvedValue(
+          buildUser({ id: 'user-1', geohash: null }),
+        );
+
+        await expect(
+          useCase.execute('user-1', 'group-1', { content: 'hi' }),
+        ).rejects.toBeInstanceOf(ForbiddenException);
+        expect(messageRepo.create).not.toHaveBeenCalled();
+      });
+    });
   });
 
   describe('replyToMessageId', () => {

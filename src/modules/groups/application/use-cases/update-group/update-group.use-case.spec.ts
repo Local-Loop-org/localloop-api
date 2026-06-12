@@ -5,6 +5,7 @@ import {
   GroupPrivacy,
   MemberRole,
   MemberStatus,
+  MessagePermission,
 } from '@localloop/shared-types';
 import { Group } from '@domain/entities/group.entity';
 import { GroupMember } from '@domain/entities/group-member.entity';
@@ -251,6 +252,49 @@ describe('UpdateGroupUseCase', () => {
       radiusKm: undefined,
     });
     expect(result.anchorLabel).toBeNull();
+  });
+
+  it('allows a privileged member to change the send permissions', async () => {
+    const updatedGroup = new Group(
+      'group-1',
+      'Original Name',
+      'Original description',
+      AnchorType.ESTABLISHMENT,
+      'abc123',
+      -23.55,
+      -46.63,
+      'Original Label',
+      GroupPrivacy.OPEN,
+      5,
+      'owner-1',
+      10,
+      true,
+      new Date('2026-01-01T00:00:00Z'),
+      MessagePermission.ADMIN_ONLY,
+      MessagePermission.MEMBERS_IN_RADIUS,
+    );
+    groupRepo.findById.mockResolvedValueOnce(group);
+    groupRepo.findMember.mockResolvedValueOnce(
+      buildMember('owner-1', MemberRole.OWNER),
+    );
+    groupRepo.updateGroup.mockResolvedValueOnce(updatedGroup);
+
+    const result = await useCase.execute('owner-1', 'group-1', {
+      sendTextPerm: MessagePermission.ADMIN_ONLY,
+      sendMediaPerm: MessagePermission.MEMBERS_IN_RADIUS,
+    });
+
+    expect(groupRepo.updateGroup).toHaveBeenCalledWith('group-1', {
+      name: undefined,
+      description: undefined,
+      anchorLabel: undefined,
+      privacy: undefined,
+      radiusKm: undefined,
+      sendTextPerm: MessagePermission.ADMIN_ONLY,
+      sendMediaPerm: MessagePermission.MEMBERS_IN_RADIUS,
+    });
+    expect(result.sendTextPerm).toBe(MessagePermission.ADMIN_ONLY);
+    expect(result.sendMediaPerm).toBe(MessagePermission.MEMBERS_IN_RADIUS);
   });
 
   it('passes only the provided fields to updateGroup', async () => {

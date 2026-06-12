@@ -1,5 +1,9 @@
 import { coordinatesToGeohash } from '@localloop/geo-utils';
-import { AnchorType, GroupPrivacy } from '@localloop/shared-types';
+import {
+  AnchorType,
+  GroupPrivacy,
+  MessagePermission,
+} from '@localloop/shared-types';
 import { Group } from '@domain/entities/group.entity';
 import { CreateGroupUseCase } from './create-group.use-case';
 import { CreateGroupDto } from './create-group.dto';
@@ -66,6 +70,8 @@ describe('CreateGroupUseCase', () => {
       radiusKm: 2,
       ownerId: 'user-1',
       memberCount: 1,
+      sendTextPerm: MessagePermission.ALL_MEMBERS,
+      sendMediaPerm: MessagePermission.ALL_MEMBERS,
     });
     expect(result).toEqual({
       id: 'group-1',
@@ -144,14 +150,46 @@ describe('CreateGroupUseCase', () => {
 
     await useCase.execute('user-1', dto);
 
-    expect(groupRepo.createGroupWithOwner.mock.calls[0][0].anchorLabel).toBeNull();
+    expect(
+      groupRepo.createGroupWithOwner.mock.calls[0][0].anchorLabel,
+    ).toBeNull();
   });
 
   it('stores null when anchorLabel is blank', async () => {
-    groupRepo.createGroupWithOwner.mockResolvedValue(buildGroup({ anchorLabel: null }));
+    groupRepo.createGroupWithOwner.mockResolvedValue(
+      buildGroup({ anchorLabel: null }),
+    );
 
     await useCase.execute('user-1', buildDto({ anchorLabel: '   ' }));
 
-    expect(groupRepo.createGroupWithOwner.mock.calls[0][0].anchorLabel).toBeNull();
+    expect(
+      groupRepo.createGroupWithOwner.mock.calls[0][0].anchorLabel,
+    ).toBeNull();
+  });
+
+  it('persists explicit send permissions when provided', async () => {
+    groupRepo.createGroupWithOwner.mockResolvedValue(buildGroup());
+
+    await useCase.execute(
+      'user-1',
+      buildDto({
+        sendTextPerm: MessagePermission.ADMIN_ONLY,
+        sendMediaPerm: MessagePermission.MEMBERS_IN_RADIUS,
+      }),
+    );
+
+    const data = groupRepo.createGroupWithOwner.mock.calls[0][0];
+    expect(data.sendTextPerm).toBe(MessagePermission.ADMIN_ONLY);
+    expect(data.sendMediaPerm).toBe(MessagePermission.MEMBERS_IN_RADIUS);
+  });
+
+  it('defaults both send permissions to ALL_MEMBERS when omitted', async () => {
+    groupRepo.createGroupWithOwner.mockResolvedValue(buildGroup());
+
+    await useCase.execute('user-1', buildDto());
+
+    const data = groupRepo.createGroupWithOwner.mock.calls[0][0];
+    expect(data.sendTextPerm).toBe(MessagePermission.ALL_MEMBERS);
+    expect(data.sendMediaPerm).toBe(MessagePermission.ALL_MEMBERS);
   });
 });

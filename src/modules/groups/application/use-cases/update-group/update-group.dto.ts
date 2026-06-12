@@ -11,7 +11,7 @@ import {
   ValidateIf,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { GroupPrivacy } from '@localloop/shared-types';
+import { GroupPrivacy, MessagePermission } from '@localloop/shared-types';
 import { RADIUS_KM_MAX, RADIUS_KM_MIN } from '@domain/anchor-radius-defaults';
 
 const hasCoordinate = (dto: UpdateGroupDto) =>
@@ -44,6 +44,14 @@ export class UpdateGroupDto {
   @Min(RADIUS_KM_MIN)
   @Max(RADIUS_KM_MAX)
   radiusKm?: number;
+
+  @IsOptional()
+  @IsEnum(MessagePermission)
+  sendTextPerm?: MessagePermission;
+
+  @IsOptional()
+  @IsEnum(MessagePermission)
+  sendMediaPerm?: MessagePermission;
 
   @ValidateIf(hasCoordinate)
   @IsDefined()

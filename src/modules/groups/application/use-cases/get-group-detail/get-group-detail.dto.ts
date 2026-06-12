@@ -1,4 +1,9 @@
-import { AnchorType, GroupPrivacy, MemberRole } from '@localloop/shared-types';
+import {
+  AnchorType,
+  GroupPrivacy,
+  MemberRole,
+  MessagePermission,
+} from '@localloop/shared-types';
 
 export class GroupDetailDto {
   id!: string;
@@ -11,6 +16,8 @@ export class GroupDetailDto {
   privacy!: GroupPrivacy;
   radiusKm!: number;
   memberCount!: number;
+  sendTextPerm!: MessagePermission;
+  sendMediaPerm!: MessagePermission;
   myRole!: MemberRole | null;
   createdAt!: string;
 }

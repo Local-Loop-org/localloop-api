@@ -5,7 +5,11 @@ import {
   CreateDateColumn,
   Index,
 } from 'typeorm';
-import { AnchorType, GroupPrivacy } from '@localloop/shared-types';
+import {
+  AnchorType,
+  GroupPrivacy,
+  MessagePermission,
+} from '@localloop/shared-types';
 
 // pg returns NUMERIC as a string; coerce back to number on read.
 const numericTransformer = {
@@ -49,7 +53,12 @@ export class GroupOrmEntity {
   })
   anchorLng!: number;
 
-  @Column({ name: 'anchor_label', type: 'varchar', length: 100, nullable: true })
+  @Column({
+    name: 'anchor_label',
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+  })
   anchorLabel!: string | null;
 
   @Column({
@@ -72,6 +81,24 @@ export class GroupOrmEntity {
   @Column({ name: 'owner_id', type: 'uuid' })
   @Index()
   ownerId!: string;
+
+  @Column({
+    name: 'send_text_perm',
+    type: 'enum',
+    enum: MessagePermission,
+    enumName: 'message_permission_enum',
+    default: MessagePermission.ALL_MEMBERS,
+  })
+  sendTextPerm!: MessagePermission;
+
+  @Column({
+    name: 'send_media_perm',
+    type: 'enum',
+    enum: MessagePermission,
+    enumName: 'message_permission_enum',
+    default: MessagePermission.ALL_MEMBERS,
+  })
+  sendMediaPerm!: MessagePermission;
 
   @Column({ name: 'member_count', type: 'int', default: 0 })
   memberCount!: number;
