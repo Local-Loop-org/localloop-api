@@ -36,6 +36,8 @@ export class GetGroupDetailUseCase {
       privacy: group.privacy,
       radiusKm: group.radiusKm,
       memberCount: group.memberCount,
+      sendTextPerm: group.sendTextPerm,
+      sendMediaPerm: group.sendMediaPerm,
       myRole,
       createdAt: group.createdAt.toISOString(),
     };

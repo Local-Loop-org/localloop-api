@@ -4,6 +4,7 @@ import {
   GroupPrivacy,
   MemberRole,
   MemberStatus,
+  MessagePermission,
 } from '@localloop/shared-types';
 import { Group } from '@domain/entities/group.entity';
 import { GroupMember } from '@domain/entities/group-member.entity';
@@ -72,6 +73,23 @@ describe('GetGroupDetailUseCase', () => {
     expect(result.anchorLat).toBe(-23.55);
     expect(result.anchorLng).toBe(-46.63);
     expect(result.memberCount).toBe(12);
+  });
+
+  it('exposes the group send permissions in the detail response', async () => {
+    groupRepo.findById.mockResolvedValue(
+      buildGroup({
+        sendTextPerm: MessagePermission.ADMIN_ONLY,
+        sendMediaPerm: MessagePermission.MEMBERS_IN_RADIUS,
+      }),
+    );
+    groupRepo.findMember.mockResolvedValue(
+      buildMember(MemberRole.MEMBER, MemberStatus.ACTIVE),
+    );
+
+    const result = await useCase.execute('user-1', 'group-1');
+
+    expect(result.sendTextPerm).toBe(MessagePermission.ADMIN_ONLY);
+    expect(result.sendMediaPerm).toBe(MessagePermission.MEMBERS_IN_RADIUS);
   });
 
   it('returns myRole null when caller has no membership record', async () => {

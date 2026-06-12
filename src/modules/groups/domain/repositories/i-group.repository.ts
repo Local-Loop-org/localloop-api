@@ -6,6 +6,7 @@ import {
   GroupPrivacy,
   MemberRole,
   MemberStatus,
+  MessagePermission,
   RequestStatus,
 } from '@localloop/shared-types';
 import { LastMessageSummary, PaginatedResult } from '@/shared/pagination/types';
@@ -22,6 +23,8 @@ export interface CreateGroupData {
   radiusKm: number;
   ownerId: string;
   memberCount: number;
+  sendTextPerm: MessagePermission;
+  sendMediaPerm: MessagePermission;
 }
 
 export interface UpdateGroupData {
@@ -33,6 +36,8 @@ export interface UpdateGroupData {
   anchorLng?: number;
   privacy?: GroupPrivacy;
   radiusKm?: number;
+  sendTextPerm?: MessagePermission;
+  sendMediaPerm?: MessagePermission;
 }
 
 export interface JoinRequestWithRequester {

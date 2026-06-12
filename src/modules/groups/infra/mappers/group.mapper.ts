@@ -22,6 +22,8 @@ export class GroupMapper {
       e.memberCount,
       e.isActive,
       e.createdAt,
+      e.sendTextPerm,
+      e.sendMediaPerm,
     );
   }
 

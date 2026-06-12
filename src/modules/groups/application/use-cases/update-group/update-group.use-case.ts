@@ -55,7 +55,9 @@ export class UpdateGroupUseCase {
           }
         : {};
     const anchorLabel =
-      dto.anchorLabel === undefined ? undefined : dto.anchorLabel?.trim() || null;
+      dto.anchorLabel === undefined
+        ? undefined
+        : dto.anchorLabel?.trim() || null;
 
     const updated = await this.groupRepo.updateGroup(groupId, {
       name: dto.name,
@@ -63,6 +65,8 @@ export class UpdateGroupUseCase {
       anchorLabel,
       privacy: dto.privacy,
       radiusKm: dto.radiusKm,
+      sendTextPerm: dto.sendTextPerm,
+      sendMediaPerm: dto.sendMediaPerm,
       ...anchorUpdate,
     });
 
@@ -77,6 +81,8 @@ export class UpdateGroupUseCase {
       privacy: updated.privacy,
       radiusKm: updated.radiusKm,
       memberCount: updated.memberCount,
+      sendTextPerm: updated.sendTextPerm,
+      sendMediaPerm: updated.sendMediaPerm,
       myRole: caller.role,
       createdAt: updated.createdAt.toISOString(),
     };

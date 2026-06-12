@@ -9,7 +9,11 @@ import {
   MinLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { AnchorType, GroupPrivacy } from '@localloop/shared-types';
+import {
+  AnchorType,
+  GroupPrivacy,
+  MessagePermission,
+} from '@localloop/shared-types';
 import { RADIUS_KM_MAX, RADIUS_KM_MIN } from '@domain/anchor-radius-defaults';
 
 export class CreateGroupDto {
@@ -50,6 +54,14 @@ export class CreateGroupDto {
   @Min(RADIUS_KM_MIN)
   @Max(RADIUS_KM_MAX)
   radiusKm?: number;
+
+  @IsOptional()
+  @IsEnum(MessagePermission)
+  sendTextPerm?: MessagePermission;
+
+  @IsOptional()
+  @IsEnum(MessagePermission)
+  sendMediaPerm?: MessagePermission;
 }
 
 export class CreateGroupResponseDto {

@@ -1,4 +1,8 @@
-import { AnchorType, GroupPrivacy } from '@localloop/shared-types';
+import {
+  AnchorType,
+  GroupPrivacy,
+  MessagePermission,
+} from '@localloop/shared-types';
 
 export class Group {
   constructor(
@@ -16,5 +20,7 @@ export class Group {
     public memberCount: number,
     public isActive: boolean,
     public readonly createdAt: Date,
+    public sendTextPerm: MessagePermission = MessagePermission.ALL_MEMBERS,
+    public sendMediaPerm: MessagePermission = MessagePermission.ALL_MEMBERS,
   ) {}
 }

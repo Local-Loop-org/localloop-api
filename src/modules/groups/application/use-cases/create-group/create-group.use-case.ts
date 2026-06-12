@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { coordinatesToGeohash } from '@localloop/geo-utils';
+import { MessagePermission } from '@localloop/shared-types';
 import {
   GROUP_REPOSITORY,
   IGroupRepository,
@@ -33,6 +34,8 @@ export class CreateGroupUseCase {
       radiusKm,
       ownerId: userId,
       memberCount: 1,
+      sendTextPerm: dto.sendTextPerm ?? MessagePermission.ALL_MEMBERS,
+      sendMediaPerm: dto.sendMediaPerm ?? MessagePermission.ALL_MEMBERS,
     });
 
     return {
